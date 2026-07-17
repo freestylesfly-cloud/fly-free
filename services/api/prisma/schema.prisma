@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MEN
+  WOMEN
+  UNISEX
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CustomizationStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PAID
+  IN_PRODUCTION
+  COMPLETED
+}
+
+model User {
+  id             String      @id @default(cuid())
+  name           String?
+  email          String?     @unique
+  phone          String?     @unique
+  image          String?
+  addresses      Address[]
+  orders         Order[]
+  wishlistItems  Wishlist[]
+  reviews        Review[]
+  customRequests CustomizationRequest[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  permissions Permission[]
+  admins      AdminUser[]
+}
+
+model Permission {
+  id     String @id @default(cuid())
+  action String
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  imageUrl  String?
+  priority  Int       @default(0)
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Theme {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Collection {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  imageUrl  String?
+  priority  Int       @default(0)
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  sku             String           @unique
+  description     String
+  gender          Gender           @default(UNISEX)
+  tags            String[]
+  brand           String           @default("Fly Free")
+  material        String?
+  washCare        String?
+  price           Int
+  mrp             Int
+  discountPercent Int              @default(0)
+  gstPercent      Int              @default(5)
+  weightGrams     Int?
+  videoUrl        String?
+  view360Url      String?
+  seoTitle        String?
+  seoDescription  String?
+  isVisible       Boolean          @default(true)
+  isFeatured      Boolean          @default(false)
+  isTrending      Boolean          @default(false)
+  isNewArrival    Boolean          @default(false)
+  categoryId      String
+  collectionId    String?
+  themeId         String?
+  category        Category         @relation(fields: [categoryId], references: [id])
+  collection      Collection?      @relation(fields: [collectionId], references: [id])
+  theme           Theme?           @relation(fields: [themeId], references: [id])
+  images          ProductImage[]
+  variants        ProductVariant[]
+  reviews         Review[]
+  orderItems      OrderItem[]
+  wishlistItems   Wishlist[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  color     String?
+  url       String
+  alt       String?
+  priority  Int      @default(0)
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model ProductVariant {
+  id        String      @id @default(cuid())
+  productId String
+  sku       String      @unique
+  color     String
+  size      String
+  price     Int?
+  product   Product     @relation(fields: [productId], references: [id])
+  inventory Inventory?
+}
+
+model Inventory {
+  id             String         @id @default(cuid())
+  variantId      String         @unique
+  stock          Int            @default(0)
+  lowStockAlert  Int            @default(5)
+  warehouse      String?
+  barcode        String?
+  variant        ProductVariant @relation(fields: [variantId], references: [id])
+  updatedAt      DateTime       @updatedAt
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  fullName   String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String
+  country    String  @default("India")
+  user       User    @relation(fields: [userId], references: [id])
+  orders     Order[]
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  guestId   String?
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String @id @default(cuid())
+  cartId    String
+  variantId String
+  quantity  Int
+  cart      Cart   @relation(fields: [cartId], references: [id])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String?
+  guestId   String?
+  productId String
+  user      User?    @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  userId            String
+  shippingAddressId String
+  status            OrderStatus @default(PLACED)
+  subtotal          Int
+  discount          Int         @default(0)
+  shippingFee       Int         @default(0)
+  tax               Int         @default(0)
+  total             Int
+  user              User        @relation(fields: [userId], references: [id])
+  shippingAddress   Address     @relation(fields: [shippingAddressId], references: [id])
+  items             OrderItem[]
+  payment           Payment?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  variantId String
+  name      String
+  sku       String
+  price     Int
+  quantity  Int
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Coupon {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  description    String?
+  discountAmount Int?
+  discountPercent Int?
+  minOrderAmount Int?
+  startsAt       DateTime?
+  endsAt         DateTime?
+  isActive       Boolean  @default(true)
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  provider          String        @default("RAZORPAY")
+  providerPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  amount            Int
+  rawPayload        Json?
+  order             Order         @relation(fields: [orderId], references: [id])
+  createdAt         DateTime      @default(now())
+}
+
+model Review {
+  id           String       @id @default(cuid())
+  userId       String
+  productId    String
+  rating       Int
+  title        String?
+  body         String
+  mediaUrls    String[]
+  helpfulVotes Int          @default(0)
+  status       ReviewStatus @default(PENDING)
+  user         User         @relation(fields: [userId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+  createdAt    DateTime     @default(now())
+}
+
+model HeroBanner {
+  id              String    @id @default(cuid())
+  title           String
+  desktopImageUrl String
+  mobileImageUrl  String
+  buttonLabel     String?
+  href            String?
+  priority        Int       @default(0)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean   @default(true)
+}
+
+model GiftOption {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  price       Int
+  isActive    Boolean @default(true)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  channel   String
+  title     String
+  body      String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model CustomizationRequest {
+  id          String              @id @default(cuid())
+  userId      String
+  productId   String?
+  placement   String
+  quantity    Int
+  size        String
+  color       String
+  message     String?
+  fileUrls    String[]
+  status      CustomizationStatus @default(REQUESTED)
+  quotedPrice Int?
+  user        User                @relation(fields: [userId], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
