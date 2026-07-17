@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { ShoppingBag, Menu, X, Sun, Moon } from 'lucide-react';
 import { useThemeStore } from '../../src/store/themeStore';
+import { THEMES } from '../../src/config/themes';
 import Link from 'next/link';
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const { currentTheme, isDarkMode, setTheme, toggleDarkMode, themes } = useThemeStore();
+  const { currentTheme, isDarkMode, setTheme, toggleDarkMode } = useThemeStore();
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/10 bg-paper/95 backdrop-blur">
@@ -36,7 +37,7 @@ export function Header() {
               {currentTheme}
             </button>
             <div className="absolute right-0 top-full mt-1 hidden group-hover:block bg-white rounded-lg border border-black/10 shadow-lg py-2 z-50 min-w-max">
-              {Object.keys(themes).map((theme) => (
+              {Object.keys(THEMES).map((theme) => (
                 <button
                   key={theme}
                   onClick={() => setTheme(theme as any)}
@@ -91,7 +92,7 @@ export function Header() {
             <div className="px-5 py-3 border-b border-black/5">
               <p className="text-xs font-semibold text-black/60 mb-2">Theme</p>
               <div className="grid grid-cols-2 gap-2">
-                {Object.keys(themes).map((theme) => (
+                {Object.keys(THEMES).map((theme) => (
                   <button
                     key={theme}
                     onClick={() => {
