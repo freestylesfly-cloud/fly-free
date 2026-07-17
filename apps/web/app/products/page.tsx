@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { ProductCard } from '@/components/ProductCard';
+import { ProductCard } from '../components/ProductCard';
 import { Filter } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
