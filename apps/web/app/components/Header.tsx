@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ShoppingBag, Menu, X, Sun, Moon } from 'lucide-react';
-import { useThemeStore } from '@/store/themeStore';
+import { useThemeStore } from '../../src/store/themeStore';
 import Link from 'next/link';
 
 export function Header() {
