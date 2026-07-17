@@ -1,22 +1,10 @@
+// Re-export all types
+export * from './product';
+export * from './user';
+export * from './theme';
+
+// Common types
 export type ProductFlag = "featured" | "trending" | "newArrival";
-
-export type ProductVariant = {
-  id: string;
-  sku: string;
-  color: string;
-  size: string;
-  stock: number;
-};
-
-export type ProductSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  mrp: number;
-  imageUrl?: string;
-  flags: ProductFlag[];
-};
 
 export type HomeSection =
   | "hero"
@@ -34,3 +22,19 @@ export type HomeSection =
   | "reviews";
 
 export type OrderStatus = "PLACED" | "CONFIRMED" | "PACKED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "REFUNDED";
+
+// API Response types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}

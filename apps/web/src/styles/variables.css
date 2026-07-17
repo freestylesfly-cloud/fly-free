@@ -1,0 +1,313 @@
+/* Fly Free - CSS Variables for Dynamic Theming */
+
+:root {
+  /* Colors - Light Theme (Default) */
+  --color-primary: #3B82F6;
+  --color-secondary: #10B981;
+  --color-background: #FFFFFF;
+  --color-text: #1F2937;
+  --color-accent: #F59E0B;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-border: #E5E7EB;
+
+  /* Fonts */
+  --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-secondary: 'Roboto', sans-serif;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* Z-Index */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 1, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms ease-in-out;
+}
+
+/* Dark Mode */
+[data-theme='dark'] {
+  --color-primary: #60A5FA;
+  --color-secondary: #34D399;
+  --color-background: #111827;
+  --color-text: #F3F4F6;
+  --color-accent: #FBBF24;
+  --color-border: #374151;
+}
+
+/* Anime Theme */
+[data-theme='anime'] {
+  --color-primary: #FF6B35;
+  --color-secondary: #004E89;
+  --color-background: #F8F5F1;
+  --color-text: #1A1A1A;
+  --color-accent: #FF9500;
+  --color-border: #E5E7EB;
+  --font-primary: 'Poppins', sans-serif;
+}
+
+/* Marvel Theme */
+[data-theme='marvel'] {
+  --color-primary: #DC143C;
+  --color-secondary: #FFD700;
+  --color-background: #0F0F0F;
+  --color-text: #FFFFFF;
+  --color-accent: #FFD700;
+  --color-border: #333333;
+  --font-primary: 'Arial Black', sans-serif;
+}
+
+/* Spider-Man Theme */
+[data-theme='spider-man'] {
+  --color-primary: #DA291C;
+  --color-secondary: #0066CC;
+  --color-background: #FAFAFA;
+  --color-text: #1A1A1A;
+  --color-accent: #FFD700;
+  --color-border: #E5E7EB;
+  --font-primary: 'Comic Sans MS', cursive;
+}
+
+/* Assam Theme */
+[data-theme='assam'] {
+  --color-primary: #8B4513;
+  --color-secondary: #DAA520;
+  --color-background: #FFFAF0;
+  --color-text: #2C1810;
+  --color-accent: #D4A574;
+  --color-border: #D4AF37;
+  --font-primary: 'Georgia', serif;
+}
+
+/* Minimal Theme */
+[data-theme='minimal'] {
+  --color-primary: #000000;
+  --color-secondary: #FFFFFF;
+  --color-background: #F5F5F5;
+  --color-text: #333333;
+  --color-accent: #808080;
+  --color-border: #CCCCCC;
+  --font-primary: 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Graphic Theme */
+[data-theme='graphic'] {
+  --color-primary: #FF006E;
+  --color-secondary: #00F5FF;
+  --color-background: #0A0E27;
+  --color-text: #FFFFFF;
+  --color-accent: #00D9FF;
+  --color-border: #2D3561;
+  --font-primary: 'Bebas Neue', sans-serif;
+}
+
+/* Typography Theme */
+[data-theme='typography'] {
+  --color-primary: #2C3E50;
+  --color-secondary: #E74C3C;
+  --color-background: #ECEFF1;
+  --color-text: #2C3E50;
+  --color-accent: #E74C3C;
+  --color-border: #BDC3C7;
+  --font-primary: 'Merriweather', serif;
+}
+
+/* Gaming Theme */
+[data-theme='gaming'] {
+  --color-primary: #00FF00;
+  --color-secondary: #FF00FF;
+  --color-background: #0D0221;
+  --color-text: #FFFFFF;
+  --color-accent: #00FF00;
+  --color-border: #00FF00;
+  --font-primary: 'Courier New', monospace;
+}
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  line-height: 1.6;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Buttons */
+.btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: white;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-outline:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* Forms */
+input,
+textarea,
+select {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-primary);
+  transition: border-color var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Cards */
+.card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-tooltip);
+  animation: slideIn var(--transition-base);
+}
+
+.toast.success {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.toast.error {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.toast.warning {
+  background-color: var(--color-warning);
+  color: #1A1A1A;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Loading Animation */
+.loader {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton Loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-border) 25%, transparent 50%, var(--color-border) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

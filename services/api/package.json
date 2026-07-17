@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "start": "node dist/main",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "ts-node prisma/seed.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
@@ -27,6 +29,7 @@
     "@nestjs/cli": "^10.4.2",
     "@types/node": "^22.5.0",
     "prisma": "^5.18.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }
 }

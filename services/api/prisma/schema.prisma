@@ -340,3 +340,58 @@ model CustomizationRequest {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 }
+
+model Influencer {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  code            String    @unique
+  commissionRate  Float     @default(5.0)
+  totalEarnings   Int       @default(0)
+  totalReferrals  Int       @default(0)
+  isActive        Boolean   @default(true)
+  socialHandle    String?
+  followers       Int?
+  referrals       Referral[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Referral {
+  id              String    @id @default(cuid())
+  influencerId    String
+  orderId         String?
+  code            String    @unique
+  clicks          Int       @default(0)
+  conversions     Int       @default(0)
+  totalEarnings   Int       @default(0)
+  influencer      Influencer @relation(fields: [influencerId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model WebsiteTheme {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  slug            String    @unique
+  primaryColor    String
+  secondaryColor  String
+  backgroundColor String
+  textColor       String
+  accentColor     String
+  fontFamily      String
+  isActive        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Return {
+  id              String    @id @default(cuid())
+  orderId         String
+  reason          String
+  description     String?
+  status          String    @default("REQUESTED")
+  refundAmount    Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
