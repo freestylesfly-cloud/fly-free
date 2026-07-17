@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const { currentTheme, isDarkMode, setTheme, setDarkMode, themes } = useThemeStore();
+  const { currentTheme, isDarkMode, setTheme, toggleDarkMode, themes } = useThemeStore();
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/10 bg-paper/95 backdrop-blur">
@@ -52,7 +52,7 @@ export function Header() {
 
           {/* Dark Mode Toggle */}
           <button
-            onClick={() => setDarkMode(!isDarkMode)}
+            onClick={() => toggleDarkMode()}
             className="p-2 rounded-lg border border-black/10 hover:bg-black/5 transition"
             title={isDarkMode ? 'Light mode' : 'Dark mode'}
           >
@@ -112,7 +112,7 @@ export function Header() {
 
             {/* Mobile Dark Mode */}
             <button
-              onClick={() => setDarkMode(!isDarkMode)}
+              onClick={() => toggleDarkMode()}
               className="px-5 py-3 border-b border-black/5 hover:bg-black/5 font-semibold flex items-center gap-2 justify-between"
             >
               <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
