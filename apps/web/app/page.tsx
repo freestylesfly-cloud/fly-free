@@ -13,20 +13,6 @@ const products = [
 export default function HomePage() {
   return (
     <main>
-      <header className="sticky top-0 z-10 border-b border-black/10 bg-paper/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <span className="text-xl font-black uppercase tracking-wide">Fly Free</span>
-          <nav className="hidden gap-6 text-sm font-semibold md:flex">
-            <a href="#shop">Shop</a>
-            <a href="#customize">Customize</a>
-            <a href="#reviews">Reviews</a>
-          </nav>
-          <button className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-ink text-white" aria-label="Open cart">
-            <ShoppingBag size={18} />
-          </button>
-        </div>
-      </header>
-
       <section className="bg-ink text-white">
         <div className="mx-auto grid min-h-[82vh] max-w-7xl items-center gap-10 px-5 py-12 md:grid-cols-[1.1fr_0.9fr]">
           <div>
