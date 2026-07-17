@@ -8,7 +8,7 @@
     ],
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ],
       "@flyfree/ui": [
         "../../packages/ui/src"
