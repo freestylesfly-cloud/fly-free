@@ -238,23 +238,38 @@ model Wishlist {
 }
 
 model Order {
-  id                String      @id @default(cuid())
-  userId            String
-  shippingAddressId String
-  status            OrderStatus @default(PLACED)
-  subtotal          Int
-  discount          Int         @default(0)
-  shippingFee       Int         @default(0)
-  tax               Int         @default(0)
-  total             Int
-  user              User        @relation(fields: [userId], references: [id])
-  shippingAddress   Address     @relation(fields: [shippingAddressId], references: [id])
-  items             OrderItem[]
-  payment           Payment?
-  referrals         Referral[]
-  invoice           Invoice?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                  String               @id @default(cuid())
+  userId              String
+  shippingAddressId   String
+  status              OrderStatus          @default(PLACED)
+  subtotal            Int
+  discount            Int                  @default(0)
+  shippingFee         Int                  @default(0)
+  tax                 Int                  @default(0)
+  total               Int
+  user                User                 @relation(fields: [userId], references: [id])
+  shippingAddress     Address              @relation(fields: [shippingAddressId], references: [id])
+  items               OrderItem[]
+  payment             Payment?
+  referrals           Referral[]
+  invoice             Invoice?
+  statusHistory       OrderStatusHistory[]
+  reviews             Review[]
+  reviewRequestSentAt DateTime?
+  reviewSubmittedAt   DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(cuid())
+  orderId    String
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?
+  changedBy  String?
+  order      Order        @relation(fields: [orderId], references: [id])
+  createdAt  DateTime     @default(now())
 }
 
 model Invoice {
@@ -302,14 +317,17 @@ model Payment {
   status            PaymentStatus @default(PENDING)
   amount            Int
   rawPayload        Json?
+  paidAt            DateTime?
   order             Order         @relation(fields: [orderId], references: [id])
   createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
 }
 
 model Review {
   id           String       @id @default(cuid())
   userId       String
   productId    String
+  orderId      String?
   rating       Int
   title        String?
   body         String
@@ -318,6 +336,7 @@ model Review {
   status       ReviewStatus @default(PENDING)
   user         User         @relation(fields: [userId], references: [id])
   product      Product      @relation(fields: [productId], references: [id])
+  order        Order?       @relation(fields: [orderId], references: [id])
   createdAt    DateTime     @default(now())
 }
 

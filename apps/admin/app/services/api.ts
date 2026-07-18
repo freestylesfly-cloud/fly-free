@@ -155,10 +155,10 @@ class ApiService {
     return this.request(`/api/admin/orders/${id}`);
   }
 
-  async updateOrderStatus(id: string, status: string) {
+  async updateOrderStatus(id: string, status: string, note?: string) {
     return this.request(`/api/admin/orders/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, note }),
     });
   }
 

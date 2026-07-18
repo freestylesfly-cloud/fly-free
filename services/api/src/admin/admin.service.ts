@@ -202,6 +202,8 @@ export class AdminService {
           payment: true,
           invoice: true,
           referrals: { include: { influencer: true } },
+          statusHistory: { orderBy: { createdAt: "asc" } },
+          reviews: { include: { product: true, user: true }, orderBy: { createdAt: "desc" } },
           items: { include: { product: true } }
         },
         orderBy: { createdAt: "desc" }
@@ -224,12 +226,14 @@ export class AdminService {
         payment: true,
         invoice: true,
         referrals: { include: { influencer: true } },
+        statusHistory: { orderBy: { createdAt: "asc" } },
+        reviews: { include: { product: true, user: true }, orderBy: { createdAt: "desc" } },
         items: { include: { product: true } }
       }
     });
   }
 
-  async updateOrderStatus(id: string, status: string) {
+  async updateOrderStatus(id: string, status: string, note?: string, changedBy = "admin") {
     const validStatuses = ["PLACED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
     const normalizedStatus = status.toUpperCase();
 
@@ -237,10 +241,41 @@ export class AdminService {
       throw new Error(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
     }
 
-    const order = await this.prisma.order.update({
-      where: { id },
-      data: { status: normalizedStatus as any },
-      include: { user: true, items: { include: { product: true } }, shippingAddress: true }
+    const existing = await this.prisma.order.findUnique({ where: { id }, select: { status: true } });
+    if (!existing) {
+      throw new Error("Order not found");
+    }
+
+    const order = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status: normalizedStatus as any },
+        include: { user: true, items: { include: { product: true } }, shippingAddress: true, payment: true, invoice: true }
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          fromStatus: existing.status as any,
+          toStatus: normalizedStatus as any,
+          note: note || undefined,
+          changedBy
+        }
+      });
+
+      await tx.notification.create({
+        data: {
+          channel: "ADMIN",
+          type: "ORDER_STATUS_CHANGED",
+          entityType: "Order",
+          entityId: id,
+          title: "Order status updated",
+          body: `Order ${id} changed from ${existing.status} to ${normalizedStatus}${note ? `: ${note}` : ""}`,
+          status: "PENDING"
+        }
+      });
+
+      return updated;
     });
 
     if (order.user?.email) {
@@ -269,16 +304,26 @@ export class AdminService {
 
     const invoice = await this.ensureInvoice(order.id);
     const settings = await this.getSettingsValue();
+    const payment = order.payment;
+    const referral = order.referrals?.[0];
     const lines = [
       `${settings.appName || "Fly Free"} Invoice`,
       `Invoice: ${invoice.invoiceNumber}`,
       `Order: ${order.id}`,
       `Date: ${new Date(order.createdAt).toLocaleDateString("en-IN")}`,
+      `Business: ${settings.businessName || settings.appName || "Fly Free"}`,
+      `GSTIN: ${settings.gstNumber || "Not configured"}`,
       "",
       `Bill To: ${order.user?.name || order.user?.email || "Customer"}`,
       `Email: ${order.user?.email || ""}`,
       `Phone: ${order.user?.phone || ""}`,
       `Address: ${order.shippingAddress?.line1 || ""}, ${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} ${order.shippingAddress?.postalCode || ""}`,
+      "",
+      "Payment:",
+      `Provider: ${payment?.provider || "RAZORPAY"}`,
+      `Status: ${payment?.status || "PENDING"}`,
+      `Payment ID: ${payment?.providerPaymentId || "Pending"}`,
+      `Paid At: ${payment?.paidAt ? new Date(payment.paidAt).toLocaleString("en-IN") : "Not paid yet"}`,
       "",
       "Items:",
       ...order.items.map((item) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
@@ -286,8 +331,9 @@ export class AdminService {
       `Subtotal: Rs ${this.formatMoney(order.subtotal)}`,
       `Discount: Rs ${this.formatMoney(order.discount)}`,
       `Shipping: Rs ${this.formatMoney(order.shippingFee)}`,
-      `Tax: Rs ${this.formatMoney(order.tax)}`,
+      `GST/Tax: Rs ${this.formatMoney(order.tax)}`,
       `Total: Rs ${this.formatMoney(order.total)}`,
+      referral ? `Influencer: ${referral.influencer?.name || referral.code} (${referral.code})` : "",
       "",
       `${settings.businessName || settings.appName || "Fly Free"}`,
       `${settings.businessAddress || settings.address || ""}`,
@@ -320,6 +366,18 @@ export class AdminService {
       data: { sentAt: new Date(), status: "SENT" }
     });
 
+    await this.prisma.notification.create({
+      data: {
+        channel: "ADMIN",
+        type: "INVOICE_SENT",
+        entityType: "Order",
+        entityId: id,
+        title: "Invoice sent",
+        body: `Invoice for order ${id} was emailed to ${order.user.email}.`,
+        status: "PENDING"
+      }
+    });
+
     return result;
   }
 
@@ -342,7 +400,27 @@ export class AdminService {
        <p><a href="${this.escape(reviewLink)}" style="display:inline-block;background:#ff6b5b;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px;font-weight:700;">Write review</a></p>`
     );
 
-    return this.emailService.sendEmail(order.user.email, "Review your Fly Free order", html);
+    const result = await this.emailService.sendEmail(order.user.email, "Review your Fly Free order", html);
+    const reviewRequestSentAt = new Date();
+
+    await this.prisma.order.update({
+      where: { id },
+      data: { reviewRequestSentAt }
+    });
+
+    await this.prisma.notification.create({
+      data: {
+        channel: "ADMIN",
+        type: "REVIEW_REQUEST_SENT",
+        entityType: "Order",
+        entityId: id,
+        title: "Review request sent",
+        body: `Review link for order ${id} was sent to ${order.user.email}.`,
+        status: "PENDING"
+      }
+    });
+
+    return { ...result, reviewLink, reviewRequestSentAt };
   }
 
   // ==================== USERS ====================

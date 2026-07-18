@@ -48,8 +48,8 @@ export class AdminController {
   }
 
   @Put("orders/:id/status")
-  updateOrderStatus(@Param("id") id: string, @Body() body: { status: string }) {
-    return this.adminService.updateOrderStatus(id, body.status);
+  updateOrderStatus(@Param("id") id: string, @Body() body: { status: string; note?: string; changedBy?: string }) {
+    return this.adminService.updateOrderStatus(id, body.status, body.note, body.changedBy);
   }
 
   @Get("orders/:id/invoice")

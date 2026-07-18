@@ -9,6 +9,7 @@ async function main() {
   await prisma.invoice.deleteMany();
   await prisma.referral.deleteMany();
   await prisma.influencer.deleteMany();
+  await prisma.orderStatusHistory.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.order.deleteMany();
@@ -587,6 +588,8 @@ async function main() {
         userId: users[0].id,
         shippingAddressId: addresses[0].id,
         status: 'DELIVERED',
+        reviewRequestSentAt: new Date(),
+        reviewSubmittedAt: new Date(),
         subtotal: 99800,
         discount: 10000,
         shippingFee: 0,
@@ -611,6 +614,7 @@ async function main() {
         userId: users[1].id,
         shippingAddressId: addresses[2].id,
         status: 'SHIPPED',
+        reviewRequestSentAt: new Date(),
         subtotal: 49900,
         discount: 5000,
         shippingFee: 0,
@@ -664,6 +668,7 @@ async function main() {
         status: 'PAID',
         amount: orders[0].total,
         providerPaymentId: 'rzp_demo_delivered_001',
+        paidAt: new Date(),
       },
     }),
     prisma.payment.create({
@@ -672,6 +677,7 @@ async function main() {
         status: 'PAID',
         amount: orders[1].total,
         providerPaymentId: 'rzp_demo_shipped_002',
+        paidAt: new Date(),
       },
     }),
     prisma.payment.create({
