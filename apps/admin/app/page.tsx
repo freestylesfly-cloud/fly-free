@@ -2,10 +2,11 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from 'react';
 import { DashboardLayout } from './components/DashboardLayout';
 import { StatsCard } from './components/StatsCard';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { useFetch } from './hooks/useFetch';
+import { apiService } from './services/api';
 import {
   TrendingUp,
   Package,
@@ -14,7 +15,8 @@ import {
   Star,
   AlertCircle,
   Clock,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface DashboardData {
@@ -29,71 +31,73 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Mock data for development
+  const mockData: DashboardData = {
+    revenue: 124850,
+    orders: 328,
+    products: 146,
+    users: 2418,
+    pendingOrders: 12,
+    lowStockProducts: 5,
+    totalReviews: 47,
+    averageRating: 4.6
+  };
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        const res = await fetch(`${baseUrl}/api/admin/dashboard`);
-        if (!res.ok) throw new Error('Failed to fetch dashboard data');
+  // Fetch dashboard data using centralized API service
+  const { data, loading, error, refetch } = useFetch<any>(
+    () => apiService.getDashboardStats(),
+    { skip: false }
+  );
 
-        const result = await res.json();
-        setData(result.data);
-      } catch (err) {
-        setError((err as Error).message);
-        // Set mock data for now
-        setData({
-          revenue: 124850,
-          orders: 328,
-          products: 146,
-          users: 2418,
-          pendingOrders: 12,
-          lowStockProducts: 5,
-          totalReviews: 47,
-          averageRating: 4.6
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
+  const dashboardData = (data?.data || mockData) as DashboardData;
 
   return (
     <ProtectedRoute>
       <DashboardLayout title="Dashboard" subtitle="Welcome back">
         <div className="space-y-6">
+          {/* Error Alert */}
+          {error && (
+            <div className="p-4 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-red-700">Failed to load dashboard</p>
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                <RefreshCw size={16} />
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Stats Grid */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
               title="Total Revenue"
-              value={`₹${(data?.revenue || 0).toLocaleString()}`}
+              value={`₹${(dashboardData?.revenue || 0).toLocaleString()}`}
               icon={<TrendingUp size={24} />}
               trend={12}
               backgroundColor="from-coral"
             />
             <StatsCard
               title="Total Orders"
-              value={data?.orders || 0}
+              value={dashboardData?.orders || 0}
               icon={<ShoppingCart size={24} />}
               trend={8}
               backgroundColor="from-mint"
             />
             <StatsCard
               title="Total Products"
-              value={data?.products || 0}
+              value={dashboardData?.products || 0}
               icon={<Package size={24} />}
               trend={5}
               backgroundColor="from-purple-500"
             />
             <StatsCard
               title="Total Users"
-              value={data?.users || 0}
+              value={dashboardData?.users || 0}
               icon={<Users size={24} />}
               trend={15}
               backgroundColor="from-blue-500"
@@ -110,7 +114,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">Pending</span>
               </div>
               <p className="text-black/60 text-sm font-medium">Pending Orders</p>
-              <p className="text-2xl font-black text-ink mt-1">{data?.pendingOrders || 0}</p>
+              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.pendingOrders || 0}</p>
               <p className="text-xs text-black/40 mt-2">Awaiting confirmation</p>
             </div>
 
@@ -122,7 +126,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">Alert</span>
               </div>
               <p className="text-black/60 text-sm font-medium">Low Stock Items</p>
-              <p className="text-2xl font-black text-ink mt-1">{data?.lowStockProducts || 0}</p>
+              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.lowStockProducts || 0}</p>
               <p className="text-xs text-black/40 mt-2">Below threshold</p>
             </div>
 
@@ -134,7 +138,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">Active</span>
               </div>
               <p className="text-black/60 text-sm font-medium">Total Reviews</p>
-              <p className="text-2xl font-black text-ink mt-1">{data?.totalReviews || 0}</p>
+              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.totalReviews || 0}</p>
               <p className="text-xs text-black/40 mt-2">From customers</p>
             </div>
 
@@ -146,7 +150,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">Rating</span>
               </div>
               <p className="text-black/60 text-sm font-medium">Avg Rating</p>
-              <p className="text-2xl font-black text-ink mt-1">{data?.averageRating || 0}</p>
+              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.averageRating || 0}</p>
               <p className="text-xs text-black/40 mt-2">Out of 5.0</p>
             </div>
           </div>

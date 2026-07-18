@@ -2,7 +2,9 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useFetch } from '../hooks/useFetch';
+import { apiService } from '../services/api';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DataTable, Column } from '../components/DataTable';
@@ -32,8 +34,6 @@ interface User {
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,25 +44,13 @@ export default function UsersPage() {
 
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // Fetch users using centralized API service
+  const { data: usersData, loading, error, refetch } = useFetch<any>(
+    () => apiService.getUsers({ page: 1, limit: 100 }),
+    { skip: false }
+  );
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${baseUrl}/api/admin/users?page=1&limit=100`);
-      if (!res.ok) throw new Error('Failed to fetch users');
-
-      const result = await res.json();
-      setUsers(result.data || []);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const users = (usersData?.data || []) as User[];
 
   const filteredUsers = users.filter(user => {
     const matchesSearch =

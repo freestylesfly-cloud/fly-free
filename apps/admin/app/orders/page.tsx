@@ -2,11 +2,13 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DataTable, Column } from '../components/DataTable';
-import { Search, Plus, Eye, Printer, Download } from 'lucide-react';
+import { useFetch } from '../hooks/useFetch';
+import { apiService } from '../services/api';
+import { Search, Plus, Eye, Printer, Download, AlertCircle } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -42,8 +44,6 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,38 +54,18 @@ export default function OrdersPage() {
 
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  // Fetch orders using centralized API service
+  const { data: ordersData, loading, error, refetch } = useFetch<any>(
+    () => apiService.getOrders({ page: 1, limit: 100 }),
+    { skip: false }
+  );
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${baseUrl}/api/admin/orders?page=1&limit=100`);
-      if (!res.ok) throw new Error('Failed to fetch orders');
-
-      const result = await res.json();
-      setOrders(result.data || []);
-    } catch (error) {
-      console.error('Failed to fetch orders:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const orders = (ordersData?.data || []) as Order[];
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${baseUrl}/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (res.ok) {
-        setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-      }
+      await apiService.updateOrderStatus(orderId, newStatus);
+      refetch();
     } catch (error) {
       console.error('Failed to update order status:', error);
     }
@@ -170,6 +150,25 @@ export default function OrdersPage() {
     <ProtectedRoute>
       <DashboardLayout title="Orders" subtitle="Manage">
         <div className="space-y-6">
+          {/* Error Alert */}
+          {error && (
+            <div className="p-4 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="text-red-600" size={20} />
+                <div>
+                  <p className="font-bold text-red-700">Failed to load orders</p>
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => refetch()}
+                className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition font-bold text-sm"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">

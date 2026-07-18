@@ -42,7 +42,7 @@ export default function SettingsPage() {
     footerText: '© 2026 Fly Free. All rights reserved.',
     socialLinks: {
       facebook: 'https://facebook.com/flyfree',
-      instagram: 'https://instagram.com/flyfree',
+      instagram: 'https://www.instagram.com/flyfree.ne/',
       twitter: 'https://twitter.com/flyfree',
       youtube: 'https://youtube.com/flyfree',
     },
