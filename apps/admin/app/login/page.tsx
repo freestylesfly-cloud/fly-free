@@ -1,30 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthStore } from '../stores/authStore';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const { login, loading: authLoading, user } = useAuthStore();
+  const [email, setEmail] = useState('admin@flyfree.com');
+  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push('/');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
     try {
-      // TODO: Implement Supabase auth
-      console.log('Login attempt:', { email, password });
-      // For now, redirect to dashboard
-      window.location.href = '/dashboard';
+      await login(email, password);
+      router.push('/');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
+      setError(err.message || 'Login failed. Please check your credentials.');
     }
   };
 
@@ -111,10 +118,10 @@ export default function AdminLoginPage() {
           {/* Submit button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={authLoading}
             className="w-full bg-gradient-to-r from-coral to-coral hover:from-coral/90 hover:to-coral/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 group"
           >
-            {loading ? (
+            {authLoading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
                 Signing in...

@@ -1,7 +1,9 @@
 'use client';
 
-import { Bell, Search, Settings, User } from 'lucide-react';
+import { Bell, Search, Settings, User, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '../stores/authStore';
 
 interface AdminHeaderProps {
   title: string;
@@ -9,7 +11,15 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-black/10 md:ml-64">
@@ -62,12 +72,38 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
           </button>
 
           {/* Profile */}
-          <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-black/5 transition-all group">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-coral to-mint flex items-center justify-center">
-              <User size={16} className="text-white" />
-            </div>
-            <span className="text-sm font-bold text-ink hidden sm:block group-hover:text-coral transition">Admin</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-black/5 transition-all group"
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-coral to-mint flex items-center justify-center">
+                <User size={16} className="text-white" />
+              </div>
+              <span className="text-sm font-bold text-ink hidden sm:block group-hover:text-coral transition">
+                {user?.email?.split('@')[0] || 'Admin'}
+              </span>
+            </button>
+
+            {profileOpen && (
+              <div className="absolute top-full right-0 mt-2 bg-white rounded-lg border border-black/10 shadow-lg overflow-hidden z-50 min-w-48">
+                <div className="p-3 border-b border-black/10">
+                  <p className="text-xs text-black/60">Logged in as</p>
+                  <p className="text-sm font-bold text-ink">{user?.email || 'admin@flyfree.com'}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setProfileOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-ink hover:bg-black/5 transition font-bold text-sm"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

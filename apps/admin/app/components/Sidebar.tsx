@@ -1,22 +1,31 @@
 'use client';
 
-import { LayoutGrid, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X } from 'lucide-react';
+import { LayoutGrid, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useAuthStore } from '../stores/authStore';
 
 const menuItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-  { label: 'Themes', href: '/themes', icon: Palette },
+  { label: 'Dashboard', href: '/', icon: LayoutGrid },
   { label: 'Products', href: '/products', icon: Package },
   { label: 'Orders', href: '/orders', icon: ShoppingCart },
   { label: 'Users', href: '/users', icon: Users },
+  { label: 'Reviews', href: '/reviews', icon: MessageSquare },
+  { label: 'Themes', href: '/themes', icon: Palette },
   { label: 'Settings', href: '/settings', icon: Sliders },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <>
@@ -81,9 +90,12 @@ export function Sidebar() {
         <div className="absolute bottom-5 left-5 right-5 pt-5 border-t border-black/10 space-y-3">
           <div className="px-3 py-2 rounded-lg bg-paper">
             <p className="text-xs font-bold text-black/60">Logged in as</p>
-            <p className="text-sm font-black text-ink">Admin</p>
+            <p className="text-sm font-black text-ink">{user?.email?.split('@')[0] || 'Admin'}</p>
           </div>
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-ink text-white font-bold hover:bg-ink/90 transition-all group">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-ink text-white font-bold hover:bg-ink/90 transition-all group"
+          >
             <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
             Logout
           </button>

@@ -1,64 +1,229 @@
-import { Boxes, ChartNoAxesCombined, PackageCheck, Users } from "lucide-react";
-import { formatCurrency } from "@flyfree/utils";
+'use client';
 
-const metrics = [
-  { label: "Revenue", value: formatCurrency(124850), icon: ChartNoAxesCombined },
-  { label: "Orders", value: "328", icon: PackageCheck },
-  { label: "Products", value: "146", icon: Boxes },
-  { label: "Users", value: "2,418", icon: Users }
-];
+export const dynamic = 'force-dynamic';
 
-const queues = ["Pending orders", "Low stock alerts", "Review approvals", "Custom design requests"];
+import { useEffect, useState } from 'react';
+import { DashboardLayout } from './components/DashboardLayout';
+import { StatsCard } from './components/StatsCard';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import {
+  TrendingUp,
+  Package,
+  Users,
+  ShoppingCart,
+  Star,
+  AlertCircle,
+  Clock,
+  CheckCircle
+} from 'lucide-react';
 
-export default function AdminPage() {
+interface DashboardData {
+  revenue: number;
+  orders: number;
+  products: number;
+  users: number;
+  pendingOrders: number;
+  lowStockProducts: number;
+  totalReviews: number;
+  averageRating: number;
+}
+
+export default function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${baseUrl}/api/admin/dashboard`);
+        if (!res.ok) throw new Error('Failed to fetch dashboard data');
+
+        const result = await res.json();
+        setData(result.data);
+      } catch (err) {
+        setError((err as Error).message);
+        // Set mock data for now
+        setData({
+          revenue: 124850,
+          orders: 328,
+          products: 146,
+          users: 2418,
+          pendingOrders: 12,
+          lowStockProducts: 5,
+          totalReviews: 47,
+          averageRating: 4.6
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   return (
-    <main className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-black/10 bg-white p-5 md:block">
-        <h1 className="text-xl font-black uppercase">Fly Free Admin</h1>
-        <nav className="mt-8 grid gap-2 text-sm font-bold">
-          {["Dashboard", "Products", "Categories", "Orders", "Inventory", "Coupons", "Reviews", "CMS"].map((item) => (
-            <a key={item} className="rounded px-3 py-2 hover:bg-paper" href="#">{item}</a>
-          ))}
-        </nav>
-      </aside>
-      <section className="md:ml-64">
-        <header className="border-b border-black/10 bg-white px-5 py-4">
-          <p className="text-sm font-bold text-coral">Operations</p>
-          <h2 className="text-2xl font-black">Dashboard</h2>
-        </header>
-        <div className="grid gap-5 p-5">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map(({ label, value, icon: Icon }) => (
-              <article key={label} className="rounded border border-black/10 bg-white p-5">
-                <Icon size={22} />
-                <p className="mt-5 text-sm font-bold text-black/55">{label}</p>
-                <strong className="mt-1 block text-3xl">{value}</strong>
-              </article>
-            ))}
+    <ProtectedRoute>
+      <DashboardLayout title="Dashboard" subtitle="Welcome back">
+        <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatsCard
+              title="Total Revenue"
+              value={`₹${(data?.revenue || 0).toLocaleString()}`}
+              icon={<TrendingUp size={24} />}
+              trend={12}
+              backgroundColor="from-coral"
+            />
+            <StatsCard
+              title="Total Orders"
+              value={data?.orders || 0}
+              icon={<ShoppingCart size={24} />}
+              trend={8}
+              backgroundColor="from-mint"
+            />
+            <StatsCard
+              title="Total Products"
+              value={data?.products || 0}
+              icon={<Package size={24} />}
+              trend={5}
+              backgroundColor="from-purple-500"
+            />
+            <StatsCard
+              title="Total Users"
+              value={data?.users || 0}
+              icon={<Users size={24} />}
+              trend={15}
+              backgroundColor="from-blue-500"
+            />
           </div>
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-            <section className="rounded border border-black/10 bg-white p-5">
-              <h3 className="text-lg font-black">Catalog Pipeline</h3>
-              <div className="mt-5 grid gap-3">
-                {["Create product", "Manage variants", "Upload media", "Schedule hero banners"].map((item) => (
-                  <button key={item} className="rounded border border-black/10 px-4 py-3 text-left font-bold hover:bg-mint">{item}</button>
-                ))}
+
+          {/* Quick Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                  <Clock className="text-yellow-600" size={20} />
+                </div>
+                <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">Pending</span>
               </div>
-            </section>
-            <section className="rounded border border-black/10 bg-white p-5">
-              <h3 className="text-lg font-black">Work Queues</h3>
-              <div className="mt-5 grid gap-3">
-                {queues.map((queue, index) => (
-                  <div key={queue} className="flex items-center justify-between rounded bg-paper px-4 py-3">
-                    <span className="font-bold">{queue}</span>
-                    <span className="rounded bg-ink px-2 py-1 text-xs font-black text-white">{index + 3}</span>
+              <p className="text-black/60 text-sm font-medium">Pending Orders</p>
+              <p className="text-2xl font-black text-ink mt-1">{data?.pendingOrders || 0}</p>
+              <p className="text-xs text-black/40 mt-2">Awaiting confirmation</p>
+            </div>
+
+            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                  <AlertCircle className="text-red-600" size={20} />
+                </div>
+                <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">Alert</span>
+              </div>
+              <p className="text-black/60 text-sm font-medium">Low Stock Items</p>
+              <p className="text-2xl font-black text-ink mt-1">{data?.lowStockProducts || 0}</p>
+              <p className="text-xs text-black/40 mt-2">Below threshold</p>
+            </div>
+
+            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <CheckCircle className="text-green-600" size={20} />
+                </div>
+                <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">Active</span>
+              </div>
+              <p className="text-black/60 text-sm font-medium">Total Reviews</p>
+              <p className="text-2xl font-black text-ink mt-1">{data?.totalReviews || 0}</p>
+              <p className="text-xs text-black/40 mt-2">From customers</p>
+            </div>
+
+            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Star className="text-blue-600" size={20} />
+                </div>
+                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">Rating</span>
+              </div>
+              <p className="text-black/60 text-sm font-medium">Avg Rating</p>
+              <p className="text-2xl font-black text-ink mt-1">{data?.averageRating || 0}</p>
+              <p className="text-xs text-black/40 mt-2">Out of 5.0</p>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-lg bg-white border border-black/10 p-6 hover:shadow-lg transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-ink">Recent Orders</h3>
+                <a href="/orders" className="text-sm font-bold text-coral hover:text-coral/80">View All →</a>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { id: 'ORD-001', customer: 'Rajesh Kumar', amount: '₹2,499', status: 'Shipped' },
+                  { id: 'ORD-002', customer: 'Priya Singh', amount: '₹1,999', status: 'Processing' },
+                  { id: 'ORD-003', customer: 'Amit Patel', amount: '₹3,299', status: 'Delivered' },
+                  { id: 'ORD-004', customer: 'Neha Gupta', amount: '₹4,299', status: 'Pending' },
+                ].map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-black/2 hover:bg-black/5 transition">
+                    <div className="flex-1">
+                      <p className="font-bold text-ink">{order.id}</p>
+                      <p className="text-sm text-black/60">{order.customer}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-ink">{order.amount}</p>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                        order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
-            </section>
+            </div>
+
+            <div className="rounded-lg bg-white border border-black/10 p-6 hover:shadow-lg transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-ink">Quick Actions</h3>
+              </div>
+              <div className="grid gap-3">
+                <a
+                  href="/products/new"
+                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-coral to-coral/80 text-white hover:shadow-lg transition font-bold"
+                >
+                  <Package size={20} />
+                  Create New Product
+                </a>
+                <a
+                  href="/orders"
+                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-mint to-mint/80 text-ink hover:shadow-lg transition font-bold"
+                >
+                  <ShoppingCart size={20} />
+                  View All Orders
+                </a>
+                <a
+                  href="/users"
+                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-lg transition font-bold"
+                >
+                  <Users size={20} />
+                  Manage Users
+                </a>
+                <a
+                  href="/settings"
+                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:shadow-lg transition font-bold"
+                >
+                  <AlertCircle size={20} />
+                  Settings & Config
+                </a>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-    </main>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }

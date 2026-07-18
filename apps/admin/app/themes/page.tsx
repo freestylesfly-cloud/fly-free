@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 import { Check, Eye } from 'lucide-react';
 import { useState } from 'react';
 
@@ -33,7 +36,8 @@ export default function ThemesPage() {
   };
 
   return (
-    <DashboardLayout title="Theme Manager" subtitle="Customize">
+    <ProtectedRoute>
+      <DashboardLayout title="Theme Manager" subtitle="Customize">
       <div className="space-y-6">
         {/* Header info */}
         <div className="rounded-lg bg-gradient-to-r from-coral/10 to-mint/10 border border-coral/20 p-6">
@@ -106,6 +110,7 @@ export default function ThemesPage() {
           50% { opacity: 0.6; }
         }
       `}</style>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }
