@@ -6,11 +6,15 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // Clear existing data (order matters due to foreign keys)
+  await prisma.invoice.deleteMany();
+  await prisma.referral.deleteMany();
+  await prisma.influencer.deleteMany();
   await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
+  await prisma.emailVerification.deleteMany();
   await prisma.review.deleteMany();
   await prisma.wishlist.deleteMany();
   await prisma.productImage.deleteMany();
@@ -28,6 +32,8 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.heroBanner.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.page.deleteMany();
+  await prisma.appSetting.deleteMany();
   await prisma.customizationRequest.deleteMany();
   await prisma.giftOption.deleteMany();
 
@@ -467,21 +473,27 @@ async function main() {
       data: {
         email: 'john@example.com',
         name: 'John Doe',
-        phone: '+91 9876543210',
+        phone: '9876543210',
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
       },
     }),
     prisma.user.create({
       data: {
         email: 'jane@example.com',
         name: 'Jane Smith',
-        phone: '+91 9876543211',
+        phone: '9876543211',
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
       },
     }),
     prisma.user.create({
       data: {
         email: 'test@example.com',
         name: 'Test User',
-        phone: '+91 9876543212',
+        phone: '9876543212',
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
       },
     }),
   ]);
@@ -493,7 +505,7 @@ async function main() {
       data: {
         userId: users[0].id,
         fullName: 'John Doe',
-        phone: '+91 9876543210',
+        phone: '9876543210',
         line1: '123 Main Street',
         line2: 'Apt 4B',
         city: 'Mumbai',
@@ -506,7 +518,7 @@ async function main() {
       data: {
         userId: users[0].id,
         fullName: 'John Doe',
-        phone: '+91 9876543210',
+        phone: '9876543210',
         line1: '456 Park Avenue',
         city: 'Bangalore',
         state: 'Karnataka',
@@ -518,7 +530,7 @@ async function main() {
       data: {
         userId: users[1].id,
         fullName: 'Jane Smith',
-        phone: '+91 9876543211',
+        phone: '9876543211',
         line1: '789 Ocean Drive',
         city: 'Chennai',
         state: 'Tamil Nadu',
@@ -641,6 +653,114 @@ async function main() {
           ],
         },
       },
+    }),
+  ]);
+
+  // Create payments, influencers, referral attribution, and invoices
+  await Promise.all([
+    prisma.payment.create({
+      data: {
+        orderId: orders[0].id,
+        status: 'PAID',
+        amount: orders[0].total,
+        providerPaymentId: 'rzp_demo_delivered_001',
+      },
+    }),
+    prisma.payment.create({
+      data: {
+        orderId: orders[1].id,
+        status: 'PAID',
+        amount: orders[1].total,
+        providerPaymentId: 'rzp_demo_shipped_002',
+      },
+    }),
+    prisma.payment.create({
+      data: {
+        orderId: orders[2].id,
+        status: 'PENDING',
+        amount: orders[2].total,
+      },
+    }),
+  ]);
+
+  const influencers = await Promise.all([
+    prisma.influencer.create({
+      data: {
+        name: 'Aarav Style',
+        email: 'aarav.influencer@example.com',
+        code: 'AARAV20',
+        linkKey: 'AARAVSTYLE',
+        imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+        instagramUrl: 'https://instagram.com/aaravstyle',
+        facebookUrl: 'https://facebook.com/aaravstyle',
+        xUrl: 'https://x.com/aaravstyle',
+        socialHandle: '@aaravstyle',
+        followers: 82000,
+        buyerDiscountPercent: 20,
+        commissionRate: 8,
+        totalEarnings: 8382,
+        totalReferrals: 1,
+        productId: products[0].id,
+      },
+    }),
+    prisma.influencer.create({
+      data: {
+        name: 'Maya Threads',
+        email: 'maya.threads@example.com',
+        code: 'MAYA15',
+        linkKey: 'MAYATHREADS',
+        imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+        instagramUrl: 'https://instagram.com/mayathreads',
+        facebookUrl: 'https://facebook.com/mayathreads',
+        xUrl: 'https://x.com/mayathreads',
+        socialHandle: '@mayathreads',
+        followers: 54000,
+        buyerDiscountPercent: 15,
+        commissionRate: 6,
+        totalEarnings: 3100,
+        totalReferrals: 1,
+        productId: products[3].id,
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.referral.create({
+      data: {
+        influencerId: influencers[0].id,
+        orderId: orders[0].id,
+        code: influencers[0].code,
+        linkKey: influencers[0].linkKey,
+        clicks: 128,
+        conversions: 1,
+        buyerDiscountPercent: 20,
+        commissionAmount: 8382,
+        totalEarnings: 8382,
+        convertedAt: orders[0].createdAt,
+      },
+    }),
+    prisma.referral.create({
+      data: {
+        influencerId: influencers[1].id,
+        orderId: orders[1].id,
+        code: influencers[1].code,
+        linkKey: influencers[1].linkKey,
+        clicks: 74,
+        conversions: 1,
+        buyerDiscountPercent: 15,
+        commissionAmount: 3100,
+        totalEarnings: 3100,
+        convertedAt: orders[1].createdAt,
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.invoice.create({
+      data: { orderId: orders[0].id, invoiceNumber: 'INV-2026-00001', status: 'SENT', sentAt: new Date() },
+    }),
+    prisma.invoice.create({
+      data: { orderId: orders[1].id, invoiceNumber: 'INV-2026-00002', status: 'GENERATED' },
     }),
   ]);
 
@@ -780,6 +900,132 @@ async function main() {
         href: '/themes/marvel',
         priority: 3,
         isActive: true,
+      },
+    }),
+  ]);
+
+  // Create app settings, editable pages, and admin notifications
+  await prisma.appSetting.create({
+    data: {
+      key: 'admin_settings',
+      value: {
+        appName: 'Fly Free',
+        appTitle: 'Fly Free - Custom T-shirts',
+        appDescription: 'Premium custom, anime, gaming, Assam, and graphic t-shirts.',
+        appLogo: 'FF',
+        appFavicon: '/favicon.ico',
+        seoTitle: 'Fly Free - Custom T-shirts',
+        seoDescription: 'Shop custom, anime, gaming, Assam, and graphic t-shirts from Fly Free.',
+        seoKeywords: 'custom t-shirts, anime tees, gaming t-shirts, Assam t-shirts',
+        contactEmail: 'support@flyfree.com',
+        supportEmail: 'support@flyfree.com',
+        contactPhone: '9876543210',
+        businessName: 'Fly Free',
+        ownerName: 'Fly Free Owner',
+        teamName: 'Fly Free Creative Team',
+        businessAddress: 'Guwahati, Assam, India',
+        gstNumber: 'GSTIN-DEMO-UPDATE-IN-ADMIN',
+        invoicePrefix: 'INV',
+        taxRate: 18,
+        footerText: 'Designed for comfort, culture, and self-expression.',
+        socialLinks: {
+          instagram: 'https://instagram.com/flyfree',
+          facebook: 'https://facebook.com/flyfree',
+          twitter: 'https://x.com/flyfree',
+          youtube: 'https://youtube.com/@flyfree',
+          whatsapp: 'https://wa.me/919876543210',
+        },
+      },
+    },
+  });
+
+  await Promise.all([
+    prisma.page.create({
+      data: {
+        slug: 'about-us',
+        title: 'About Us',
+        content: 'Fly Free creates expressive t-shirts inspired by culture, fandom, design, and everyday comfort.',
+        metaTitle: 'About Fly Free',
+        metaDesc: 'Learn about Fly Free and our t-shirt brand story.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'vision-mission',
+        title: 'Vision and Mission',
+        content: 'Our vision is to help people wear what they love. Our mission is to make custom and themed apparel easy, reliable, and high quality.',
+        metaTitle: 'Fly Free Vision and Mission',
+        metaDesc: 'Fly Free brand vision and mission.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'terms-and-conditions',
+        title: 'Terms and Conditions',
+        content: 'These terms describe purchase, payment, delivery, cancellation, and usage rules for Fly Free customers.',
+        metaTitle: 'Terms and Conditions',
+        metaDesc: 'Fly Free terms and conditions.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'return-policy',
+        title: 'Return Policy',
+        content: 'Eligible items can be returned according to the return window and product condition rules configured by Fly Free.',
+        metaTitle: 'Return Policy',
+        metaDesc: 'Fly Free return and refund policy.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'privacy-policy',
+        title: 'Privacy Policy',
+        content: 'We use customer information to process orders, provide support, send updates, and improve the shopping experience.',
+        metaTitle: 'Privacy Policy',
+        metaDesc: 'Fly Free privacy policy.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'size-chart',
+        title: 'Size Chart',
+        content: 'XS: 36 in chest, S: 38 in, M: 40 in, L: 42 in, XL: 44 in, XXL: 46 in. Update exact measurements from admin.',
+        metaTitle: 'T-shirt Size Chart',
+        metaDesc: 'Fly Free t-shirt size chart.',
+      },
+    }),
+    prisma.page.create({
+      data: {
+        slug: 'contact-us',
+        title: 'Contact Us',
+        content: 'Contact Fly Free at support@flyfree.com or 9876543210 for orders, returns, custom designs, and influencer partnerships.',
+        metaTitle: 'Contact Fly Free',
+        metaDesc: 'Fly Free customer support and contact details.',
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.notification.create({
+      data: {
+        channel: 'ADMIN',
+        type: 'NEW_ORDER',
+        entityType: 'Order',
+        entityId: orders[2].id,
+        title: 'New order received',
+        body: `Order ${orders[2].id} is waiting for confirmation.`,
+        status: 'PENDING',
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        channel: 'ADMIN',
+        type: 'INFLUENCER_ORDER',
+        entityType: 'Influencer',
+        entityId: influencers[0].id,
+        title: 'Influencer conversion',
+        body: `${influencers[0].name} generated an order with code ${influencers[0].code}.`,
+        status: 'PENDING',
       },
     }),
   ]);

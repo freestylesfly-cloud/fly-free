@@ -166,9 +166,9 @@ export class EmailAdminService {
   }
 
   // Send promotional email to segment of users
-  async sendPromotionalEmail(userIds: string[], title: string, message: string, promoCode?: string, discount?: number) {
+  async sendPromotionalEmail(userIds: string[] | undefined, title: string, message: string, promoCode?: string, discount?: number) {
     const users = await this.prisma.user.findMany({
-      where: { id: { in: userIds } }
+      where: Array.isArray(userIds) && userIds.length > 0 ? { id: { in: userIds } } : { email: { not: null } }
     });
 
     const html = `
@@ -226,17 +226,19 @@ export class EmailAdminService {
 
   // Get email statistics
   async getEmailStats() {
-    const [totalUsers, totalOrders, totalEmails] = await Promise.all([
+    const [totalUsers, totalOrders, deliveredOrders, invoices] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.order.count(),
-      // Would need to track sent emails in database
-      this.prisma.order.count({ where: { status: 'DELIVERED' } })
+      this.prisma.order.count({ where: { status: 'DELIVERED' } }),
+      this.prisma.invoice.count({ where: { sentAt: { not: null } } })
     ]);
 
     return {
       totalUsers,
       totalOrders,
-      estimatedEmailsSent: totalOrders * 2, // Confirmation + Status update
+      deliveredOrders,
+      invoicesSent: invoices,
+      estimatedEmailsSent: totalOrders + deliveredOrders + invoices,
       lastUpdated: new Date()
     };
   }

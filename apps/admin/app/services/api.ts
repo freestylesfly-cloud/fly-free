@@ -28,6 +28,12 @@ class ApiService {
     'Content-Type': 'application/json',
   };
 
+  private authHeaders(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    const token = window.localStorage.getItem('flyfree_admin_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -35,12 +41,13 @@ class ApiService {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
+      const headers = new Headers(options.headers);
+      Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+      Object.entries(this.authHeaders()).forEach(([key, value]) => headers.set(key, value));
+
       const response = await fetch(url, {
         ...options,
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -155,9 +162,20 @@ class ApiService {
     });
   }
 
-  async generateInvoice(id: string) {
-    return this.request(`/api/admin/orders/${id}/invoice`, {
-      method: 'GET',
+  generateInvoice(id: string) {
+    return `${this.baseUrl}/api/admin/orders/${id}/invoice`;
+  }
+
+  async sendInvoice(id: string) {
+    return this.request(`/api/admin/orders/${id}/send-invoice`, {
+      method: 'POST',
+    });
+  }
+
+  async sendReviewRequest(orderId: string, message?: string) {
+    return this.request(`/api/admin/orders/${orderId}/review-request`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
     });
   }
 
@@ -192,6 +210,39 @@ class ApiService {
     return this.request(`/api/admin/users/${id}/email`, {
       method: 'POST',
       body: JSON.stringify({ message }),
+    });
+  }
+
+  // ============ EMAIL ============
+  async getEmailStats() {
+    return this.request('/api/admin/email/stats');
+  }
+
+  async sendBroadcast(data: { title: string; subject: string; message: string }) {
+    return this.request('/api/admin/email/send-broadcast', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendPromotional(data: { userIds?: string[]; title: string; message: string; promoCode?: string; discount?: number }) {
+    return this.request('/api/admin/email/send-promotional', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendInvite(data: { email: string; message?: string }) {
+    return this.request('/api/admin/email/send-invite', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendCustomUserMessage(data: { userId: string; subject: string; message: string }) {
+    return this.request('/api/admin/email/send-user-message', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 
@@ -235,6 +286,81 @@ class ApiService {
     return this.request('/api/admin/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  // ============ PAGES ============
+  async getPages() {
+    return this.request('/api/admin/pages');
+  }
+
+  async getPage(id: string) {
+    return this.request(`/api/admin/pages/${id}`);
+  }
+
+  async createPage(data: any) {
+    return this.request('/api/admin/pages', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePage(id: string, data: any) {
+    return this.request(`/api/admin/pages/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePage(id: string) {
+    return this.request(`/api/admin/pages/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ INFLUENCERS ============
+  async getInfluencers() {
+    return this.request('/api/admin/influencers');
+  }
+
+  async getInfluencer(id: string) {
+    return this.request(`/api/admin/influencers/${id}`);
+  }
+
+  async createInfluencer(data: any) {
+    return this.request('/api/admin/influencers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateInfluencer(id: string, data: any) {
+    return this.request(`/api/admin/influencers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteInfluencer(id: string) {
+    return this.request(`/api/admin/influencers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async sendInfluencerCode(id: string) {
+    return this.request(`/api/admin/influencers/${id}/send-code`, {
+      method: 'POST',
+    });
+  }
+
+  // ============ NOTIFICATIONS ============
+  async getNotifications() {
+    return this.request('/api/admin/notifications');
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request(`/api/admin/notifications/${id}/read`, {
+      method: 'PATCH',
     });
   }
 

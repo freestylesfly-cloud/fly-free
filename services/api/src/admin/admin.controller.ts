@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query } from "@nestjs/common";
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Header, StreamableFile } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 
 @Controller("admin")
@@ -52,6 +52,23 @@ export class AdminController {
     return this.adminService.updateOrderStatus(id, body.status);
   }
 
+  @Get("orders/:id/invoice")
+  @Header("Content-Type", "application/pdf")
+  @Header("Content-Disposition", "attachment; filename=invoice.pdf")
+  async downloadInvoice(@Param("id") id: string) {
+    return new StreamableFile(await this.adminService.generateInvoicePdf(id));
+  }
+
+  @Post("orders/:id/send-invoice")
+  sendInvoice(@Param("id") id: string) {
+    return this.adminService.sendInvoiceEmail(id);
+  }
+
+  @Post("orders/:id/review-request")
+  sendReviewRequest(@Param("id") id: string, @Body() body: { message?: string }) {
+    return this.adminService.sendReviewRequest(id, body.message);
+  }
+
   // ==================== USERS ====================
   @Get("users")
   listUsers(@Query("page") page?: string, @Query("limit") limit?: string) {
@@ -66,6 +83,11 @@ export class AdminController {
   @Put("users/:id")
   updateUser(@Param("id") id: string, @Body() data: any) {
     return this.adminService.updateUser(id, data);
+  }
+
+  @Post("users/:id/email")
+  sendUserEmail(@Param("id") id: string, @Body() body: { subject?: string; message: string }) {
+    return this.adminService.sendUserEmail(id, body.message, body.subject);
   }
 
   // ==================== REVIEWS ====================
@@ -116,6 +138,74 @@ export class AdminController {
   @Put("settings")
   updateSettings(@Body() data: any) {
     return this.adminService.updateSettings(data);
+  }
+
+  // ==================== PAGES ====================
+  @Get("pages")
+  listPages() {
+    return this.adminService.listPages();
+  }
+
+  @Get("pages/:id")
+  getPage(@Param("id") id: string) {
+    return this.adminService.getPage(id);
+  }
+
+  @Post("pages")
+  createPage(@Body() data: any) {
+    return this.adminService.createPage(data);
+  }
+
+  @Put("pages/:id")
+  updatePage(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updatePage(id, data);
+  }
+
+  @Delete("pages/:id")
+  deletePage(@Param("id") id: string) {
+    return this.adminService.deletePage(id);
+  }
+
+  // ==================== INFLUENCERS ====================
+  @Get("influencers")
+  listInfluencers() {
+    return this.adminService.listInfluencers();
+  }
+
+  @Get("influencers/:id")
+  getInfluencer(@Param("id") id: string) {
+    return this.adminService.getInfluencer(id);
+  }
+
+  @Post("influencers")
+  createInfluencer(@Body() data: any) {
+    return this.adminService.createInfluencer(data);
+  }
+
+  @Put("influencers/:id")
+  updateInfluencer(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateInfluencer(id, data);
+  }
+
+  @Delete("influencers/:id")
+  deleteInfluencer(@Param("id") id: string) {
+    return this.adminService.deleteInfluencer(id);
+  }
+
+  @Post("influencers/:id/send-code")
+  sendInfluencerCode(@Param("id") id: string) {
+    return this.adminService.sendInfluencerCode(id);
+  }
+
+  // ==================== NOTIFICATIONS ====================
+  @Get("notifications")
+  listNotifications() {
+    return this.adminService.listNotifications();
+  }
+
+  @Patch("notifications/:id/read")
+  markNotificationRead(@Param("id") id: string) {
+    return this.adminService.markNotificationRead(id);
   }
 
   // ==================== ANALYTICS ====================

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Headers, HttpException, HttpStatus } from "@nestjs/common";
+import { Controller, Post, Body, Get, Headers, HttpException, HttpStatus, Put } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")
@@ -7,13 +7,37 @@ export class AuthController {
 
   // ==================== USER AUTH ====================
   @Post("user/signup")
-  async signupUser(@Body() body: { email: string; password: string; name: string }) {
+  async signupUser(@Body() body: { email: string; password: string; name: string; phone?: string }) {
     try {
-      return await this.authService.signupUser(body.email, body.password, body.name);
+      return await this.authService.signupUser(body.email, body.password, body.name, body.phone);
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Signup failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        error?.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("user/verify-email")
+  async verifyEmail(@Body() body: { email: string; code: string }) {
+    try {
+      return await this.authService.verifyEmail(body.email, body.code);
+    } catch (error: any) {
+      throw new HttpException(
+        { error: error?.message || "Verification failed" },
+        error?.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("user/resend-email")
+  async resendVerificationEmail(@Body() body: { email: string }) {
+    try {
+      return await this.authService.resendVerificationEmail(body.email);
+    } catch (error: any) {
+      throw new HttpException(
+        { error: error?.message || "Resend failed" },
+        error?.status || HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -25,7 +49,7 @@ export class AuthController {
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Login failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        error?.status || HttpStatus.UNAUTHORIZED
       );
     }
   }
@@ -49,7 +73,37 @@ export class AuthController {
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Profile fetch failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        error?.status || HttpStatus.UNAUTHORIZED
+      );
+    }
+  }
+
+  @Put("user/profile")
+  async updateUserProfile(
+    @Headers("authorization") token: string,
+    @Body() body: { name?: string; phone?: string; image?: string }
+  ) {
+    try {
+      return await this.authService.updateUserProfile(token, body);
+    } catch (error: any) {
+      throw new HttpException(
+        { error: error?.message || "Profile update failed" },
+        error?.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("user/change-password")
+  async changePassword(
+    @Headers("authorization") token: string,
+    @Body() body: { currentPassword: string; newPassword: string }
+  ) {
+    try {
+      return await this.authService.changePassword(token, body.currentPassword, body.newPassword);
+    } catch (error: any) {
+      throw new HttpException(
+        { error: error?.message || "Password change failed" },
+        error?.status || HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -99,7 +153,7 @@ export class AuthController {
       if (error?.status) throw error;
       throw new HttpException(
         { error: error?.message || "Profile fetch failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.UNAUTHORIZED
       );
     }
   }
@@ -134,15 +188,15 @@ export class AuthController {
     }
   }
 
-  // ==================== VERIFY EMAIL ====================
+  // ==================== EMAIL VERIFICATION ====================
   @Post("verify-email")
-  async verifyEmail(@Body() body: { email: string; code: string }) {
+  async verifyEmailOld(@Body() body: { email: string; code: string }) {
     try {
       return await this.authService.verifyEmail(body.email, body.code);
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Email verification failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -151,7 +205,7 @@ export class AuthController {
   @Post("google/login")
   async googleLogin(@Body() body: { idToken: string }) {
     try {
-      return await this.authService.googleLogin(body.idToken);
+      return { message: "Google login not yet implemented", token: null };
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Google login failed" },
@@ -163,7 +217,7 @@ export class AuthController {
   @Post("github/login")
   async githubLogin(@Body() body: { code: string }) {
     try {
-      return await this.authService.githubLogin(body.code);
+      return { message: "GitHub login not yet implemented", token: null };
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "GitHub login failed" },

@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare } from 'lucide-react';
+import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -11,7 +11,11 @@ const menuItems = [
   { label: 'Products', href: '/products', icon: Package },
   { label: 'Orders', href: '/orders', icon: ShoppingCart },
   { label: 'Users', href: '/users', icon: Users },
+  { label: 'Influencers', href: '/influencers', icon: Share2 },
   { label: 'Reviews', href: '/reviews', icon: MessageSquare },
+  { label: 'Notifications', href: '/notifications', icon: Bell },
+  { label: 'Email', href: '/email', icon: Mail },
+  { label: 'Pages', href: '/pages', icon: FileText },
   { label: 'Themes', href: '/themes', icon: Palette },
   { label: 'Settings', href: '/settings', icon: Sliders },
 ];

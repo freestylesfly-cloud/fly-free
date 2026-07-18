@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DataTable, Column } from '../components/DataTable';
@@ -243,22 +244,21 @@ export default function OrdersPage() {
             onPageChange={setCurrentPage}
             rowActions={(row) => (
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedOrder(row);
-                    setShowDetails(true);
-                  }}
+                <Link
+                  href={`/orders/${row.id}`}
                   className="p-2 hover:bg-blue-100 rounded-lg transition text-blue-500"
                   title="View Details"
                 >
                   <Eye size={18} />
-                </button>
-                <button
+                </Link>
+                <a
+                  href={apiService.generateInvoice(row.id)}
+                  target="_blank"
                   className="p-2 hover:bg-black/5 rounded-lg transition text-ink"
                   title="Print Invoice"
                 >
                   <Printer size={18} />
-                </button>
+                </a>
               </div>
             )}
           />

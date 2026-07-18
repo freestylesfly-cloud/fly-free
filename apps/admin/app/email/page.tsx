@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Mail, Send, Users, Gift, MessageSquare, FileText } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useFetch } from '../hooks/useFetch';
+import { apiService } from '../services/api';
 
 export default function EmailManagementPage() {
   const [activeTab, setActiveTab] = useState<'broadcast' | 'promotional' | 'review' | 'invite' | 'message' | 'stats'>('broadcast');
@@ -93,17 +94,11 @@ function BroadcastForm() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const response = await fetch('/api/admin/email/send-broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formData.get('title'),
-          subject: formData.get('subject'),
-          message: formData.get('message')
-        })
+      const result: any = await apiService.sendBroadcast({
+        title: String(formData.get('title') || ''),
+        subject: String(formData.get('subject') || ''),
+        message: String(formData.get('message') || '')
       });
-
-      const result = await response.json();
       setMessage(`✅ Email sent to ${result.sent} users (${result.failed} failed)`);
       e.currentTarget.reset();
     } catch (error: any) {
@@ -174,22 +169,12 @@ function PromotionalForm() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      // In real implementation, would select users from a list
-      const userIds = ['user1', 'user2', 'user3']; // Placeholder
-
-      const response = await fetch('/api/admin/email/send-promotional', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds,
-          title: formData.get('title'),
-          message: formData.get('message'),
-          promoCode: formData.get('promoCode'),
-          discount: parseInt(formData.get('discount') as string) || 0
-        })
+      const result: any = await apiService.sendPromotional({
+        title: String(formData.get('title') || ''),
+        message: String(formData.get('message') || ''),
+        promoCode: String(formData.get('promoCode') || ''),
+        discount: parseInt(formData.get('discount') as string) || 0
       });
-
-      const result = await response.json();
       setMessage(`✅ Promotional email sent to ${result.sent} users`);
       e.currentTarget.reset();
     } catch (error: any) {
@@ -272,16 +257,7 @@ function ReviewRequestForm() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const response = await fetch('/api/admin/email/send-review-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: formData.get('orderId'),
-          customMessage: formData.get('customMessage')
-        })
-      });
-
-      const result = await response.json();
+      await apiService.sendReviewRequest(String(formData.get('orderId') || ''), String(formData.get('customMessage') || ''));
       setMessage('✅ Review request email sent!');
       e.currentTarget.reset();
     } catch (error: any) {
@@ -340,13 +316,9 @@ function InviteForm() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const response = await fetch('/api/admin/email/send-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.get('email'),
-          message: formData.get('message')
-        })
+      await apiService.sendInvite({
+        email: String(formData.get('email') || ''),
+        message: String(formData.get('message') || '')
       });
 
       setMessage('✅ Invite email sent!');
@@ -407,14 +379,10 @@ function CustomMessageForm() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const response = await fetch('/api/admin/email/send-user-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: formData.get('userId'),
-          subject: formData.get('subject'),
-          message: formData.get('message')
-        })
+      await apiService.sendCustomUserMessage({
+        userId: String(formData.get('userId') || ''),
+        subject: String(formData.get('subject') || ''),
+        message: String(formData.get('message') || '')
       });
 
       setMessage('✅ Message sent to user!');
@@ -477,19 +445,23 @@ function CustomMessageForm() {
 }
 
 function EmailStats() {
+  const { data, loading, error } = useFetch<any>(() => apiService.getEmailStats(), { skip: false });
+  const stats = data || {};
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-bold">Email Statistics</h3>
+      {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
 
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Total Emails Sent" value="2,847" />
-        <StatCard label="Delivery Rate" value="98.2%" />
-        <StatCard label="Open Rate" value="34.5%" />
+        <StatCard label="Estimated Emails Sent" value={loading ? '...' : String(stats.estimatedEmailsSent || 0)} />
+        <StatCard label="Total Users" value={loading ? '...' : String(stats.totalUsers || 0)} />
+        <StatCard label="Invoices Sent" value={loading ? '...' : String(stats.invoicesSent || 0)} />
       </div>
 
       <div className="bg-black/5 p-4 rounded-lg">
         <p className="text-sm text-black/60">
-          📊 Email statistics are updated in real-time. Track your campaign performance and adjust strategies based on user engagement.
+          Email statistics are loaded from the API and calculated from users, orders, delivered orders, and sent invoices.
         </p>
       </div>
     </div>

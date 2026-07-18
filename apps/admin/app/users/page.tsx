@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -219,16 +220,13 @@ export default function UsersPage() {
             onPageChange={setCurrentPage}
             rowActions={(row) => (
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedUser(row);
-                    setShowDetails(true);
-                  }}
+                <Link
+                  href={`/users/${row.id}`}
                   className="p-2 hover:bg-blue-100 rounded-lg transition text-blue-500"
                   title="View Details"
                 >
                   <Eye size={18} />
-                </button>
+                </Link>
                 <button
                   className="p-2 hover:bg-black/5 rounded-lg transition text-ink"
                   title="Send Message"

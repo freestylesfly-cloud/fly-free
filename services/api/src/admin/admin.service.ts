@@ -196,7 +196,14 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        include: { user: true, items: { include: { product: true } } },
+        include: {
+          user: true,
+          shippingAddress: true,
+          payment: true,
+          invoice: true,
+          referrals: { include: { influencer: true } },
+          items: { include: { product: true } }
+        },
         orderBy: { createdAt: "desc" }
       }),
       this.prisma.order.count({ where })
@@ -211,7 +218,14 @@ export class AdminService {
   async getOrder(id: string) {
     return this.prisma.order.findUnique({
       where: { id },
-      include: { user: true, items: { include: { product: true } } }
+      include: {
+        user: true,
+        shippingAddress: true,
+        payment: true,
+        invoice: true,
+        referrals: { include: { influencer: true } },
+        items: { include: { product: true } }
+      }
     });
   }
 
@@ -247,6 +261,90 @@ export class AdminService {
     return order;
   }
 
+  async generateInvoicePdf(id: string) {
+    const order = await this.getOrder(id);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const invoice = await this.ensureInvoice(order.id);
+    const settings = await this.getSettingsValue();
+    const lines = [
+      `${settings.appName || "Fly Free"} Invoice`,
+      `Invoice: ${invoice.invoiceNumber}`,
+      `Order: ${order.id}`,
+      `Date: ${new Date(order.createdAt).toLocaleDateString("en-IN")}`,
+      "",
+      `Bill To: ${order.user?.name || order.user?.email || "Customer"}`,
+      `Email: ${order.user?.email || ""}`,
+      `Phone: ${order.user?.phone || ""}`,
+      `Address: ${order.shippingAddress?.line1 || ""}, ${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} ${order.shippingAddress?.postalCode || ""}`,
+      "",
+      "Items:",
+      ...order.items.map((item) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
+      "",
+      `Subtotal: Rs ${this.formatMoney(order.subtotal)}`,
+      `Discount: Rs ${this.formatMoney(order.discount)}`,
+      `Shipping: Rs ${this.formatMoney(order.shippingFee)}`,
+      `Tax: Rs ${this.formatMoney(order.tax)}`,
+      `Total: Rs ${this.formatMoney(order.total)}`,
+      "",
+      `${settings.businessName || settings.appName || "Fly Free"}`,
+      `${settings.businessAddress || settings.address || ""}`,
+      `${settings.supportEmail || settings.contactEmail || ""} ${settings.contactPhone || ""}`
+    ];
+
+    return this.createSimplePdf(lines);
+  }
+
+  async sendInvoiceEmail(id: string) {
+    const order = await this.getOrder(id);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (!order.user?.email) {
+      throw new Error("Order customer has no email address");
+    }
+
+    const invoicePdf = await this.generateInvoicePdf(id);
+    const result = await this.emailService.sendInvoice(order.user.email, {
+      id: order.id,
+      orderNumber: order.invoice?.invoiceNumber || order.id,
+      customerName: order.user.name || order.user.email,
+      total: order.total
+    }, invoicePdf);
+
+    await this.prisma.invoice.update({
+      where: { orderId: id },
+      data: { sentAt: new Date(), status: "SENT" }
+    });
+
+    return result;
+  }
+
+  async sendReviewRequest(id: string, message?: string) {
+    const order = await this.getOrder(id);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (!order.user?.email) {
+      throw new Error("Order customer has no email address");
+    }
+
+    const reviewLink = `${process.env.WEB_URL || "http://localhost:3000"}/orders/${order.id}/review`;
+    const html = this.wrapAdminEmail(
+      "Share your Fly Free review",
+      `<p>Hi ${this.escape(order.user.name || "Customer")},</p>
+       <p>${this.escape(message || "Please share your feedback for your recent order. It helps us improve and helps other customers choose better.")}</p>
+       <p><strong>Order:</strong> ${this.escape(order.id)}</p>
+       <p><a href="${this.escape(reviewLink)}" style="display:inline-block;background:#ff6b5b;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px;font-weight:700;">Write review</a></p>`
+    );
+
+    return this.emailService.sendEmail(order.user.email, "Review your Fly Free order", html);
+  }
+
   // ==================== USERS ====================
   async listUsers(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
@@ -270,7 +368,9 @@ export class AdminService {
     const usersWithOrders = await Promise.all(
       users.map(async (u) => ({
         ...u,
-        totalOrders: await this.prisma.order.count({ where: { userId: u.id } })
+        totalOrders: await this.prisma.order.count({ where: { userId: u.id } }),
+        totalSpent: (await this.prisma.order.aggregate({ where: { userId: u.id }, _sum: { total: true } }))._sum.total || 0,
+        lastOrderDate: (await this.prisma.order.findFirst({ where: { userId: u.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }))?.createdAt || null
       }))
     );
 
@@ -284,8 +384,18 @@ export class AdminService {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
-        orders: { include: { items: true } },
-        addresses: true
+        orders: {
+          include: {
+            items: { include: { product: true } },
+            payment: true,
+            shippingAddress: true,
+            referrals: { include: { influencer: true } }
+          },
+          orderBy: { createdAt: "desc" }
+        },
+        addresses: true,
+        reviews: { include: { product: true }, orderBy: { createdAt: "desc" } },
+        wishlistItems: { include: { product: { include: { images: true } } }, orderBy: { createdAt: "desc" } }
       }
     });
   }
@@ -299,6 +409,19 @@ export class AdminService {
         image: data.image
       }
     });
+  }
+
+  async sendUserEmail(id: string, message: string, subject = "Message from Fly Free") {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user?.email) {
+      throw new Error("User not found or has no email address");
+    }
+
+    return this.emailService.sendEmail(
+      user.email,
+      subject,
+      this.wrapAdminEmail("Message from Fly Free", `<p>Hi ${this.escape(user.name || "Customer")},</p><p>${this.escape(message).replace(/\n/g, "<br/>")}</p>`)
+    );
   }
 
   // ==================== REVIEWS ====================
@@ -400,23 +523,7 @@ export class AdminService {
 
   // ==================== SETTINGS ====================
   async getSettings() {
-    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
-    return {
-      data: setting?.value || {
-        appName: "",
-        appDescription: "",
-        appLogo: "",
-        appFavicon: "",
-        contactEmail: "",
-        contactPhone: "",
-        supportEmail: "",
-        smtpHost: "",
-        smtpPort: "",
-        smtpUser: "",
-        footerText: "",
-        socialLinks: {}
-      }
-    };
+    return { data: await this.getSettingsValue() };
   }
 
   async updateSettings(data: any) {
@@ -427,6 +534,281 @@ export class AdminService {
     });
 
     return { data: setting.value };
+  }
+
+  private async getSettingsValue() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    return setting?.value as any || {
+      appName: "Fly Free",
+      appDescription: "Custom and themed t-shirts for everyday expression.",
+      appLogo: "",
+      appFavicon: "",
+      appTitle: "Fly Free",
+      seoTitle: "Fly Free - Custom T-shirts",
+      seoDescription: "Shop custom, anime, gaming, Assam, and graphic t-shirts.",
+      contactEmail: "support@flyfree.com",
+      contactPhone: "9876543210",
+      supportEmail: "support@flyfree.com",
+      businessName: "Fly Free",
+      ownerName: "",
+      businessAddress: "",
+      invoicePrefix: "INV",
+      gstNumber: "",
+      footerText: "Fly Free. Designed for comfort and self-expression.",
+      socialLinks: {}
+    };
+  }
+
+  // ==================== PAGES ====================
+  async listPages() {
+    return { data: await this.prisma.page.findMany({ orderBy: { updatedAt: "desc" } }) };
+  }
+
+  async getPage(id: string) {
+    return this.prisma.page.findFirst({ where: { OR: [{ id }, { slug: id }] } });
+  }
+
+  async createPage(data: any) {
+    return this.prisma.page.create({
+      data: {
+        slug: data.slug || this.slugify(data.title),
+        title: data.title,
+        content: data.content || "",
+        metaTitle: data.metaTitle,
+        metaDesc: data.metaDesc,
+        isPublished: data.isPublished ?? true
+      }
+    });
+  }
+
+  async updatePage(id: string, data: any) {
+    return this.prisma.page.update({
+      where: { id },
+      data: {
+        slug: data.slug,
+        title: data.title,
+        content: data.content,
+        metaTitle: data.metaTitle,
+        metaDesc: data.metaDesc,
+        isPublished: data.isPublished
+      }
+    });
+  }
+
+  async deletePage(id: string) {
+    return this.prisma.page.delete({ where: { id } });
+  }
+
+  // ==================== INFLUENCERS ====================
+  async listInfluencers() {
+    const data = await this.prisma.influencer.findMany({
+      include: {
+        product: { select: { id: true, name: true, slug: true, sku: true } },
+        referrals: { include: { order: true }, orderBy: { createdAt: "desc" } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    return { data };
+  }
+
+  async getInfluencer(id: string) {
+    return this.prisma.influencer.findUnique({
+      where: { id },
+      include: {
+        product: true,
+        referrals: { include: { order: { include: { user: true, payment: true } } }, orderBy: { createdAt: "desc" } }
+      }
+    });
+  }
+
+  async createInfluencer(data: any) {
+    const code = (data.code || `${this.slugify(data.name).replace(/-/g, "").slice(0, 8)}${Math.floor(Math.random() * 900 + 100)}`).toUpperCase();
+    const linkKey = data.linkKey || this.randomKey();
+    return this.prisma.influencer.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        code,
+        linkKey,
+        imageUrl: data.imageUrl,
+        instagramUrl: data.instagramUrl,
+        facebookUrl: data.facebookUrl,
+        xUrl: data.xUrl,
+        socialHandle: data.socialHandle,
+        followers: data.followers ? Number(data.followers) : undefined,
+        buyerDiscountPercent: Number(data.buyerDiscountPercent || 10),
+        commissionRate: Number(data.commissionRate || 5),
+        productId: data.productId || undefined
+      },
+      include: { product: true, referrals: true }
+    });
+  }
+
+  async updateInfluencer(id: string, data: any) {
+    return this.prisma.influencer.update({
+      where: { id },
+      data: {
+        name: data.name,
+        email: data.email,
+        code: data.code,
+        linkKey: data.linkKey,
+        imageUrl: data.imageUrl,
+        instagramUrl: data.instagramUrl,
+        facebookUrl: data.facebookUrl,
+        xUrl: data.xUrl,
+        socialHandle: data.socialHandle,
+        followers: data.followers === undefined ? undefined : Number(data.followers),
+        buyerDiscountPercent: data.buyerDiscountPercent === undefined ? undefined : Number(data.buyerDiscountPercent),
+        commissionRate: data.commissionRate === undefined ? undefined : Number(data.commissionRate),
+        isActive: data.isActive,
+        productId: data.productId || null
+      },
+      include: { product: true, referrals: true }
+    });
+  }
+
+  async deleteInfluencer(id: string) {
+    await this.prisma.referral.deleteMany({ where: { influencerId: id } });
+    return this.prisma.influencer.delete({ where: { id } });
+  }
+
+  async sendInfluencerCode(id: string) {
+    const influencer = await this.prisma.influencer.findUnique({ where: { id } });
+    if (!influencer) {
+      throw new Error("Influencer not found");
+    }
+    return this.emailService.sendInfluencerCode(influencer.email, influencer.name, influencer.code, influencer.buyerDiscountPercent);
+  }
+
+  // ==================== NOTIFICATIONS ====================
+  async listNotifications() {
+    const [stored, orders, users, lowStock] = await Promise.all([
+      this.prisma.notification.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+      this.prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 10, include: { user: true, referrals: { include: { influencer: true } } } }),
+      this.prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+      this.prisma.inventory.findMany({
+        where: { stock: { lte: 5 } },
+        take: 10,
+        include: { variant: { include: { product: true } } },
+        orderBy: { updatedAt: "desc" }
+      })
+    ]);
+
+    const generated = [
+      ...orders.map((order) => ({
+        id: `order-${order.id}`,
+        type: order.referrals.length ? "INFLUENCER_ORDER" : "NEW_ORDER",
+        entityType: "Order",
+        entityId: order.id,
+        title: order.referrals.length ? "New influencer order" : "New order",
+        body: `${order.user?.name || order.user?.email || "Customer"} placed order Rs ${this.formatMoney(order.total)}${order.referrals[0]?.influencer ? ` via ${order.referrals[0].influencer.name}` : ""}`,
+        status: "GENERATED",
+        createdAt: order.createdAt
+      })),
+      ...users.map((user) => ({
+        id: `user-${user.id}`,
+        type: "NEW_USER",
+        entityType: "User",
+        entityId: user.id,
+        title: "New user joined",
+        body: `${user.name || user.email || user.phone || "Customer"} joined Fly Free`,
+        status: "GENERATED",
+        createdAt: user.createdAt
+      })),
+      ...lowStock.map((item) => ({
+        id: `stock-${item.id}`,
+        type: "LOW_STOCK",
+        entityType: "ProductVariant",
+        entityId: item.variantId,
+        title: "Low stock",
+        body: `${item.variant.product.name} ${item.variant.color}/${item.variant.size} has ${item.stock} left`,
+        status: "GENERATED",
+        createdAt: item.updatedAt
+      }))
+    ];
+
+    return { data: [...stored, ...generated].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) };
+  }
+
+  async markNotificationRead(id: string) {
+    return this.prisma.notification.update({ where: { id }, data: { status: "READ", readAt: new Date() } });
+  }
+
+  private async ensureInvoice(orderId: string) {
+    const settings = await this.getSettingsValue();
+    const prefix = String(settings.invoicePrefix || "INV").replace(/[^A-Z0-9-]/gi, "").toUpperCase() || "INV";
+    const existing = await this.prisma.invoice.findUnique({ where: { orderId } });
+    if (existing) return existing;
+
+    const count = await this.prisma.invoice.count();
+    return this.prisma.invoice.create({
+      data: {
+        orderId,
+        invoiceNumber: `${prefix}-${new Date().getFullYear()}-${String(count + 1).padStart(5, "0")}`
+      }
+    });
+  }
+
+  private createSimplePdf(lines: string[]) {
+    const escapedLines = lines.map((line) => this.pdfEscape(line));
+    const textCommands = escapedLines
+      .map((line, index) => `BT /F1 10 Tf 50 ${780 - index * 16} Td (${line}) Tj ET`)
+      .join("\n");
+    const objects = [
+      "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+      "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+      "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+      "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+      `5 0 obj << /Length ${Buffer.byteLength(textCommands, "utf8")} >> stream\n${textCommands}\nendstream endobj`
+    ];
+
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    for (const object of objects) {
+      offsets.push(Buffer.byteLength(pdf, "utf8"));
+      pdf += `${object}\n`;
+    }
+    const xrefOffset = Buffer.byteLength(pdf, "utf8");
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += "0000000000 65535 f \n";
+    for (let index = 1; index < offsets.length; index++) {
+      pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+    }
+    pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    return Buffer.from(pdf, "utf8");
+  }
+
+  private pdfEscape(value: string) {
+    return String(value).replace(/[\\()]/g, "\\$&").slice(0, 120);
+  }
+
+  private wrapAdminEmail(title: string, body: string) {
+    return `
+      <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111;">
+        <div style="background:#111827;color:#fff;padding:22px 24px;">
+          <h1 style="margin:0;font-size:24px;">${this.escape(title)}</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,.72);">Fly Free</p>
+        </div>
+        <div style="background:#fafafa;padding:24px;">${body}</div>
+      </div>
+    `;
+  }
+
+  private escape(value: string) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  private randomKey() {
+    return Math.random().toString(36).slice(2, 10).toUpperCase();
+  }
+
+  private formatMoney(value: number) {
+    return Number(value || 0).toLocaleString("en-IN");
   }
 
   // ==================== ANALYTICS ====================

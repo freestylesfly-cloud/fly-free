@@ -37,7 +37,7 @@ export class EmailAdminController {
 
   @Post('send-promotional')
   async sendPromotional(@Body() payload: {
-    userIds: string[];
+    userIds?: string[];
     title: string;
     message: string;
     promoCode?: string;
