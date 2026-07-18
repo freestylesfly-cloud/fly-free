@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseFetchState<T> {
   data: T | null;
@@ -25,36 +25,50 @@ export function useFetch<T>(
     error: null,
   });
 
-  const [retryCount, setRetryCount] = useState(0);
+  const retryCountRef = useRef(0);
   const maxRetries = options?.retries ?? 1;
+  const isMountedRef = useRef(true);
 
   const fetchData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
     setState({ data: null, loading: true, error: null });
 
     try {
       const result = await fetchFn();
-      setState({ data: result, loading: false, error: null });
-      setRetryCount(0);
+      if (isMountedRef.current) {
+        setState({ data: result, loading: false, error: null });
+        retryCountRef.current = 0;
+      }
     } catch (err) {
+      if (!isMountedRef.current) return;
+
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
 
-      if (retryCount < maxRetries) {
-        setRetryCount(retryCount + 1);
-        setTimeout(() => fetchData(), 1000 * (retryCount + 1));
+      if (retryCountRef.current < maxRetries) {
+        retryCountRef.current += 1;
+        const delay = 1000 * retryCountRef.current;
+        setTimeout(() => fetchData(), delay);
       } else {
         setState({ data: null, loading: false, error: errorMessage });
       }
     }
-  }, [fetchFn, retryCount, maxRetries]);
+  }, [fetchFn, maxRetries]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (!options?.skip) {
       fetchData();
     }
-  }, [fetchData, options?.skip]);
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchFn, options?.skip, fetchData]);
 
   const refetch = useCallback(async () => {
-    setRetryCount(0);
+    retryCountRef.current = 0;
     await fetchData();
   }, [fetchData]);
 

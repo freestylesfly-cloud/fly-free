@@ -1,15 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-let supabase: any = null;
-
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-} else if (typeof window !== 'undefined') {
-  // Client-side only: create a dummy client during build
-  console.warn('Supabase environment variables not set');
-}
-
-export { supabase };
+// Create Supabase client - will fail auth calls if env vars not set, but won't crash
+export const supabase = createClient(supabaseUrl, supabaseKey);

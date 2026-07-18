@@ -15,6 +15,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   login: async (email, password) => {
     set({ loading: true });
     try {
+      if (!supabase) throw new Error('Supabase not initialized');
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -29,19 +31,27 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
   logout: async () => {
     try {
-      await supabase.auth.signOut();
-      set({ user: null });
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+      set({ user: null, loading: false });
     } catch (error) {
       console.error('Logout error:', error);
+      set({ user: null, loading: false });
     }
   },
   checkAuth: async () => {
     try {
+      if (!supabase) {
+        set({ user: null, loading: false });
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       set({ user: data.session?.user || null, loading: false });
     } catch (error) {
       console.error('Auth check error:', error);
-      set({ loading: false });
+      set({ user: null, loading: false });
     }
   },
 }));
