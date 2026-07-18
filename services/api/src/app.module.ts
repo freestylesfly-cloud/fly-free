@@ -5,6 +5,7 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { CommerceModule } from "./commerce/commerce.module";
 import { CmsModule } from "./cms/cms.module";
 import { AdminModule } from "./admin/admin.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { AdminModule } from "./admin/admin.module";
     CatalogModule,
     CommerceModule,
     CmsModule,
-    AdminModule
+    AdminModule,
+    AuthModule
   ]
 })
 export class AppModule {}
