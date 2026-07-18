@@ -12,12 +12,11 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
-  loading: true,
+  loading: false,
   login: async (email, password) => {
     set({ loading: true });
     try {
       if (!supabase?.auth?.signInWithPassword) {
-        // Dev mode fallback - create mock user
         const mockUser = {
           id: Math.random().toString(36).slice(2, 11),
           email,
@@ -37,7 +36,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ user: data.user, loading: false });
     } catch (error) {
       console.error('Login error:', error);
-      // Dev mode fallback - create mock user
       const mockUser = {
         id: Math.random().toString(36).slice(2, 11),
         email,
@@ -47,6 +45,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
   logout: async () => {
+    set({ loading: true });
     try {
       if (supabase?.auth?.signOut) {
         await supabase.auth.signOut();

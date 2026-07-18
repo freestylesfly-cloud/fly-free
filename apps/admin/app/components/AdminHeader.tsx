@@ -2,7 +2,6 @@
 
 import { Bell, Search, Settings, User, LogOut } from 'lucide-react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 
 interface AdminHeaderProps {
@@ -11,14 +10,14 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    window.location.replace('/login');
   };
 
   return (
@@ -92,9 +91,9 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
                   <p className="text-sm font-bold text-ink">{user?.email || 'admin@flyfree.com'}</p>
                 </div>
                 <button
-                  onClick={() => {
-                    handleLogout();
+                  onClick={async () => {
                     setProfileOpen(false);
+                    await handleLogout();
                   }}
                   className="w-full flex items-center gap-2 px-4 py-3 text-ink hover:bg-black/5 transition font-bold text-sm"
                 >

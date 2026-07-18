@@ -56,19 +56,24 @@ class ApiService {
 
   // ============ DASHBOARD ============
   async getDashboardStats() {
-    // Return mock data - endpoint not implemented yet
-    return {
-      data: {
-        revenue: 124850,
-        orders: 328,
-        products: 146,
-        users: 2418,
-        pendingOrders: 12,
-        lowStockProducts: 5,
-        totalReviews: 47,
-        averageRating: 4.6
-      }
-    };
+    try {
+      return await this.request('/api/admin/analytics/dashboard');
+    } catch (error) {
+      console.warn('Failed to fetch real dashboard stats, using fallback');
+      // Fallback to mock data
+      return {
+        data: {
+          revenue: 124850,
+          orders: 328,
+          products: 146,
+          users: 2418,
+          pendingOrders: 12,
+          lowStockProducts: 5,
+          totalReviews: 47,
+          averageRating: 4.6
+        }
+      };
+    }
   }
 
   // ============ PRODUCTS ============

@@ -1,24 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { user, loading } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
 
   useEffect(() => {
     // Check auth on mount
     useAuthStore.getState().checkAuth();
   }, []);
-
-  useEffect(() => {
-    // Redirect to login if not authenticated and not loading
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
 
   // Show loading state
   if (loading) {

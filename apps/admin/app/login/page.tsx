@@ -3,18 +3,20 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '../stores/authStore';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const { login, checkAuth, loading: authLoading, user } = useAuthStore();
+  const login = useAuthStore((state) => state.login);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const authLoading = useAuthStore((state) => state.loading);
+  const user = useAuthStore((state) => state.user);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [nextPath, setNextPath] = useState('/');
 
   useEffect(() => {
@@ -29,17 +31,19 @@ export default function AdminLoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.replace(nextPath);
+      window.location.replace(nextPath);
     }
-  }, [user, router, nextPath]);
+  }, [user, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     try {
       await login(email, password);
-      router.replace(nextPath);
+      setSuccess('Login successful. Opening dashboard...');
+      window.location.replace(nextPath);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     }
@@ -72,6 +76,11 @@ export default function AdminLoginPage() {
           {error && (
             <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm animate-shake">
               {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-500/20 border border-green-500/50 text-green-100 px-4 py-3 rounded-lg text-sm">
+              {success}
             </div>
           )}
 
