@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
-import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '../stores/authStore';
 
@@ -50,51 +50,70 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-ink via-ink/95 to-ink/90 px-5">
-      {/* Background animation */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-coral/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-72 h-72 bg-mint/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
-
-      {/* Login card */}
-      <div className="relative z-10 w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-block mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-coral to-mint flex items-center justify-center">
-              <span className="text-2xl font-black text-white">FF</span>
+    <main className="min-h-screen bg-[#101318] text-white">
+      <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_480px]">
+        <section className="hidden min-h-screen flex-col justify-between bg-gradient-to-br from-[#101318] via-[#151922] to-[#243b3a] p-10 lg:flex">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded border border-white/15 bg-white text-2xl font-black text-ink shadow-xl">
+              FF
+            </div>
+            <div>
+              <p className="text-xl font-black uppercase tracking-wide">Fly Free</p>
+              <p className="text-sm text-white/55">Admin operations suite</p>
             </div>
           </div>
-          <h1 className="text-3xl font-black text-white mb-2">Fly Free Admin</h1>
-          <p className="text-white/60">Commerce operations dashboard</p>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-8 space-y-5">
+          <div className="max-w-xl">
+            <p className="mb-5 inline-flex items-center gap-2 rounded border border-white/15 px-3 py-2 text-sm font-bold text-white/70">
+              <ShieldCheck size={16} /> Secure admin access
+            </p>
+            <h1 className="text-6xl font-black leading-none tracking-normal">Commerce control, without the clutter.</h1>
+            <p className="mt-6 max-w-lg text-lg leading-8 text-white/65">
+              Manage orders, users, products, influencers, invoices, emails, pages, and notifications from one database-backed dashboard.
+            </p>
+          </div>
+
+          <p className="text-sm text-white/45">Fly Free Admin / Production-ready workflow</p>
+        </section>
+
+        <section className="flex min-h-screen items-center justify-center bg-[#f7f7f4] px-5 py-8 text-ink">
+          <div className="w-full max-w-md">
+            <div className="mb-8 text-center lg:hidden">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded bg-ink text-2xl font-black text-white">FF</div>
+              <h1 className="text-3xl font-black">Fly Free Admin</h1>
+              <p className="mt-1 text-sm text-black/55">Commerce operations dashboard</p>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm font-bold uppercase tracking-wide text-coral">Admin login</p>
+              <h2 className="mt-2 text-3xl font-black">Welcome back</h2>
+              <p className="mt-2 text-sm text-black/55">Use your admin account to continue.</p>
+            </div>
+
+        <form onSubmit={handleSubmit} className="rounded border border-black/10 bg-white p-6 shadow-sm space-y-5">
           {/* Error message */}
           {error && (
-            <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm animate-shake">
+            <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 animate-shake">
               {error}
             </div>
           )}
           {success && (
-            <div className="bg-green-500/20 border border-green-500/50 text-green-100 px-4 py-3 rounded-lg text-sm">
+            <div className="border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-700">
               {success}
             </div>
           )}
 
           {/* Email field */}
           <div>
-            <label className="block text-sm font-bold text-white/80 mb-2">Email</label>
+            <label className="block text-sm font-bold text-black/70 mb-2">Email</label>
             <div className="relative">
-              <Mail size={18} className="absolute left-3 top-3.5 text-white/40" />
+              <Mail size={18} className="absolute left-3 top-3.5 text-black/35" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@flyfree.com"
-                className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/50 transition-all"
+                className="w-full rounded border border-black/10 bg-white pl-10 pr-4 py-3 text-ink placeholder:text-black/35 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/20 transition-all"
                 required
               />
             </div>
@@ -102,21 +121,21 @@ export default function AdminLoginPage() {
 
           {/* Password field */}
           <div>
-            <label className="block text-sm font-bold text-white/80 mb-2">Password</label>
+            <label className="block text-sm font-bold text-black/70 mb-2">Password</label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3.5 text-white/40" />
+              <Lock size={18} className="absolute left-3 top-3.5 text-black/35" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-10 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/50 transition-all"
+                className="w-full rounded border border-black/10 bg-white pl-10 pr-10 py-3 text-ink placeholder:text-black/35 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/20 transition-all"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 text-white/40 hover:text-white/60 transition"
+                className="absolute right-3 top-3.5 text-black/35 hover:text-ink transition"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -125,7 +144,7 @@ export default function AdminLoginPage() {
 
           {/* Remember me & Forgot password */}
           <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-white/60 hover:text-white/80 transition cursor-pointer">
+            <label className="flex items-center gap-2 text-black/55 hover:text-ink transition cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded border-white/20 accent-coral" />
               Remember me
             </label>
@@ -138,7 +157,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={authLoading}
-            className="w-full bg-gradient-to-r from-coral to-coral hover:from-coral/90 hover:to-coral/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 group"
+            className="w-full bg-coral hover:bg-coral/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded transition-all duration-300 flex items-center justify-center gap-2 group"
           >
             {authLoading ? (
               <>
@@ -153,40 +172,17 @@ export default function AdminLoginPage() {
             )}
           </button>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/20"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gradient-to-br from-ink via-ink/95 to-ink/90 text-white/60">or continue with</span>
-            </div>
-          </div>
-
-          {/* Social buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 rounded-lg font-bold transition-all duration-300"
-            >
-              Google
-            </button>
-            <button
-              type="button"
-              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 rounded-lg font-bold transition-all duration-300"
-            >
-              GitHub
-            </button>
-          </div>
         </form>
 
         {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-6">
+        <p className="text-center text-black/50 text-sm mt-6">
           Don't have access?{' '}
           <Link href="#" className="text-coral hover:text-coral/80 font-bold transition">
             Request invite
           </Link>
         </p>
+          </div>
+        </section>
       </div>
 
       {/* Animated background shapes */}

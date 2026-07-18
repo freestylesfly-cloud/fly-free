@@ -4,6 +4,8 @@ import { Bell, Search, Settings, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { useFetch } from '../hooks/useFetch';
+import { apiService } from '../services/api';
 
 interface AdminHeaderProps {
   title: string;
@@ -16,6 +18,13 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { data: notificationsData, refetch: refetchNotifications } = useFetch<any>(
+    () => apiService.getNotifications(),
+    { skip: false }
+  );
+  const notifications = (notificationsData?.data || []).slice(0, 3);
+  const unreadCount = (notificationsData?.data || []).filter((item: any) => item.status !== 'READ').length;
 
   const handleLogout = async () => {
     await logout();
@@ -61,18 +70,54 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
           </div>
 
           {/* Notifications */}
-          <button className="relative p-2 rounded-lg hover:bg-black/5 text-ink/70 hover:text-ink transition-all group">
-            <Bell size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-coral rounded-full animate-pulse"></span>
-            <div className="absolute top-full right-0 mt-2 hidden group-hover:block bg-white rounded-lg border border-black/10 shadow-lg p-3 w-72 z-50">
-              <p className="font-bold text-ink mb-2">Recent Notifications</p>
-              <div className="space-y-2 text-sm">
-                <p className="text-black/60">3 new orders awaiting processing</p>
-                <p className="text-black/60">Low stock alert: Product #12</p>
-                <p className="text-black/60">Custom design review pending</p>
+          <div className="relative">
+            <button
+              onClick={() => {
+                setNotificationsOpen((value) => !value);
+                setProfileOpen(false);
+                void refetchNotifications();
+              }}
+              className="relative p-2 rounded-lg hover:bg-black/5 text-ink/70 hover:text-ink transition-all"
+              aria-label="Open notifications"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-black text-white">
+                  {Math.min(unreadCount, 9)}
+                </span>
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div className="absolute top-full right-0 mt-2 w-[min(360px,calc(100vw-24px))] rounded border border-black/10 bg-white shadow-xl z-50">
+                <div className="flex items-center justify-between border-b border-black/10 p-3">
+                  <p className="font-black text-ink">Notifications</p>
+                  <Link href="/notifications" onClick={() => setNotificationsOpen(false)} className="text-xs font-bold text-coral">
+                    View all
+                  </Link>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-black/55">No notifications yet.</p>
+                  ) : notifications.map((item: any) => (
+                    <Link
+                      key={item.id}
+                      href={getNotificationHref(item)}
+                      onClick={() => setNotificationsOpen(false)}
+                      className="block border-b border-black/10 p-3 last:border-b-0 hover:bg-black/5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-ink">{item.title}</p>
+                        {item.status !== 'READ' && <span className="h-2 w-2 rounded-full bg-coral" />}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm text-black/60">{item.body}</p>
+                      <p className="mt-2 text-xs text-black/40">{new Date(item.createdAt).toLocaleString()}</p>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          </button>
+            )}
+          </div>
 
           {/* Settings */}
           <Link href="/settings" className="p-2 rounded-lg hover:bg-black/5 text-ink/70 hover:text-ink transition-all" aria-label="Open settings">
@@ -116,4 +161,11 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
       </div>
     </header>
   );
+}
+
+function getNotificationHref(item: any) {
+  if (item.entityType === 'Order' && item.entityId) return `/orders/${item.entityId}`;
+  if (item.entityType === 'User' && item.entityId) return `/users/${item.entityId}`;
+  if (item.entityType === 'Influencer' && item.entityId) return '/influencers';
+  return '/notifications';
 }
