@@ -27,7 +27,7 @@ export class AdminService {
   async getProduct(id: string) {
     return this.prisma.product.findUnique({
       where: { id },
-      include: { category: true, variants: true, images: true, collections: true }
+      include: { category: true, variants: true, images: true, collection: true }
     });
   }
 
@@ -35,10 +35,14 @@ export class AdminService {
     return this.prisma.product.create({
       data: {
         name: data.name,
+        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, "-"),
+        sku: data.sku || `SKU-${Date.now()}`,
         description: data.description,
         price: data.price,
-        discount: data.discount || 0,
-        category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
+        mrp: data.mrp || data.price,
+        discountPercent: data.discountPercent || 0,
+        categoryId: data.categoryId || "default",
+        collectionId: data.collectionId,
         variants: data.variants ? {
           createMany: { data: data.variants }
         } : undefined,
@@ -57,7 +61,8 @@ export class AdminService {
         name: data.name,
         description: data.description,
         price: data.price,
-        discount: data.discount
+        mrp: data.mrp,
+        discountPercent: data.discountPercent
       },
       include: { category: true, variants: true, images: true }
     });
@@ -71,7 +76,10 @@ export class AdminService {
   async listOrders(status?: string, page: number = 1) {
     const limit = 20;
     const skip = (page - 1) * limit;
-    const where = status ? { status } : {};
+    const where: any = {};
+    if (status && ["PLACED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].includes(status.toUpperCase())) {
+      where.status = status.toUpperCase();
+    }
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
@@ -93,14 +101,21 @@ export class AdminService {
   async getOrder(id: string) {
     return this.prisma.order.findUnique({
       where: { id },
-      include: { user: true, items: { include: { product: true, variant: true } } }
+      include: { user: true, items: { include: { product: true } } }
     });
   }
 
   async updateOrderStatus(id: string, status: string) {
+    const validStatuses = ["PLACED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
+    const normalizedStatus = status.toUpperCase();
+
+    if (!validStatuses.includes(normalizedStatus)) {
+      throw new Error(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
+    }
+
     return this.prisma.order.update({
       where: { id },
-      data: { status },
+      data: { status: normalizedStatus as any },
       include: { user: true, items: { include: { product: true } } }
     });
   }
@@ -117,17 +132,23 @@ export class AdminService {
           email: true,
           name: true,
           phone: true,
-          avatar: true,
-          createdAt: true,
-          orders: { select: { id: true } }
+          image: true,
+          createdAt: true
         },
         orderBy: { createdAt: "desc" }
       }),
       this.prisma.user.count()
     ]);
 
+    const usersWithOrders = await Promise.all(
+      users.map(async (u) => ({
+        ...u,
+        totalOrders: await this.prisma.order.count({ where: { userId: u.id } })
+      }))
+    );
+
     return {
-      data: users.map(u => ({ ...u, totalOrders: u.orders.length })),
+      data: usersWithOrders,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     };
   }
@@ -148,7 +169,7 @@ export class AdminService {
       data: {
         name: data.name,
         phone: data.phone,
-        avatar: data.avatar
+        image: data.image
       }
     });
   }
@@ -156,27 +177,27 @@ export class AdminService {
   // ==================== THEMES ====================
   async listThemes() {
     return this.prisma.theme.findMany({
-      orderBy: { priority: "asc" }
+      orderBy: { id: "asc" }
     });
   }
 
   async getActiveTheme() {
     return this.prisma.theme.findFirst({
-      where: { isActive: true }
+      where: { active: true }
     });
   }
 
   async setActiveTheme(id: string) {
     // Deactivate all themes
     await this.prisma.theme.updateMany({
-      where: { isActive: true },
-      data: { isActive: false }
+      where: { active: true },
+      data: { active: false }
     });
 
     // Activate selected theme
     return this.prisma.theme.update({
       where: { id },
-      data: { isActive: true }
+      data: { active: true }
     });
   }
 
@@ -184,8 +205,8 @@ export class AdminService {
   async getDashboardMetrics() {
     const [totalRevenue, totalOrders, totalUsers, totalProducts] = await Promise.all([
       this.prisma.order.aggregate({
-        _sum: { totalAmount: true },
-        where: { status: "completed" }
+        _sum: { total: true },
+        where: { status: "DELIVERED" }
       }),
       this.prisma.order.count(),
       this.prisma.user.count(),
@@ -200,7 +221,7 @@ export class AdminService {
 
     return {
       metrics: {
-        revenue: totalRevenue._sum.totalAmount || 0,
+        revenue: totalRevenue._sum?.total || 0,
         orders: totalOrders,
         users: totalUsers,
         products: totalProducts
@@ -228,8 +249,8 @@ export class AdminService {
 
     const revenue = await this.prisma.order.groupBy({
       by: ["createdAt"],
-      where: { createdAt: { gte: startDate }, status: "completed" },
-      _sum: { totalAmount: true }
+      where: { createdAt: { gte: startDate }, status: "DELIVERED" },
+      _sum: { total: true }
     });
 
     return { period: `${days} days`, data: revenue };
