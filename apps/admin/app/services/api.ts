@@ -58,17 +58,21 @@ class ApiService {
   // ============ DASHBOARD ============
   async getDashboardStats() {
     const response: any = await this.request('/api/admin/analytics/dashboard');
+    const metrics = response?.metrics ?? response?.data ?? {};
+
     return {
       data: {
-        revenue: response?.metrics?.revenue ?? response?.data?.revenue ?? 0,
-        orders: response?.metrics?.orders ?? response?.data?.orders ?? 0,
-        products: response?.metrics?.products ?? response?.data?.products ?? 0,
-        users: response?.metrics?.users ?? response?.data?.users ?? 0,
-        pendingOrders: response?.data?.pendingOrders ?? 0,
-        lowStockProducts: response?.data?.lowStockProducts ?? 0,
-        totalReviews: response?.data?.totalReviews ?? 0,
-        averageRating: response?.data?.averageRating ?? 0
-      }
+        revenue: metrics.revenue ?? 0,
+        orders: metrics.orders ?? 0,
+        products: metrics.products ?? 0,
+        users: metrics.users ?? 0,
+        pendingOrders: metrics.pendingOrders ?? 0,
+        lowStockProducts: metrics.lowStockProducts ?? 0,
+        totalReviews: metrics.totalReviews ?? 0,
+        averageRating: metrics.averageRating ?? 0
+      },
+      recentOrders: response?.recentOrders ?? [],
+      charts: response?.charts ?? { orderStatus: [] }
     };
   }
 
@@ -247,20 +251,20 @@ class ApiService {
 
   // ============ AUTHENTICATION ============
   async login(email: string, password: string) {
-    return this.request('/api/auth/login', {
+    return this.request('/api/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   }
 
   async logout() {
-    return this.request('/api/auth/logout', {
+    return this.request('/api/auth/admin/logout', {
       method: 'POST',
     });
   }
 
   async getCurrentUser() {
-    return this.request('/api/auth/me');
+    return this.request('/api/auth/admin/profile');
   }
 }
 

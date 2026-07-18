@@ -1,9 +1,14 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { EmailService } from './email.service';
 
 @Controller('email')
 export class EmailController {
   constructor(private emailService: EmailService) {}
+
+  @Get('status')
+  getStatus() {
+    return this.emailService.getStatus();
+  }
 
   @Post('order-confirmation')
   async sendOrderConfirmation(@Body() payload: { email: string; order: any }) {

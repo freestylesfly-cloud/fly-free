@@ -1,9 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(AdminService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService
+  ) {}
 
   // ==================== PRODUCTS ====================
   async listCategories() {
@@ -217,11 +223,28 @@ export class AdminService {
       throw new Error(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
     }
 
-    return this.prisma.order.update({
+    const order = await this.prisma.order.update({
       where: { id },
       data: { status: normalizedStatus as any },
-      include: { user: true, items: { include: { product: true } } }
+      include: { user: true, items: { include: { product: true } }, shippingAddress: true }
     });
+
+    if (order.user?.email) {
+      try {
+        await this.emailService.sendOrderStatusUpdate(order.user.email, {
+          id: order.id,
+          orderNumber: order.id,
+          customerName: order.user.name || order.user.email,
+          status: order.status,
+          expectedDelivery: undefined
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown email error";
+        this.logger.warn(`Order ${order.id} status updated, but status email was not sent: ${message}`);
+      }
+    }
+
+    return order;
   }
 
   // ==================== USERS ====================

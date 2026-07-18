@@ -109,7 +109,7 @@ export default function AdminLoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Password"
                 className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-10 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/50 transition-all"
                 required
               />
@@ -148,7 +148,7 @@ export default function AdminLoginPage() {
             ) : (
               <>
                 Sign in
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
+                <span className="group-hover:translate-x-1 transition-transform">-&gt;</span>
               </>
             )}
           </button>

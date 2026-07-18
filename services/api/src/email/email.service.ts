@@ -1,325 +1,277 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import { ConfigService } from '@nestjs/config';
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+
+type MailAttachment = {
+  filename: string;
+  content: Buffer;
+};
 
 @Injectable()
 export class EmailService {
-  private transporter: any;
+  private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter | null = null;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.initializeTransporter();
   }
 
+  getStatus() {
+    return {
+      configured: Boolean(this.transporter),
+      provider: this.transporter ? "gmail-smtp" : null,
+      from: this.configService.get<string>("GMAIL_USER") || null
+    };
+  }
+
   private initializeTransporter() {
-    // Using Gmail SMTP (Free option)
+    const user = this.configService.get<string>("GMAIL_USER");
+    const pass = this.configService.get<string>("GMAIL_APP_PASSWORD");
+
+    if (!user || !pass) {
+      this.logger.warn("SMTP is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD to enable email sending.");
+      return;
+    }
+
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER || 'your-email@gmail.com',
-        pass: process.env.GMAIL_APP_PASSWORD || 'your-app-password',
-      },
+      service: "gmail",
+      auth: { user, pass }
     });
   }
 
   async sendOrderConfirmation(email: string, order: any) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FF6B5B, #4ECDC4); padding: 20px; text-align: center; color: white;">
-          <img src="cid:logo" style="height: 40px; margin-bottom: 10px;" alt="Fly Free" />
-          <h1 style="margin: 0;">Order Confirmed!</h1>
-        </div>
+    const rows = (order.items || [])
+      .map(
+        (item: any) => `
+          <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 10px;">${this.escape(item.name || item.product?.name || "Product")}</td>
+            <td style="padding: 10px;">Qty: ${Number(item.quantity || 1)}</td>
+            <td style="padding: 10px; text-align: right;">Rs ${this.money(item.price || item.unitPrice || 0)}</td>
+          </tr>`
+      )
+      .join("");
 
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${order.customerName},</p>
-          <p>Thank you for your order! Here are your order details:</p>
+    const address = order.shippingAddress || {};
+    const html = this.wrapTemplate(
+      "Order Confirmed",
+      `
+        <p>Hi ${this.escape(order.customerName || order.user?.name || "Customer")},</p>
+        <p>Thank you for your order. Here are your order details:</p>
+        ${this.summaryBlock([
+          ["Order #", order.orderNumber || order.id],
+          ["Date", this.formatDate(order.createdAt)],
+          ["Amount", `Rs ${this.money(order.total)}`],
+          ["Status", order.status || "PLACED"]
+        ])}
+        <h3>Items Ordered</h3>
+        <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+        <p><strong>Shipping Address:</strong></p>
+        <p>${this.escape(address.street || address.line1 || "")}<br/>${this.escape(address.city || "")}, ${this.escape(address.state || "")} ${this.escape(address.zip || address.postalCode || "")}</p>
+        ${this.button(`${this.webUrl()}/orders/${order.id}/track`, "Track Your Order")}
+      `
+    );
 
-          <div style="background: white; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Order #:</strong> ${order.orderNumber}</p>
-            <p><strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-            <p><strong>Amount:</strong> ₹${order.total.toLocaleString()}</p>
-            <p><strong>Status:</strong> <span style="background: #4ECDC4; color: white; padding: 5px 10px; border-radius: 4px;">${order.status}</span></p>
-          </div>
-
-          <h3>Items Ordered:</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            ${order.items.map((item: any) => `
-              <tr style="border-bottom: 1px solid #ddd;">
-                <td style="padding: 10px;">${item.name}</td>
-                <td style="padding: 10px;">Qty: ${item.quantity}</td>
-                <td style="padding: 10px; text-align: right;">₹${item.price.toLocaleString()}</td>
-              </tr>
-            `).join('')}
-          </table>
-
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #ddd;">
-            <p><strong>Shipping Address:</strong></p>
-            <p>${order.shippingAddress.street}<br/>${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zip}</p>
-          </div>
-
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.WEB_URL}/orders/${order.id}/track"
-               style="background: #FF6B5B; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-              Track Your Order
-            </a>
-          </div>
-
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;" />
-
-          <div style="text-align: center; font-size: 12px; color: #666;">
-            <p>Questions? Contact us at support@flyfree.com | 1-800-FLY-FREE</p>
-            <p>&copy; 2026 Fly Free. All rights reserved.</p>
-          </div>
-        </div>
-      </div>
-    `;
-
-    return this.sendEmail(email, 'Order Confirmation - Fly Free', html);
+    return this.sendEmail(email, "Order Confirmation - Fly Free", html);
   }
 
   async sendOrderStatusUpdate(email: string, order: any) {
-    const statusMessages = {
-      CONFIRMED: '✅ Your order has been confirmed and is being prepared',
-      SHIPPED: '📦 Your order is on the way!',
-      DELIVERED: '🎉 Your order has been delivered!',
-      CANCELLED: '❌ Your order has been cancelled',
+    const messages: Record<string, string> = {
+      CONFIRMED: "Your order has been confirmed and is being prepared.",
+      PACKED: "Your order is packed and ready to ship.",
+      SHIPPED: "Your order is on the way.",
+      DELIVERED: "Your order has been delivered.",
+      CANCELLED: "Your order has been cancelled.",
+      REFUNDED: "Your order has been refunded."
     };
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FF6B5B, #4ECDC4); padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">Order Status Update</h1>
-        </div>
+    const html = this.wrapTemplate(
+      "Order Status Update",
+      `
+        <p>Hi ${this.escape(order.customerName || order.user?.name || "Customer")},</p>
+        <p style="font-size: 18px; color: #FF6B5B; font-weight: bold;">${messages[order.status] || `Your order status is ${this.escape(order.status || "")}.`}</p>
+        ${this.summaryBlock([
+          ["Order #", order.orderNumber || order.id],
+          ["Current Status", order.status],
+          ["Tracking #", order.trackingNumber],
+          ["Expected Delivery", order.expectedDelivery ? this.formatDate(order.expectedDelivery) : undefined]
+        ])}
+        ${this.button(`${this.webUrl()}/orders/${order.id}/track`, "View Order Details")}
+      `
+    );
 
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${order.customerName},</p>
-          <p style="font-size: 18px; color: #FF6B5B; font-weight: bold;">
-            ${statusMessages[order.status] || `Your order status: ${order.status}`}
-          </p>
-
-          <div style="background: white; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Order #:</strong> ${order.orderNumber}</p>
-            <p><strong>Current Status:</strong> ${order.status}</p>
-            ${order.trackingNumber ? `<p><strong>Tracking #:</strong> ${order.trackingNumber}</p>` : ''}
-            <p><strong>Expected Delivery:</strong> ${new Date(order.expectedDelivery).toLocaleDateString()}</p>
-          </div>
-
-          <a href="${process.env.WEB_URL}/orders/${order.id}/track"
-             style="display: inline-block; background: #FF6B5B; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-            View Full Details
-          </a>
-        </div>
-      </div>
-    `;
-
-    return this.sendEmail(email, `Order ${order.status} - ${order.orderNumber}`, html);
+    return this.sendEmail(email, `Order ${order.status} - ${order.orderNumber || order.id}`, html);
   }
 
   async sendInvoice(email: string, order: any, invoicePdf: Buffer) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FF6B5B, #4ECDC4); padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">Invoice Attached</h1>
-        </div>
-
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${order.customerName},</p>
-          <p>Your invoice for order #${order.orderNumber} is attached below.</p>
-
-          <div style="background: white; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Invoice Date:</strong> ${new Date().toLocaleDateString()}</p>
-            <p><strong>Total Amount:</strong> ₹${order.total.toLocaleString()}</p>
-          </div>
-
-          <p>Thank you for shopping with Fly Free!</p>
-        </div>
-      </div>
-    `;
-
-    return this.sendEmailWithAttachment(
-      email,
-      `Invoice - Order ${order.orderNumber}`,
-      html,
-      {
-        filename: `invoice-${order.orderNumber}.pdf`,
-        content: invoicePdf,
-      }
+    const html = this.wrapTemplate(
+      "Invoice Attached",
+      `
+        <p>Hi ${this.escape(order.customerName || order.user?.name || "Customer")},</p>
+        <p>Your invoice for order #${this.escape(order.orderNumber || order.id)} is attached.</p>
+        ${this.summaryBlock([
+          ["Invoice Date", this.formatDate(new Date())],
+          ["Total Amount", `Rs ${this.money(order.total)}`]
+        ])}
+        <p>Thank you for shopping with Fly Free.</p>
+      `
     );
+
+    return this.sendEmailWithAttachment(email, `Invoice - Order ${order.orderNumber || order.id}`, html, {
+      filename: `invoice-${order.orderNumber || order.id}.pdf`,
+      content: invoicePdf
+    });
   }
 
   async sendReferralLink(email: string, userName: string, referralCode: string, discountPercent: number) {
-    const referralLink = `${process.env.WEB_URL}?ref=${referralCode}`;
+    const referralLink = `${this.webUrl()}?ref=${encodeURIComponent(referralCode)}`;
+    const html = this.wrapTemplate(
+      "Share And Earn",
+      `
+        <p>Hi ${this.escape(userName)},</p>
+        <p>Share your Fly Free referral code. Your friend gets ${discountPercent}% off, and you can earn rewards after a completed purchase.</p>
+        ${this.codeBlock(referralCode, referralLink)}
+        ${this.button(referralLink, "Open Referral Link")}
+      `
+    );
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FF6B5B, #4ECDC4); padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">Share & Earn!</h1>
-        </div>
-
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${userName},</p>
-          <p>Your referral link is ready! Share it with friends and earn <strong>${discountPercent}% discount</strong> on your next purchase when they use your code.</p>
-
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B5B;">
-            <p><strong>Your Referral Code:</strong></p>
-            <p style="font-size: 24px; font-weight: bold; color: #FF6B5B; margin: 10px 0;">${referralCode}</p>
-            <p style="font-size: 12px; color: #666; margin: 10px 0;">Or share this link:</p>
-            <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 4px;">
-              ${referralLink}
-            </p>
-          </div>
-
-          <h3>How It Works:</h3>
-          <ol>
-            <li>Share your code with friends</li>
-            <li>They use your code at checkout</li>
-            <li>They get ${discountPercent}% off their first order</li>
-            <li>You get ${discountPercent}% discount on your next order!</li>
-          </ol>
-
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${referralLink}"
-               style="background: #FF6B5B; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-              Share Now
-            </a>
-          </div>
-        </div>
-      </div>
-    `;
-
-    return this.sendEmail(email, 'Your Fly Free Referral Link', html);
+    return this.sendEmail(email, "Your Fly Free Referral Link", html);
   }
 
   async sendInfluencerCode(email: string, influencerName: string, code: string, discountPercent: number) {
-    const trackingLink = `${process.env.WEB_URL}?promo=${code}`;
+    const trackingLink = `${this.webUrl()}?promo=${encodeURIComponent(code)}`;
+    const html = this.wrapTemplate(
+      "Influencer Promo Code",
+      `
+        <p>Hi ${this.escape(influencerName)},</p>
+        <p>Your Fly Free influencer promo code is ready.</p>
+        ${this.summaryBlock([
+          ["Promo Code", code],
+          ["Customer Discount", `${discountPercent}%`],
+          ["Tracking Link", trackingLink]
+        ])}
+        ${this.button(trackingLink, "Open Promotion Link")}
+      `
+    );
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FFD93D, #6BCB77); padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">Your Influencer Code</h1>
-        </div>
-
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${influencerName},</p>
-          <p>Welcome to the Fly Free Influencer Program! Here's your exclusive promo code:</p>
-
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #6BCB77;">
-            <p><strong>Your Promo Code:</strong></p>
-            <p style="font-size: 32px; font-weight: bold; color: #6BCB77; margin: 10px 0; letter-spacing: 2px;">${code}</p>
-            <p><strong>Discount:</strong> ${discountPercent}% off</p>
-          </div>
-
-          <h3>Tracking Dashboard:</h3>
-          <p>Monitor your clicks and sales:</p>
-          <a href="${process.env.API_URL}/influencer/dashboard/${code}"
-             style="display: inline-block; background: #6BCB77; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-            View Dashboard
-          </a>
-
-          <h3>Your Promotion Link:</h3>
-          <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 4px;">
-            ${trackingLink}
-          </p>
-
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;" />
-
-          <h3>How to Promote:</h3>
-          <ul>
-            <li>Share your code on social media</li>
-            <li>Include it in product reviews</li>
-            <li>Post unboxing videos with your code</li>
-            <li>Earn commission on every sale!</li>
-          </ul>
-
-          <div style="text-align: center; margin-top: 30px; padding: 20px; background: white; border-radius: 8px;">
-            <p><strong>Need Help?</strong></p>
-            <p>Contact: influencer@flyfree.com</p>
-          </div>
-        </div>
-      </div>
-    `;
-
-    return this.sendEmail(email, 'Your Fly Free Influencer Code', html);
+    return this.sendEmail(email, "Your Fly Free Influencer Code", html);
   }
 
   async sendNewProductNotification(email: string, product: any, userName: string) {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(to right, #FF6B5B, #4ECDC4); padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">🆕 New Product Alert!</h1>
-        </div>
-
-        <div style="padding: 20px; background: #f9f9f9;">
-          <p>Hi ${userName},</p>
-          <p>We just launched something amazing you might love!</p>
-
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <img src="${product.image}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 15px;" alt="${product.name}" />
-            <h2 style="margin: 10px 0; color: #333;">${product.name}</h2>
-            <p style="color: #666; margin: 10px 0;">${product.description}</p>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0;">
-              <div>
-                <p style="color: #999; text-decoration: line-through; margin: 0;">₹${product.mrp.toLocaleString()}</p>
-                <p style="font-size: 24px; font-weight: bold; color: #FF6B5B; margin: 5px 0;">₹${product.price.toLocaleString()}</p>
-                ${product.discount > 0 ? `<p style="background: #FF6B5B; color: white; padding: 5px 10px; border-radius: 4px; display: inline-block; font-weight: bold;">${product.discount}% OFF</p>` : ''}
-              </div>
-            </div>
-          </div>
-
-          <div style="text-align: center;">
-            <a href="${process.env.WEB_URL}/products/${product.slug}"
-               style="background: #FF6B5B; color: white; padding: 12px 40px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px;">
-              Shop Now
-            </a>
-          </div>
-
-          <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #999;">
-            You're receiving this because you subscribed to product notifications.
-          </p>
-        </div>
-      </div>
-    `;
+    const html = this.wrapTemplate(
+      "New Product Alert",
+      `
+        <p>Hi ${this.escape(userName)},</p>
+        <p>A new Fly Free product is live.</p>
+        <h2>${this.escape(product.name)}</h2>
+        <p>${this.escape(product.description || "")}</p>
+        <p><strong>Price:</strong> Rs ${this.money(product.price)}</p>
+        ${this.button(`${this.webUrl()}/products/${product.slug}`, "Shop Now")}
+      `
+    );
 
     return this.sendEmail(email, `New Product: ${product.name}`, html);
   }
 
   private async sendEmail(to: string, subject: string, html: string) {
-    try {
-      const info = await this.transporter.sendMail({
-        from: `Fly Free <${process.env.GMAIL_USER}>`,
-        to,
-        subject,
-        html,
-      });
+    const transporter = this.requireTransporter();
+    const info = await transporter.sendMail({
+      from: `Fly Free <${this.configService.get<string>("GMAIL_USER")}>`,
+      to,
+      subject,
+      html
+    });
 
-      console.log('✅ Email sent:', info.messageId);
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('❌ Email error:', error);
-      throw error;
-    }
+    this.logger.log(`Email sent to ${to}: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
   }
 
-  private async sendEmailWithAttachment(
-    to: string,
-    subject: string,
-    html: string,
-    attachment: { filename: string; content: Buffer }
-  ) {
-    try {
-      const info = await this.transporter.sendMail({
-        from: `Fly Free <${process.env.GMAIL_USER}>`,
-        to,
-        subject,
-        html,
-        attachments: [attachment],
-      });
+  private async sendEmailWithAttachment(to: string, subject: string, html: string, attachment: MailAttachment) {
+    const transporter = this.requireTransporter();
+    const info = await transporter.sendMail({
+      from: `Fly Free <${this.configService.get<string>("GMAIL_USER")}>`,
+      to,
+      subject,
+      html,
+      attachments: [attachment]
+    });
 
-      console.log('✅ Email with attachment sent:', info.messageId);
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('❌ Email error:', error);
-      throw error;
+    this.logger.log(`Email with attachment sent to ${to}: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  }
+
+  private requireTransporter() {
+    if (!this.transporter) {
+      throw new BadRequestException("Email SMTP is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in services/api/.env.");
     }
+
+    return this.transporter;
+  }
+
+  private wrapTemplate(title: string, body: string) {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1A1A1A;">
+        <div style="background: #1A1A1A; padding: 24px; color: white;">
+          <h1 style="margin: 0;">${this.escape(title)}</h1>
+          <p style="margin: 8px 0 0; color: rgba(255,255,255,.72);">Fly Free</p>
+        </div>
+        <div style="padding: 24px; background: #fafafa;">${body}</div>
+        <div style="padding: 16px 24px; color: #666; font-size: 12px;">
+          <p>Need help? Contact ${this.escape(this.configService.get<string>("SUPPORT_EMAIL") || "support@flyfree.com")}.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  private summaryBlock(rows: Array<[string, unknown]>) {
+    const content = rows
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(
+        ([label, value]) => `
+          <p style="margin: 6px 0;"><strong>${this.escape(label)}:</strong> ${this.escape(String(value))}</p>`
+      )
+      .join("");
+
+    return `<div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0;">${content}</div>`;
+  }
+
+  private codeBlock(code: string, link: string) {
+    return `
+      <div style="background: white; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B5B;">
+        <p style="margin: 0 0 8px;"><strong>Your Code</strong></p>
+        <p style="font-size: 24px; font-weight: bold; color: #FF6B5B; margin: 0 0 12px;">${this.escape(code)}</p>
+        <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 4px;">${this.escape(link)}</p>
+      </div>
+    `;
+  }
+
+  private button(href: string, label: string) {
+    return `
+      <p style="margin-top: 24px;">
+        <a href="${this.escape(href)}" style="display: inline-block; background: #FF6B5B; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">${this.escape(label)}</a>
+      </p>
+    `;
+  }
+
+  private money(value: unknown) {
+    return Number(value || 0).toLocaleString("en-IN");
+  }
+
+  private formatDate(value: unknown) {
+    if (!value) return "";
+    return new Date(value as string).toLocaleDateString("en-IN");
+  }
+
+  private webUrl() {
+    return this.configService.get<string>("WEB_URL") || "http://localhost:3000";
+  }
+
+  private escape(value: string) {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 }
