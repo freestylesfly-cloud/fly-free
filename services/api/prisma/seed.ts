@@ -770,6 +770,32 @@ async function main() {
     }),
   ]);
 
+  await Promise.all([
+    prisma.orderStatusHistory.createMany({
+      data: [
+        { orderId: orders[0].id, fromStatus: null, toStatus: 'PLACED', note: 'Order created after Razorpay payment success.', changedBy: 'system' },
+        { orderId: orders[0].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted the order.', changedBy: admins[0].email },
+        { orderId: orders[0].id, fromStatus: 'CONFIRMED', toStatus: 'PACKED', note: 'Packed at warehouse.', changedBy: admins[0].email },
+        { orderId: orders[0].id, fromStatus: 'PACKED', toStatus: 'SHIPPED', note: 'Shipment handed to courier.', changedBy: admins[1].email },
+        { orderId: orders[0].id, fromStatus: 'SHIPPED', toStatus: 'DELIVERED', note: 'Delivery completed.', changedBy: 'system' },
+      ],
+    }),
+    prisma.orderStatusHistory.createMany({
+      data: [
+        { orderId: orders[1].id, fromStatus: null, toStatus: 'PLACED', note: 'Influencer order created after Razorpay payment success.', changedBy: 'system' },
+        { orderId: orders[1].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted the order.', changedBy: admins[0].email },
+        { orderId: orders[1].id, fromStatus: 'CONFIRMED', toStatus: 'PACKED', note: 'Packed and ready to ship.', changedBy: admins[1].email },
+        { orderId: orders[1].id, fromStatus: 'PACKED', toStatus: 'SHIPPED', note: 'Tracking shared with customer.', changedBy: admins[1].email },
+      ],
+    }),
+    prisma.orderStatusHistory.createMany({
+      data: [
+        { orderId: orders[2].id, fromStatus: null, toStatus: 'PLACED', note: 'Order created, payment pending.', changedBy: 'system' },
+        { orderId: orders[2].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted pending-payment order.', changedBy: admins[0].email },
+      ],
+    }),
+  ]);
+
   // Create Reviews
   console.log('⭐ Creating product reviews...');
   await Promise.all([
@@ -777,6 +803,7 @@ async function main() {
       data: {
         userId: users[0].id,
         productId: products[0].id,
+        orderId: orders[0].id,
         rating: 5,
         title: 'Absolutely amazing!',
         body: 'Great quality and fit. Will definitely buy again!',
@@ -787,6 +814,7 @@ async function main() {
       data: {
         userId: users[1].id,
         productId: products[0].id,
+        orderId: orders[1].id,
         rating: 4,
         title: 'Good quality',
         body: 'Nice t-shirt, sizing runs a bit small',
