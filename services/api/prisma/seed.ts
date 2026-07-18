@@ -23,9 +23,9 @@ async function main() {
   await prisma.coupon.deleteMany();
   await prisma.address.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.adminUser.deleteMany(); // Delete adminUser before role
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
-  await prisma.adminUser.deleteMany();
   await prisma.heroBanner.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.customizationRequest.deleteMany();

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Headers } from "@nestjs/common";
+import { Controller, Post, Body, Get, Headers, HttpException, HttpStatus } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")
@@ -7,66 +7,168 @@ export class AuthController {
 
   // ==================== USER AUTH ====================
   @Post("user/signup")
-  signupUser(@Body() body: { email: string; password: string; name: string }) {
-    return this.authService.signupUser(body.email, body.password, body.name);
+  async signupUser(@Body() body: { email: string; password: string; name: string }) {
+    try {
+      return await this.authService.signupUser(body.email, body.password, body.name);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Signup failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post("user/login")
-  loginUser(@Body() body: { email: string; password: string }) {
-    return this.authService.loginUser(body.email, body.password);
+  async loginUser(@Body() body: { email: string; password: string }) {
+    try {
+      return await this.authService.loginUser(body.email, body.password);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Login failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post("user/logout")
-  logoutUser(@Headers("authorization") token: string) {
-    return this.authService.logoutUser(token);
+  async logoutUser(@Headers("authorization") token: string) {
+    try {
+      return await this.authService.logoutUser(token);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Logout failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get("user/profile")
-  getUserProfile(@Headers("authorization") token: string) {
-    return this.authService.getUserProfile(token);
+  async getUserProfile(@Headers("authorization") token: string) {
+    try {
+      return await this.authService.getUserProfile(token);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Profile fetch failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // ==================== ADMIN AUTH ====================
   @Post("admin/login")
-  loginAdmin(@Body() body: { email: string; password: string }) {
-    return this.authService.loginAdmin(body.email, body.password);
+  async loginAdmin(@Body() body: { email: string; password: string }) {
+    try {
+      const result = await this.authService.loginAdmin(body.email, body.password);
+      if (result.error) {
+        throw new HttpException({ error: result.error }, result.status || HttpStatus.BAD_REQUEST);
+      }
+      return result;
+    } catch (error) {
+      if (error.status) throw error;
+      throw new HttpException(
+        { error: error.message || "Admin login failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post("admin/logout")
-  logoutAdmin(@Headers("authorization") token: string) {
-    return this.authService.logoutAdmin(token);
+  async logoutAdmin(@Headers("authorization") token: string) {
+    try {
+      return await this.authService.logoutAdmin(token);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Admin logout failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get("admin/profile")
-  getAdminProfile(@Headers("authorization") token: string) {
-    return this.authService.getAdminProfile(token);
+  async getAdminProfile(@Headers("authorization") token: string) {
+    try {
+      const result = await this.authService.getAdminProfile(token);
+      if (!result) {
+        throw new HttpException(
+          { error: "Admin not found" },
+          HttpStatus.NOT_FOUND
+        );
+      }
+      return result;
+    } catch (error) {
+      if (error.status) throw error;
+      throw new HttpException(
+        { error: error.message || "Profile fetch failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // ==================== PASSWORD RESET ====================
   @Post("forgot-password")
-  forgotPassword(@Body() body: { email: string }) {
-    return this.authService.sendPasswordResetEmail(body.email);
+  async forgotPassword(@Body() body: { email: string }) {
+    try {
+      return await this.authService.sendPasswordResetEmail(body.email);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Password reset failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post("reset-password")
-  resetPassword(@Body() body: { email: string; code: string; newPassword: string }) {
-    return this.authService.resetPassword(body.email, body.code, body.newPassword);
+  async resetPassword(@Body() body: { email: string; code: string; newPassword: string }) {
+    try {
+      const result = await this.authService.resetPassword(body.email, body.code, body.newPassword);
+      if (result.error) {
+        throw new HttpException({ error: result.error }, result.status || HttpStatus.BAD_REQUEST);
+      }
+      return result;
+    } catch (error) {
+      if (error.status) throw error;
+      throw new HttpException(
+        { error: error.message || "Password reset failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // ==================== VERIFY EMAIL ====================
   @Post("verify-email")
-  verifyEmail(@Body() body: { email: string; code: string }) {
-    return this.authService.verifyEmail(body.email, body.code);
+  async verifyEmail(@Body() body: { email: string; code: string }) {
+    try {
+      return await this.authService.verifyEmail(body.email, body.code);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Email verification failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // ==================== SOCIAL LOGIN ====================
   @Post("google/login")
-  googleLogin(@Body() body: { idToken: string }) {
-    return this.authService.googleLogin(body.idToken);
+  async googleLogin(@Body() body: { idToken: string }) {
+    try {
+      return await this.authService.googleLogin(body.idToken);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "Google login failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post("github/login")
-  githubLogin(@Body() body: { code: string }) {
-    return this.authService.githubLogin(body.code);
+  async githubLogin(@Body() body: { code: string }) {
+    try {
+      return await this.authService.githubLogin(body.code);
+    } catch (error) {
+      throw new HttpException(
+        { error: error.message || "GitHub login failed" },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

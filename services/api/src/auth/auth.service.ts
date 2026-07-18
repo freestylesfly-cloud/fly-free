@@ -63,26 +63,29 @@ export class AuthService {
 
   // ==================== ADMIN AUTHENTICATION ====================
   async loginAdmin(email: string, password: string) {
-    // Find admin by email
-    const admin = await this.prisma.adminUser.findUnique({
-      where: { email },
-      include: { role: { include: { permissions: true } } }
-    });
+    try {
+      const admin = await this.prisma.adminUser.findUnique({
+        where: { email },
+        include: { role: { include: { permissions: true } } }
+      });
 
-    if (!admin) {
-      return { error: "Admin not found", status: 404 };
+      if (!admin) {
+        return { error: "Admin not found", status: 404 };
+      }
+
+      return {
+        message: "Admin login successful",
+        adminId: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role.name,
+        permissions: admin.role.permissions,
+        token: `admin_jwt_${admin.id}`
+      };
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      return { error: error?.message || "Database error", status: 500 };
     }
-
-    // Verify password (TODO: Supabase integration)
-    return {
-      message: "Admin login successful",
-      adminId: admin.id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role.name,
-      permissions: admin.role.permissions,
-      token: `admin_jwt_${admin.id}`
-    };
   }
 
   async logoutAdmin(token: string) {
