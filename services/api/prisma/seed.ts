@@ -5,21 +5,31 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Clear existing data
+  // Clear existing data (order matters due to foreign keys)
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.payment.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
   await prisma.review.deleteMany();
   await prisma.wishlist.deleteMany();
   await prisma.productImage.deleteMany();
+  await prisma.inventory.deleteMany(); // Delete inventory before variants
   await prisma.productVariant.deleteMany();
-  await prisma.inventory.deleteMany();
   await prisma.product.deleteMany();
   await prisma.collection.deleteMany();
   await prisma.theme.deleteMany();
   await prisma.category.deleteMany();
   await prisma.coupon.deleteMany();
+  await prisma.address.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.permission.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.adminUser.deleteMany();
+  await prisma.heroBanner.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.customizationRequest.deleteMany();
+  await prisma.giftOption.deleteMany();
 
   // Create Categories
   const categories = await Promise.all([
@@ -411,7 +421,7 @@ async function main() {
 
   // Create Coupons
   console.log('🎟️ Creating coupons...');
-  await Promise.all([
+  const coupons = await Promise.all([
     prisma.coupon.create({
       data: {
         code: 'WELCOME10',
@@ -450,13 +460,344 @@ async function main() {
     }),
   ]);
 
+  // Create Test Users
+  console.log('👥 Creating test users...');
+  const users = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: 'john@example.com',
+        name: 'John Doe',
+        phone: '+91 9876543210',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'jane@example.com',
+        name: 'Jane Smith',
+        phone: '+91 9876543211',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'test@example.com',
+        name: 'Test User',
+        phone: '+91 9876543212',
+      },
+    }),
+  ]);
+
+  // Create Addresses for Users
+  console.log('📍 Creating addresses...');
+  const addresses = await Promise.all([
+    prisma.address.create({
+      data: {
+        userId: users[0].id,
+        fullName: 'John Doe',
+        phone: '+91 9876543210',
+        line1: '123 Main Street',
+        line2: 'Apt 4B',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        postalCode: '400001',
+        country: 'India',
+      },
+    }),
+    prisma.address.create({
+      data: {
+        userId: users[0].id,
+        fullName: 'John Doe',
+        phone: '+91 9876543210',
+        line1: '456 Park Avenue',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        postalCode: '560001',
+        country: 'India',
+      },
+    }),
+    prisma.address.create({
+      data: {
+        userId: users[1].id,
+        fullName: 'Jane Smith',
+        phone: '+91 9876543211',
+        line1: '789 Ocean Drive',
+        city: 'Chennai',
+        state: 'Tamil Nadu',
+        postalCode: '600001',
+        country: 'India',
+      },
+    }),
+  ]);
+
+  // Create Admin Roles
+  console.log('🔐 Creating admin roles...');
+  const adminRole = await prisma.role.create({
+    data: {
+      name: 'Admin',
+      permissions: {
+        create: [
+          { action: 'manage_products' },
+          { action: 'manage_orders' },
+          { action: 'manage_users' },
+          { action: 'view_analytics' },
+          { action: 'manage_themes' },
+        ],
+      },
+    },
+  });
+
+  // Create Admin Users
+  console.log('👨‍💼 Creating admin users...');
+  const admins = await Promise.all([
+    prisma.adminUser.create({
+      data: {
+        name: 'Admin User',
+        email: 'admin@flyfree.com',
+        roleId: adminRole.id,
+      },
+    }),
+    prisma.adminUser.create({
+      data: {
+        name: 'Manager User',
+        email: 'manager@flyfree.com',
+        roleId: adminRole.id,
+      },
+    }),
+  ]);
+
+  // Create Sample Orders
+  console.log('📦 Creating sample orders...');
+  const products = await prisma.product.findMany({ take: 16 });
+  const variants = await prisma.productVariant.findMany({ take: 6 });
+
+  const orders = await Promise.all([
+    prisma.order.create({
+      data: {
+        userId: users[0].id,
+        shippingAddressId: addresses[0].id,
+        status: 'DELIVERED',
+        subtotal: 99800,
+        discount: 10000,
+        shippingFee: 0,
+        tax: 14970,
+        total: 104770,
+        items: {
+          create: [
+            {
+              productId: products[0].id,
+              variantId: variants[0].id,
+              name: products[0].name,
+              sku: variants[0].sku,
+              price: 49900,
+              quantity: 2,
+            },
+          ],
+        },
+      },
+    }),
+    prisma.order.create({
+      data: {
+        userId: users[1].id,
+        shippingAddressId: addresses[2].id,
+        status: 'SHIPPED',
+        subtotal: 49900,
+        discount: 5000,
+        shippingFee: 0,
+        tax: 6735,
+        total: 51635,
+        items: {
+          create: [
+            {
+              productId: products[1].id,
+              variantId: variants[1].id,
+              name: products[1].name,
+              sku: variants[1].sku,
+              price: 49900,
+              quantity: 1,
+            },
+          ],
+        },
+      },
+    }),
+    prisma.order.create({
+      data: {
+        userId: users[2].id,
+        shippingAddressId: addresses[0].id,
+        status: 'CONFIRMED',
+        subtotal: 149700,
+        discount: 15000,
+        shippingFee: 50,
+        tax: 20220,
+        total: 154970,
+        items: {
+          create: [
+            {
+              productId: products[2].id,
+              variantId: variants[2].id,
+              name: products[2].name,
+              sku: variants[2].sku,
+              price: 44900,
+              quantity: 3,
+            },
+          ],
+        },
+      },
+    }),
+  ]);
+
+  // Create Reviews
+  console.log('⭐ Creating product reviews...');
+  await Promise.all([
+    prisma.review.create({
+      data: {
+        userId: users[0].id,
+        productId: products[0].id,
+        rating: 5,
+        title: 'Absolutely amazing!',
+        body: 'Great quality and fit. Will definitely buy again!',
+        status: 'APPROVED',
+      },
+    }),
+    prisma.review.create({
+      data: {
+        userId: users[1].id,
+        productId: products[0].id,
+        rating: 4,
+        title: 'Good quality',
+        body: 'Nice t-shirt, sizing runs a bit small',
+        status: 'APPROVED',
+      },
+    }),
+    prisma.review.create({
+      data: {
+        userId: users[0].id,
+        productId: products[1].id,
+        rating: 5,
+        title: 'Perfect design',
+        body: 'The anime design is exactly as shown',
+        status: 'APPROVED',
+      },
+    }),
+    prisma.review.create({
+      data: {
+        userId: users[2].id,
+        productId: products[2].id,
+        rating: 3,
+        title: 'Average',
+        body: 'Okay product, nothing special',
+        status: 'PENDING',
+      },
+    }),
+  ]);
+
+  // Create Wishlist Items
+  console.log('❤️ Creating wishlist items...');
+  await Promise.all([
+    prisma.wishlist.create({
+      data: {
+        userId: users[0].id,
+        productId: products[3].id,
+      },
+    }),
+    prisma.wishlist.create({
+      data: {
+        userId: users[0].id,
+        productId: products[4].id,
+      },
+    }),
+    prisma.wishlist.create({
+      data: {
+        userId: users[1].id,
+        productId: products[5].id,
+      },
+    }),
+  ]);
+
+  // Create Cart Items
+  console.log('🛒 Creating cart items...');
+  const cart1 = await prisma.cart.create({
+    data: { userId: users[0].id },
+  });
+
+  const cart2 = await prisma.cart.create({
+    data: { userId: users[1].id },
+  });
+
+  await Promise.all([
+    prisma.cartItem.create({
+      data: {
+        cartId: cart1.id,
+        variantId: variants[0].id,
+        quantity: 1,
+      },
+    }),
+    prisma.cartItem.create({
+      data: {
+        cartId: cart1.id,
+        variantId: variants[1].id,
+        quantity: 2,
+      },
+    }),
+    prisma.cartItem.create({
+      data: {
+        cartId: cart2.id,
+        variantId: variants[2].id,
+        quantity: 1,
+      },
+    }),
+  ]);
+
+  // Create Hero Banners
+  console.log('📸 Creating hero banners...');
+  await Promise.all([
+    prisma.heroBanner.create({
+      data: {
+        title: 'Summer Collection',
+        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Summer+Collection',
+        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Summer',
+        buttonLabel: 'Shop Summer',
+        href: '/collections/summer',
+        priority: 1,
+        isActive: true,
+      },
+    }),
+    prisma.heroBanner.create({
+      data: {
+        title: 'Anime Series',
+        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Anime+Series',
+        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Anime',
+        buttonLabel: 'Shop Anime',
+        href: '/themes/anime',
+        priority: 2,
+        isActive: true,
+      },
+    }),
+    prisma.heroBanner.create({
+      data: {
+        title: 'Marvel Universe',
+        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Marvel+Universe',
+        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Marvel',
+        buttonLabel: 'Shop Marvel',
+        href: '/themes/marvel',
+        priority: 3,
+        isActive: true,
+      },
+    }),
+  ]);
+
   console.log('✅ Seed completed!');
-  console.log(`✅ Created ${productsData.length} products with variants`);
+  console.log(`✅ Created ${productsData.length} products with ${6 * 6} variants`);
   console.log(`✅ Created ${categories.length} categories`);
   console.log(`✅ Created ${themes.length} themes`);
   console.log(`✅ Created ${collections.length} collections`);
-  console.log('✅ Created 4 coupons');
-  console.log('✅ Created 4 coupons');
+  console.log(`✅ Created ${coupons.length} coupons`);
+  console.log(`✅ Created ${users.length} test users`);
+  console.log(`✅ Created ${addresses.length} addresses`);
+  console.log(`✅ Created ${admins.length} admin users`);
+  console.log(`✅ Created ${orders.length} sample orders`);
+  console.log(`✅ Created 4 product reviews`);
+  console.log(`✅ Created 3 wishlist items`);
+  console.log(`✅ Created 3 cart items`);
+  console.log(`✅ Created 3 hero banners`);
 }
 
 main()
