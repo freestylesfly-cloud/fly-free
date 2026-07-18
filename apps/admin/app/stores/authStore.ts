@@ -1,8 +1,9 @@
+import type { User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
 interface AuthStore {
-  user: any | null;
+  user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -11,17 +12,17 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
-  loading: false,
+  loading: true,
   login: async (email, password) => {
     set({ loading: true });
     try {
-      if (!supabase) throw new Error('Supabase not initialized');
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
+
       if (error) throw error;
+
       set({ user: data.user, loading: false });
     } catch (error) {
       set({ loading: false });
@@ -41,12 +42,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
   checkAuth: async () => {
+    set({ loading: true });
     try {
-      if (!supabase) {
-        set({ user: null, loading: false });
-        return;
-      }
-
       const { data } = await supabase.auth.getSession();
       set({ user: data.session?.user || null, loading: false });
     } catch (error) {

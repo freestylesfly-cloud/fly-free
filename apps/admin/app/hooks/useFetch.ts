@@ -29,7 +29,8 @@ export function useFetch<T>(
   const maxRetries = options?.retries ?? 1;
   const isMountedRef = useRef(true);
 
-  const fetchData = useCallback(async () => {
+  // Separate function that doesn't depend on itself
+  const performFetch = useCallback(async () => {
     if (!isMountedRef.current) return;
 
     setState({ data: null, loading: true, error: null });
@@ -48,7 +49,7 @@ export function useFetch<T>(
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current += 1;
         const delay = 1000 * retryCountRef.current;
-        setTimeout(() => fetchData(), delay);
+        setTimeout(() => performFetch(), delay);
       } else {
         setState({ data: null, loading: false, error: errorMessage });
       }
@@ -59,18 +60,18 @@ export function useFetch<T>(
     isMountedRef.current = true;
 
     if (!options?.skip) {
-      fetchData();
+      performFetch();
     }
 
     return () => {
       isMountedRef.current = false;
     };
-  }, [fetchFn, options?.skip, fetchData]);
+  }, [fetchFn, options?.skip]); // Only depend on fetchFn and skip, NOT performFetch
 
   const refetch = useCallback(async () => {
     retryCountRef.current = 0;
-    await fetchData();
-  }, [fetchData]);
+    await performFetch();
+  }, [performFetch]);
 
   return { ...state, refetch };
 }
