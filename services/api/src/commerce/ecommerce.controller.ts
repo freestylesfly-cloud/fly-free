@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers } from "@nestjs/common";
-import { CommerceService } from "./commerce.service";
+import { EcommerceService } from "./ecommerce.service";
 
 @Controller("ecommerce")
 export class EcommerceController {
-  constructor(private readonly commerceService: CommerceService) {}
+  constructor(private readonly commerceService: EcommerceService) {}
 
   // ==================== WISHLIST ====================
   @Get("wishlist")

@@ -33,7 +33,7 @@ export class EcommerceService {
     const userId = this.extractUserId(token);
     let cart = await this.prisma.cart.findFirst({
       where: { userId },
-      include: { items: { include: { product: { include: { images: true } } } } }
+      include: { items: true }
     });
 
     if (!cart) {
@@ -117,14 +117,14 @@ export class EcommerceService {
     const userId = this.extractUserId(token);
 
     return this.prisma.review.create({
-      data: { productId, userId, rating, title, comment, status: "PENDING" }
+      data: { productId, userId, rating, title, body: comment, status: "PENDING" }
     });
   }
 
   async updateReview(reviewId: string, data: any) {
     return this.prisma.review.update({
       where: { id: reviewId },
-      data: { title: data.title, comment: data.comment, rating: data.rating }
+      data: { title: data.title, body: data.body || data.comment, rating: data.rating }
     });
   }
 
@@ -172,8 +172,14 @@ export class EcommerceService {
       where: { code }
     });
 
-    if (!coupon || !coupon.isActive || new Date() > coupon.expiresAt) {
+    if (!coupon || !coupon.isActive) {
       return { valid: false, message: "Coupon is invalid or expired" };
+    }
+
+    // Check if coupon is within date range
+    const now = new Date();
+    if ((coupon.startsAt && now < coupon.startsAt) || (coupon.endsAt && now > coupon.endsAt)) {
+      return { valid: false, message: "Coupon is not valid for the current date" };
     }
 
     return {
@@ -181,8 +187,7 @@ export class EcommerceService {
       code: coupon.code,
       discountPercent: coupon.discountPercent,
       discountAmount: coupon.discountAmount,
-      maxUses: coupon.maxUses,
-      currentUses: coupon.currentUses
+      minOrderAmount: coupon.minOrderAmount
     };
   }
 
