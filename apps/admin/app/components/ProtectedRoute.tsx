@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../stores/authStore';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const loading = useAuthStore((state) => state.loading);
@@ -19,9 +17,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (hydrated && !loading && !user) {
-      router.replace(loginHref);
+      window.location.replace(loginHref);
     }
-  }, [hydrated, loading, loginHref, router, user]);
+  }, [hydrated, loading, loginHref, user]);
 
   if (!hydrated || loading) {
     return (
@@ -49,12 +47,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
               Your admin session is not active. If the page does not move automatically, use the button below.
             </p>
           </div>
-          <Link
+          <a
             href={loginHref}
             className="inline-flex min-h-11 items-center justify-center rounded-lg bg-coral px-5 text-sm font-bold text-white transition hover:bg-coral/90"
           >
             Go to login
-          </Link>
+          </a>
         </div>
       </div>
     );

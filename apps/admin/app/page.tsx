@@ -9,6 +9,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatsCard } from './components/StatsCard';
 import { useFetch } from './hooks/useFetch';
 import { apiService } from './services/api';
+import { useAuthStore } from './stores/authStore';
 
 type DashboardData = {
   revenue: number;
@@ -41,7 +42,11 @@ const emptyData: DashboardData = {
 };
 
 export default function DashboardPage() {
-  const { data, loading, error, refetch } = useFetch<any>(() => apiService.getDashboardStats(), { skip: false });
+  const user = useAuthStore((state) => state.user);
+  const authLoading = useAuthStore((state) => state.loading);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const canLoadDashboard = hydrated && !authLoading && Boolean(user);
+  const { data, loading, error, refetch } = useFetch<any>(() => apiService.getDashboardStats(), { skip: !canLoadDashboard });
   const dashboardData = (data?.data || emptyData) as DashboardData;
   const recentOrders = (data?.recentOrders || []) as RecentOrder[];
   const orderStatusChart = (data?.charts?.orderStatus || []) as Array<{ label: string; value: number }>;
