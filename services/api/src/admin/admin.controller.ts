@@ -107,6 +107,17 @@ export class AdminController {
     return this.adminService.setActiveTheme(id);
   }
 
+  // ==================== SETTINGS ====================
+  @Get("settings")
+  getSettings() {
+    return this.adminService.getSettings();
+  }
+
+  @Put("settings")
+  updateSettings(@Body() data: any) {
+    return this.adminService.updateSettings(data);
+  }
+
   // ==================== ANALYTICS ====================
   @Get("analytics/dashboard")
   getDashboardMetrics() {

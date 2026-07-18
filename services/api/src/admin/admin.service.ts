@@ -375,32 +375,99 @@ export class AdminService {
     });
   }
 
+  // ==================== SETTINGS ====================
+  async getSettings() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    return {
+      data: setting?.value || {
+        appName: "",
+        appDescription: "",
+        appLogo: "",
+        appFavicon: "",
+        contactEmail: "",
+        contactPhone: "",
+        supportEmail: "",
+        smtpHost: "",
+        smtpPort: "",
+        smtpUser: "",
+        footerText: "",
+        socialLinks: {}
+      }
+    };
+  }
+
+  async updateSettings(data: any) {
+    const setting = await this.prisma.appSetting.upsert({
+      where: { key: "admin_settings" },
+      update: { value: data },
+      create: { key: "admin_settings", value: data }
+    });
+
+    return { data: setting.value };
+  }
+
   // ==================== ANALYTICS ====================
   async getDashboardMetrics() {
-    const [totalRevenue, totalOrders, totalUsers, totalProducts] = await Promise.all([
+    const [
+      totalRevenue,
+      totalOrders,
+      totalUsers,
+      totalProducts,
+      pendingOrders,
+      lowStockProducts,
+      totalReviews,
+      averageRating,
+      recentOrders,
+      orderStatusCounts
+    ] = await Promise.all([
       this.prisma.order.aggregate({
         _sum: { total: true },
-        where: { status: "DELIVERED" }
+        where: { status: { in: ["DELIVERED", "SHIPPED", "PACKED", "CONFIRMED"] } }
       }),
       this.prisma.order.count(),
       this.prisma.user.count(),
-      this.prisma.product.count()
+      this.prisma.product.count(),
+      this.prisma.order.count({ where: { status: { in: ["PLACED", "CONFIRMED"] } } }),
+      this.prisma.inventory.count({ where: { stock: { lte: 5 } } }),
+      this.prisma.review.count(),
+      this.prisma.review.aggregate({ _avg: { rating: true }, where: { status: "APPROVED" } }),
+      this.prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { user: true, payment: true }
+      }),
+      this.prisma.order.groupBy({
+        by: ["status"],
+        _count: { id: true }
+      })
     ]);
-
-    const recentOrders = await this.prisma.order.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { user: true }
-    });
 
     return {
       metrics: {
         revenue: totalRevenue._sum?.total || 0,
         orders: totalOrders,
         users: totalUsers,
-        products: totalProducts
+        products: totalProducts,
+        pendingOrders,
+        lowStockProducts,
+        totalReviews,
+        averageRating: Number((averageRating._avg.rating || 0).toFixed(1))
       },
-      recentOrders
+      recentOrders: recentOrders.map((order, index) => ({
+        id: order.id,
+        orderNumber: `ORD-${String(index + 1).padStart(3, "0")}`,
+        customer: order.user?.name || order.user?.email || "Customer",
+        amount: order.total,
+        status: order.status,
+        paymentStatus: order.payment?.status || "PENDING",
+        createdAt: order.createdAt
+      })),
+      charts: {
+        orderStatus: orderStatusCounts.map((item) => ({
+          label: item.status,
+          value: item._count.id
+        }))
+      }
     };
   }
 

@@ -5,86 +5,6 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const mockOrders = [
-  {
-    id: 'order_001',
-    orderNumber: 'ORD-001',
-    userId: 'user_001',
-    status: 'PLACED',
-    subtotal: 2198,
-    tax: 110,
-    shippingCost: 0,
-    totalAmount: 2308,
-    paymentStatus: 'PAID',
-    user: { name: 'Rajesh Kumar', email: 'rajesh@example.com', phone: '9876543210' },
-    items: [
-      {
-        id: 'item_001',
-        productId: 'prod_001',
-        quantity: 2,
-        price: 1099,
-        product: { name: 'Apex Drive Oversized Tee', sku: 'FF-APEX-BLK-M' },
-        variant: { color: 'Black', size: 'M' }
-      }
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'order_002',
-    orderNumber: 'ORD-002',
-    userId: 'user_002',
-    status: 'SHIPPED',
-    subtotal: 899,
-    tax: 45,
-    shippingCost: 60,
-    totalAmount: 1004,
-    paymentStatus: 'PAID',
-    user: { name: 'Priya Singh', email: 'priya@example.com', phone: '9876501234' },
-    items: [
-      {
-        id: 'item_002',
-        productId: 'prod_002',
-        quantity: 1,
-        price: 899,
-        product: { name: 'Highland Legacy Tee', sku: 'FF-HIGH-WHT-L' },
-        variant: { color: 'White', size: 'L' }
-      }
-    ],
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
-const mockUsers = [
-  {
-    id: 'user_001',
-    name: 'Rajesh Kumar',
-    email: 'rajesh@example.com',
-    phone: '9876543210',
-    avatar: null,
-    totalOrders: 3,
-    totalSpent: 5897,
-    lastOrderDate: new Date().toISOString(),
-    createdAt: new Date(Date.now() - 1209600000).toISOString(),
-    isActive: true,
-    addresses: []
-  },
-  {
-    id: 'user_002',
-    name: 'Priya Singh',
-    email: 'priya@example.com',
-    phone: '9876501234',
-    avatar: null,
-    totalOrders: 1,
-    totalSpent: 1004,
-    lastOrderDate: new Date(Date.now() - 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 604800000).toISOString(),
-    isActive: true,
-    addresses: []
-  }
-];
-
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -137,36 +57,19 @@ class ApiService {
 
   // ============ DASHBOARD ============
   async getDashboardStats() {
-    try {
-      const response: any = await this.request('/api/admin/analytics/dashboard');
-      return {
-        data: {
-          revenue: response?.metrics?.revenue ?? response?.data?.revenue ?? 0,
-          orders: response?.metrics?.orders ?? response?.data?.orders ?? 0,
-          products: response?.metrics?.products ?? response?.data?.products ?? 0,
-          users: response?.metrics?.users ?? response?.data?.users ?? 0,
-          pendingOrders: response?.data?.pendingOrders ?? 0,
-          lowStockProducts: response?.data?.lowStockProducts ?? 0,
-          totalReviews: response?.data?.totalReviews ?? 0,
-          averageRating: response?.data?.averageRating ?? 0
-        }
-      };
-    } catch (error) {
-      console.warn('Failed to fetch real dashboard stats, using fallback');
-      // Fallback to mock data
-      return {
-        data: {
-          revenue: 124850,
-          orders: 328,
-          products: 146,
-          users: 2418,
-          pendingOrders: 12,
-          lowStockProducts: 5,
-          totalReviews: 47,
-          averageRating: 4.6
-        }
-      };
-    }
+    const response: any = await this.request('/api/admin/analytics/dashboard');
+    return {
+      data: {
+        revenue: response?.metrics?.revenue ?? response?.data?.revenue ?? 0,
+        orders: response?.metrics?.orders ?? response?.data?.orders ?? 0,
+        products: response?.metrics?.products ?? response?.data?.products ?? 0,
+        users: response?.metrics?.users ?? response?.data?.users ?? 0,
+        pendingOrders: response?.data?.pendingOrders ?? 0,
+        lowStockProducts: response?.data?.lowStockProducts ?? 0,
+        totalReviews: response?.data?.totalReviews ?? 0,
+        averageRating: response?.data?.averageRating ?? 0
+      }
+    };
   }
 
   // ============ PRODUCTS ============
@@ -215,31 +118,26 @@ class ApiService {
     if (params?.filter) query.append('status', params.filter);
     if (params?.search) query.append('search', params.search);
 
-    try {
-      const response: any = await this.request(`/api/admin/orders?${query.toString()}`);
-      const orders = (response?.data ?? response ?? []).map((order: any, index: number) => ({
-        ...order,
-        orderNumber: order.orderNumber ?? `ORD-${String(index + 1).padStart(3, '0')}`,
-        shippingCost: order.shippingCost ?? order.shippingFee ?? 0,
-        totalAmount: order.totalAmount ?? order.total ?? 0,
-        paymentStatus: order.paymentStatus ?? order.payment?.status ?? 'PENDING',
-        user: {
-          name: order.user?.name ?? 'Guest Customer',
-          email: order.user?.email ?? 'guest@example.com',
-          phone: order.user?.phone ?? ''
-        },
-        items: (order.items ?? []).map((item: any) => ({
-          ...item,
-          product: item.product ?? { name: item.name ?? 'Product', sku: item.sku ?? '' },
-          variant: item.variant ?? null
-        }))
-      }));
+    const response: any = await this.request(`/api/admin/orders?${query.toString()}`);
+    const orders = (response?.data ?? response ?? []).map((order: any, index: number) => ({
+      ...order,
+      orderNumber: order.orderNumber ?? `ORD-${String(index + 1).padStart(3, '0')}`,
+      shippingCost: order.shippingCost ?? order.shippingFee ?? 0,
+      totalAmount: order.totalAmount ?? order.total ?? 0,
+      paymentStatus: order.paymentStatus ?? order.payment?.status ?? 'PENDING',
+      user: {
+        name: order.user?.name ?? 'Guest Customer',
+        email: order.user?.email ?? 'guest@example.com',
+        phone: order.user?.phone ?? ''
+      },
+      items: (order.items ?? []).map((item: any) => ({
+        ...item,
+        product: item.product ?? { name: item.name ?? 'Product', sku: item.sku ?? '' },
+        variant: item.variant ?? null
+      }))
+    }));
 
-      return { ...response, data: orders };
-    } catch (error) {
-      console.warn('Failed to fetch orders, using fallback');
-      return { data: mockOrders };
-    }
+    return { ...response, data: orders };
   }
 
   async getOrder(id: string) {
@@ -247,15 +145,10 @@ class ApiService {
   }
 
   async updateOrderStatus(id: string, status: string) {
-    try {
-      return await this.request(`/api/admin/orders/${id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status }),
-      });
-    } catch (error) {
-      console.warn('Failed to update order status, using local fallback');
-      return { success: true, data: { id, status } };
-    }
+    return this.request(`/api/admin/orders/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
   }
 
   async generateInvoice(id: string) {
@@ -271,25 +164,20 @@ class ApiService {
     if (params?.limit) query.append('limit', params.limit.toString());
     if (params?.search) query.append('search', params.search);
 
-    try {
-      const response: any = await this.request(`/api/admin/users?${query.toString()}`);
-      const users = (response?.data ?? response ?? []).map((user: any) => ({
-        ...user,
-        name: user.name ?? user.email?.split('@')[0] ?? 'Customer',
-        phone: user.phone ?? null,
-        avatar: user.avatar ?? user.image ?? null,
-        totalOrders: user.totalOrders ?? 0,
-        totalSpent: user.totalSpent ?? 0,
-        lastOrderDate: user.lastOrderDate ?? null,
-        isActive: user.isActive ?? true,
-        addresses: user.addresses ?? []
-      }));
+    const response: any = await this.request(`/api/admin/users?${query.toString()}`);
+    const users = (response?.data ?? response ?? []).map((user: any) => ({
+      ...user,
+      name: user.name ?? user.email?.split('@')[0] ?? 'Customer',
+      phone: user.phone ?? null,
+      avatar: user.avatar ?? user.image ?? null,
+      totalOrders: user.totalOrders ?? 0,
+      totalSpent: user.totalSpent ?? 0,
+      lastOrderDate: user.lastOrderDate ?? null,
+      isActive: user.isActive ?? true,
+      addresses: user.addresses ?? []
+    }));
 
-      return { ...response, data: users };
-    } catch (error) {
-      console.warn('Failed to fetch users, using fallback');
-      return { data: mockUsers };
-    }
+    return { ...response, data: users };
   }
 
   async getUser(id: string) {
@@ -336,12 +224,7 @@ class ApiService {
 
   // ============ SETTINGS ============
   async getSettings() {
-    try {
-      return await this.request('/api/admin/settings');
-    } catch (error) {
-      console.warn('Failed to fetch settings, using fallback');
-      return { data: {} };
-    }
+    return this.request('/api/admin/settings');
   }
 
   async updateSettings(data: any) {
@@ -353,12 +236,7 @@ class ApiService {
 
   // ============ THEMES ============
   async getThemes() {
-    try {
-      return await this.request('/api/admin/themes');
-    } catch (error) {
-      console.warn('Failed to fetch themes, using fallback');
-      return { data: [] };
-    }
+    return this.request('/api/admin/themes');
   }
 
   async setActiveTheme(themeId: string) {

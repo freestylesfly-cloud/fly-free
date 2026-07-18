@@ -2,24 +2,15 @@
 
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
+import { AlertCircle, CheckCircle, Clock, Package, RefreshCw, ShoppingCart, Star, TrendingUp, Users } from 'lucide-react';
 import { DashboardLayout } from './components/DashboardLayout';
-import { StatsCard } from './components/StatsCard';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { StatsCard } from './components/StatsCard';
 import { useFetch } from './hooks/useFetch';
 import { apiService } from './services/api';
-import {
-  TrendingUp,
-  Package,
-  Users,
-  ShoppingCart,
-  Star,
-  AlertCircle,
-  Clock,
-  CheckCircle,
-  RefreshCw
-} from 'lucide-react';
 
-interface DashboardData {
+type DashboardData = {
   revenue: number;
   orders: number;
   products: number;
@@ -28,232 +19,146 @@ interface DashboardData {
   lowStockProducts: number;
   totalReviews: number;
   averageRating: number;
-}
+};
+
+type RecentOrder = {
+  id: string;
+  orderNumber: string;
+  customer: string;
+  amount: number;
+  status: string;
+};
+
+const emptyData: DashboardData = {
+  revenue: 0,
+  orders: 0,
+  products: 0,
+  users: 0,
+  pendingOrders: 0,
+  lowStockProducts: 0,
+  totalReviews: 0,
+  averageRating: 0
+};
 
 export default function DashboardPage() {
-  // Mock data for development
-  const mockData: DashboardData = {
-    revenue: 124850,
-    orders: 328,
-    products: 146,
-    users: 2418,
-    pendingOrders: 12,
-    lowStockProducts: 5,
-    totalReviews: 47,
-    averageRating: 4.6
-  };
-
-  // Fetch dashboard data using centralized API service
-  const { data, loading, error, refetch } = useFetch<any>(
-    () => apiService.getDashboardStats(),
-    { skip: false }
-  );
-
-  // Transform API response to match dashboard format
-  const getDashboardData = (): DashboardData => {
-    if (!data) return mockData;
-
-    // If API returns metrics object
-    if (data.metrics) {
-      return {
-        revenue: data.metrics.revenue || 0,
-        orders: data.metrics.orders || 0,
-        products: data.metrics.products || 0,
-        users: data.metrics.users || 0,
-        pendingOrders: data.metrics.pendingOrders || Math.floor(data.metrics.orders * 0.05),
-        lowStockProducts: data.metrics.lowStockProducts || Math.floor(data.metrics.products * 0.03),
-        totalReviews: data.metrics.totalReviews || 47,
-        averageRating: data.metrics.averageRating || 4.6
-      };
-    }
-
-    // If API returns data directly
-    if (data.data) {
-      return data.data as DashboardData;
-    }
-
-    return mockData;
-  };
-
-  const dashboardData = getDashboardData();
+  const { data, loading, error, refetch } = useFetch<any>(() => apiService.getDashboardStats(), { skip: false });
+  const dashboardData = (data?.data || emptyData) as DashboardData;
+  const recentOrders = (data?.recentOrders || []) as RecentOrder[];
+  const orderStatusChart = (data?.charts?.orderStatus || []) as Array<{ label: string; value: number }>;
 
   return (
     <ProtectedRoute>
-      <DashboardLayout title="Dashboard" subtitle="Welcome back">
+      <DashboardLayout title="Dashboard" subtitle="Live overview">
         <div className="space-y-6">
-          {/* Error Alert */}
           {error && (
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between">
+            <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4">
               <div>
-                <p className="font-bold text-red-700">Failed to load dashboard</p>
+                <p className="font-bold text-red-700">Failed to load dashboard from API</p>
                 <p className="text-sm text-red-600">{error}</p>
               </div>
-              <button
-                onClick={() => refetch()}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
-              >
-                <RefreshCw size={16} />
-                Retry
+              <button onClick={() => refetch()} className="flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-white">
+                <RefreshCw size={16} /> Retry
               </button>
             </div>
           )}
 
-          {/* Stats Grid */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatsCard
-              title="Total Revenue"
-              value={`₹${(dashboardData?.revenue || 0).toLocaleString()}`}
-              icon={<TrendingUp size={24} />}
-              trend={12}
-              backgroundColor="from-coral"
-            />
-            <StatsCard
-              title="Total Orders"
-              value={dashboardData?.orders || 0}
-              icon={<ShoppingCart size={24} />}
-              trend={8}
-              backgroundColor="from-mint"
-            />
-            <StatsCard
-              title="Total Products"
-              value={dashboardData?.products || 0}
-              icon={<Package size={24} />}
-              trend={5}
-              backgroundColor="from-purple-500"
-            />
-            <StatsCard
-              title="Total Users"
-              value={dashboardData?.users || 0}
-              icon={<Users size={24} />}
-              trend={15}
-              backgroundColor="from-blue-500"
-            />
+            <StatsCard title="Total Revenue" value={`Rs ${(dashboardData.revenue || 0).toLocaleString()}`} icon={<TrendingUp size={24} />} trend={0} backgroundColor="from-coral" />
+            <StatsCard title="Total Orders" value={dashboardData.orders || 0} icon={<ShoppingCart size={24} />} trend={0} backgroundColor="from-mint" />
+            <StatsCard title="Total Products" value={dashboardData.products || 0} icon={<Package size={24} />} trend={0} backgroundColor="from-purple-500" />
+            <StatsCard title="Total Users" value={dashboardData.users || 0} icon={<Users size={24} />} trend={0} backgroundColor="from-blue-500" />
           </div>
 
-          {/* Quick Stats */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                  <Clock className="text-yellow-600" size={20} />
-                </div>
-                <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">Pending</span>
-              </div>
-              <p className="text-black/60 text-sm font-medium">Pending Orders</p>
-              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.pendingOrders || 0}</p>
-              <p className="text-xs text-black/40 mt-2">Awaiting confirmation</p>
-            </div>
-
-            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                  <AlertCircle className="text-red-600" size={20} />
-                </div>
-                <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">Alert</span>
-              </div>
-              <p className="text-black/60 text-sm font-medium">Low Stock Items</p>
-              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.lowStockProducts || 0}</p>
-              <p className="text-xs text-black/40 mt-2">Below threshold</p>
-            </div>
-
-            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <CheckCircle className="text-green-600" size={20} />
-                </div>
-                <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">Active</span>
-              </div>
-              <p className="text-black/60 text-sm font-medium">Total Reviews</p>
-              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.totalReviews || 0}</p>
-              <p className="text-xs text-black/40 mt-2">From customers</p>
-            </div>
-
-            <div className="rounded-lg bg-white border border-black/10 p-4 hover:shadow-lg transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Star className="text-blue-600" size={20} />
-                </div>
-                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">Rating</span>
-              </div>
-              <p className="text-black/60 text-sm font-medium">Avg Rating</p>
-              <p className="text-2xl font-black text-ink mt-1">{dashboardData?.averageRating || 0}</p>
-              <p className="text-xs text-black/40 mt-2">Out of 5.0</p>
-            </div>
+            <MiniStat label="Pending Orders" value={dashboardData.pendingOrders} note="Awaiting action" icon={<Clock className="text-yellow-600" size={20} />} tone="yellow" />
+            <MiniStat label="Low Stock Items" value={dashboardData.lowStockProducts} note="Below threshold" icon={<AlertCircle className="text-red-600" size={20} />} tone="red" />
+            <MiniStat label="Total Reviews" value={dashboardData.totalReviews} note="From customers" icon={<CheckCircle className="text-green-600" size={20} />} tone="green" />
+            <MiniStat label="Avg Rating" value={dashboardData.averageRating} note="Out of 5.0" icon={<Star className="text-blue-600" size={20} />} tone="blue" />
           </div>
 
-          {/* Recent Activity */}
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg bg-white border border-black/10 p-6 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-4">
+            <section className="rounded-lg border border-black/10 bg-white p-6">
+              <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-ink">Recent Orders</h3>
-                <a href="/orders" className="text-sm font-bold text-coral hover:text-coral/80">View All →</a>
+                <Link href="/orders" className="text-sm font-bold text-coral">View All -&gt;</Link>
               </div>
               <div className="space-y-3">
-                {[
-                  { id: 'ORD-001', customer: 'Rajesh Kumar', amount: '₹2,499', status: 'Shipped' },
-                  { id: 'ORD-002', customer: 'Priya Singh', amount: '₹1,999', status: 'Processing' },
-                  { id: 'ORD-003', customer: 'Amit Patel', amount: '₹3,299', status: 'Delivered' },
-                  { id: 'ORD-004', customer: 'Neha Gupta', amount: '₹4,299', status: 'Pending' },
-                ].map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-black/2 hover:bg-black/5 transition">
-                    <div className="flex-1">
-                      <p className="font-bold text-ink">{order.id}</p>
+                {loading ? (
+                  <p className="rounded bg-black/5 p-4 text-sm font-medium text-black/60">Loading orders...</p>
+                ) : recentOrders.length === 0 ? (
+                  <p className="rounded bg-black/5 p-4 text-sm font-medium text-black/60">No orders in database yet.</p>
+                ) : recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between rounded-lg bg-black/2 p-3">
+                    <div>
+                      <p className="font-bold text-ink">{order.orderNumber}</p>
                       <p className="text-sm text-black/60">{order.customer}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-ink">{order.amount}</p>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                        order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                        order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {order.status}
-                      </span>
+                      <p className="font-bold text-ink">Rs {order.amount.toLocaleString()}</p>
+                      <span className="rounded-full bg-black/5 px-2 py-1 text-xs font-bold">{order.status}</span>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div className="rounded-lg bg-white border border-black/10 p-6 hover:shadow-lg transition-all">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-ink">Quick Actions</h3>
+            <section className="rounded-lg border border-black/10 bg-white p-6">
+              <h3 className="mb-4 text-lg font-bold text-ink">Order Status Chart</h3>
+              <div className="space-y-3">
+                {orderStatusChart.length === 0 ? (
+                  <p className="rounded bg-black/5 p-4 text-sm font-medium text-black/60">No chart data yet.</p>
+                ) : orderStatusChart.map((item) => {
+                  const max = Math.max(...orderStatusChart.map((row) => row.value), 1);
+                  return (
+                    <div key={item.label}>
+                      <div className="mb-1 flex justify-between text-sm font-bold">
+                        <span>{item.label}</span>
+                        <span>{item.value}</span>
+                      </div>
+                      <div className="h-2 rounded bg-black/10">
+                        <div className="h-2 rounded bg-coral" style={{ width: `${(item.value / max) * 100}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="grid gap-3">
-                <a
-                  href="/products/new"
-                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-coral to-coral/80 text-white hover:shadow-lg transition font-bold"
-                >
-                  <Package size={20} />
-                  Create New Product
-                </a>
-                <a
-                  href="/orders"
-                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-mint to-mint/80 text-ink hover:shadow-lg transition font-bold"
-                >
-                  <ShoppingCart size={20} />
-                  View All Orders
-                </a>
-                <a
-                  href="/users"
-                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:shadow-lg transition font-bold"
-                >
-                  <Users size={20} />
-                  Manage Users
-                </a>
-                <a
-                  href="/settings"
-                  className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:shadow-lg transition font-bold"
-                >
-                  <AlertCircle size={20} />
-                  Settings & Config
-                </a>
-              </div>
-            </div>
+            </section>
           </div>
+
+          <section className="rounded-lg border border-black/10 bg-white p-6">
+            <h3 className="mb-4 text-lg font-bold text-ink">Quick Actions</h3>
+            <div className="grid gap-3 md:grid-cols-4">
+              <QuickLink href="/products/new" icon={<Package size={20} />} label="Create Product" />
+              <QuickLink href="/orders" icon={<ShoppingCart size={20} />} label="View Orders" />
+              <QuickLink href="/users" icon={<Users size={20} />} label="Manage Users" />
+              <QuickLink href="/settings" icon={<AlertCircle size={20} />} label="Settings" />
+            </div>
+          </section>
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+function MiniStat({ label, value, note, icon, tone }: { label: string; value: number; note: string; icon: React.ReactNode; tone: string }) {
+  return (
+    <div className="rounded-lg border border-black/10 bg-white p-4">
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/5">{icon}</div>
+        <span className="rounded bg-black/5 px-2 py-1 text-xs font-bold capitalize">{tone}</span>
+      </div>
+      <p className="text-sm font-medium text-black/60">{label}</p>
+      <p className="mt-1 text-2xl font-black text-ink">{value || 0}</p>
+      <p className="mt-2 text-xs text-black/40">{note}</p>
+    </div>
+  );
+}
+
+function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+  return (
+    <Link href={href} className="flex items-center gap-3 rounded-lg bg-ink p-4 font-bold text-white">
+      {icon}
+      {label}
+    </Link>
   );
 }

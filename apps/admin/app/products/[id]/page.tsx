@@ -1,26 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Edit } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { apiService } from '../../services/api';
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     void loadProduct();
-  }, [params.id]);
+  }, [id]);
 
   async function loadProduct() {
     try {
       setLoading(true);
       setError('');
-      setProduct(await apiService.getProduct(params.id));
+      setProduct(await apiService.getProduct(id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
     } finally {
