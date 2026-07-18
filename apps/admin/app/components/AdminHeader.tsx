@@ -18,7 +18,7 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/login');
+    router.replace('/login');
   };
 
   return (

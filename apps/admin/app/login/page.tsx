@@ -10,18 +10,28 @@ import { useAuthStore } from '../stores/authStore';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, loading: authLoading, user } = useAuthStore();
-  const [email, setEmail] = useState('admin@flyfree.com');
-  const [password, setPassword] = useState('password123');
+  const { login, checkAuth, loading: authLoading, user } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [nextPath, setNextPath] = useState('/');
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next?.startsWith('/')) {
+      setNextPath(next);
+    }
+
+    void checkAuth();
+  }, [checkAuth]);
 
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push('/');
+      router.replace(nextPath);
     }
-  }, [user, router]);
+  }, [user, router, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +39,7 @@ export default function AdminLoginPage() {
 
     try {
       await login(email, password);
-      router.push('/');
+      router.replace(nextPath);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     }

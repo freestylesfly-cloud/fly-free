@@ -25,16 +25,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
       set({ user: data.user, loading: false });
     } catch (error) {
-      set({ loading: false });
       console.error('Login error:', error);
+      set({ user: null, loading: false });
       throw error;
     }
   },
   logout: async () => {
     try {
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
+      await supabase.auth.signOut();
       set({ user: null, loading: false });
     } catch (error) {
       console.error('Logout error:', error);
