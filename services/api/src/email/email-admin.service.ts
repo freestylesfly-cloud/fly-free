@@ -14,8 +14,10 @@ export class EmailAdminService {
     });
 
     if (!order) throw new BadRequestException('Order not found');
+    if (!order.user.email) throw new BadRequestException('Order user does not have an email address');
 
     const reviewLink = `${process.env.WEB_URL}/orders/${orderId}/review`;
+    const orderNumber = order.id;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -28,7 +30,7 @@ export class EmailAdminService {
           <p>Thank you for your recent purchase! We'd love to hear what you think about your order.</p>
 
           <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B5B;">
-            <p><strong>Order #${order.orderNumber}</strong></p>
+            <p><strong>Order #${orderNumber}</strong></p>
             <p>Your items:</p>
             <ul>
               ${order.items.map(item => `<li>${item.product.name} (Qty: ${item.quantity})</li>`).join('')}
@@ -49,7 +51,7 @@ export class EmailAdminService {
       </div>
     `;
 
-    return this.emailService.sendEmail(order.user.email, `Share Your Experience - Order #${order.orderNumber}`, html);
+    return this.emailService.sendEmail(order.user.email, `Share Your Experience - Order #${orderNumber}`, html);
   }
 
   // Send broadcast message to all users
@@ -77,11 +79,13 @@ export class EmailAdminService {
 
     const results = [];
     for (const user of users) {
+      if (!user.email) continue;
+
       try {
         const result = await this.emailService.sendEmail(user.email, subject, html);
         results.push({ userId: user.id, email: user.email, status: 'sent', messageId: result.messageId });
-      } catch (error) {
-        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message });
+      } catch (error: any) {
+        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message || 'Failed to send email' });
       }
     }
 
@@ -97,6 +101,7 @@ export class EmailAdminService {
   async sendMessageToUser(userId: string, subject: string, message: string, attachmentBase64?: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
+    if (!user.email) throw new BadRequestException('User does not have an email address');
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -127,6 +132,8 @@ export class EmailAdminService {
 
   // Send invitation email
   async sendInviteEmail(email: string, message: string) {
+    if (!email) throw new BadRequestException('Email is required');
+
     const inviteLink = `${process.env.WEB_URL}/invite?email=${encodeURIComponent(email)}`;
 
     const html = `
@@ -200,11 +207,13 @@ export class EmailAdminService {
 
     const results = [];
     for (const user of users) {
+      if (!user.email) continue;
+
       try {
         const result = await this.emailService.sendEmail(user.email, title, html);
         results.push({ userId: user.id, email: user.email, status: 'sent' });
-      } catch (error) {
-        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message });
+      } catch (error: any) {
+        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message || 'Failed to send email' });
       }
     }
 

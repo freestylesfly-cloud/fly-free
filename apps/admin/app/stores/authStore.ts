@@ -54,6 +54,14 @@ function clearStoredSession() {
   window.localStorage.removeItem(USER_KEY);
 }
 
+function getNetworkErrorMessage(error: unknown) {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return `Cannot connect to API at ${API_BASE}. Start @flyfree/api on port 3001 and try again.`;
+  }
+
+  return error instanceof Error ? error.message : 'Request failed';
+}
+
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   token: null,
@@ -63,29 +71,34 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   login: async (email, password) => {
     set({ loading: true });
 
-    const response = await fetch(`${API_BASE}/api/auth/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-    const result = await response.json().catch(() => ({}));
+      const result = await response.json().catch(() => ({}));
 
-    if (!response.ok || result.error) {
+      if (!response.ok || result.error || !result.token) {
+        set({ loading: false, hydrated: true, user: null, token: null });
+        throw new Error(result.error || `Login failed (${response.status})`);
+      }
+
+      const user: AdminUser = {
+        id: result.adminId,
+        email: result.email,
+        name: result.name,
+        role: result.role,
+        permissions: result.permissions
+      };
+
+      writeStoredSession(result.token, user);
+      set({ user, token: result.token, loading: false, hydrated: true });
+    } catch (error) {
       set({ loading: false, hydrated: true, user: null, token: null });
-      throw new Error(result.error || `Login failed (${response.status})`);
+      throw new Error(getNetworkErrorMessage(error));
     }
-
-    const user: AdminUser = {
-      id: result.adminId,
-      email: result.email,
-      name: result.name,
-      role: result.role,
-      permissions: result.permissions
-    };
-
-    writeStoredSession(result.token, user);
-    set({ user, token: result.token, loading: false, hydrated: true });
   },
 
   logout: async () => {

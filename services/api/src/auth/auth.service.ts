@@ -53,7 +53,7 @@ export class AuthService {
 
   async getUserProfile(token: string) {
     // Extract user ID from token and return profile
-    const userId = token.replace("Bearer ", "").split("_")[2];
+    const userId = token.replace("Bearer ", "").replace("jwt_token_", "");
 
     return this.prisma.user.findUnique({
       where: { id: userId },
@@ -90,7 +90,7 @@ export class AuthService {
   }
 
   async getAdminProfile(token: string) {
-    const adminId = token.replace("Bearer ", "").split("_")[2];
+    const adminId = token.replace("Bearer ", "").replace("admin_jwt_", "");
 
     return this.prisma.adminUser.findUnique({
       where: { id: adminId },

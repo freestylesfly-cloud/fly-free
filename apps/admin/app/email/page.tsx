@@ -106,7 +106,7 @@ function BroadcastForm() {
       const result = await response.json();
       setMessage(`✅ Email sent to ${result.sent} users (${result.failed} failed)`);
       e.currentTarget.reset();
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -192,7 +192,7 @@ function PromotionalForm() {
       const result = await response.json();
       setMessage(`✅ Promotional email sent to ${result.sent} users`);
       e.currentTarget.reset();
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -284,7 +284,7 @@ function ReviewRequestForm() {
       const result = await response.json();
       setMessage('✅ Review request email sent!');
       e.currentTarget.reset();
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -351,7 +351,7 @@ function InviteForm() {
 
       setMessage('✅ Invite email sent!');
       e.currentTarget.reset();
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);
@@ -419,7 +419,7 @@ function CustomMessageForm() {
 
       setMessage('✅ Message sent to user!');
       e.currentTarget.reset();
-    } catch (error) {
+    } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
       setLoading(false);

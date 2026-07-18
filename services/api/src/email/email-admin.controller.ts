@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body } from '@nestjs/common';
 import { EmailAdminService } from './email-admin.service';
 
-@Controller('api/admin/email')
+@Controller('admin/email')
 export class EmailAdminController {
   constructor(private emailAdminService: EmailAdminService) {}
 
@@ -32,7 +32,7 @@ export class EmailAdminController {
 
   @Post('send-invite')
   async sendInvite(@Body() payload: { email: string; message?: string }) {
-    return this.emailAdminService.sendInviteEmail(payload.email, payload.message);
+    return this.emailAdminService.sendInviteEmail(payload.email, payload.message ?? '');
   }
 
   @Post('send-promotional')

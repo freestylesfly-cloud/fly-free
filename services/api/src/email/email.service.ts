@@ -173,7 +173,7 @@ export class EmailService {
     return this.sendEmail(email, `New Product: ${product.name}`, html);
   }
 
-  private async sendEmail(to: string, subject: string, html: string) {
+  async sendEmail(to: string, subject: string, html: string) {
     const transporter = this.requireTransporter();
     const info = await transporter.sendMail({
       from: `Fly Free <${this.configService.get<string>("GMAIL_USER")}>`,
@@ -186,7 +186,7 @@ export class EmailService {
     return { success: true, messageId: info.messageId };
   }
 
-  private async sendEmailWithAttachment(to: string, subject: string, html: string, attachment: MailAttachment) {
+  async sendEmailWithAttachment(to: string, subject: string, html: string, attachment: MailAttachment) {
     const transporter = this.requireTransporter();
     const info = await transporter.sendMail({
       from: `Fly Free <${this.configService.get<string>("GMAIL_USER")}>`,
