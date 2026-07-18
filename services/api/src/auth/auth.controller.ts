@@ -10,9 +10,9 @@ export class AuthController {
   async signupUser(@Body() body: { email: string; password: string; name: string }) {
     try {
       return await this.authService.signupUser(body.email, body.password, body.name);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Signup failed" },
+        { error: error?.message || "Signup failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -22,9 +22,9 @@ export class AuthController {
   async loginUser(@Body() body: { email: string; password: string }) {
     try {
       return await this.authService.loginUser(body.email, body.password);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Login failed" },
+        { error: error?.message || "Login failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -34,9 +34,9 @@ export class AuthController {
   async logoutUser(@Headers("authorization") token: string) {
     try {
       return await this.authService.logoutUser(token);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Logout failed" },
+        { error: error?.message || "Logout failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -46,9 +46,9 @@ export class AuthController {
   async getUserProfile(@Headers("authorization") token: string) {
     try {
       return await this.authService.getUserProfile(token);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Profile fetch failed" },
+        { error: error?.message || "Profile fetch failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -63,10 +63,10 @@ export class AuthController {
         throw new HttpException({ error: result.error }, result.status || HttpStatus.BAD_REQUEST);
       }
       return result;
-    } catch (error) {
-      if (error.status) throw error;
+    } catch (error: any) {
+      if (error?.status) throw error;
       throw new HttpException(
-        { error: error.message || "Admin login failed" },
+        { error: error?.message || "Admin login failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -76,9 +76,9 @@ export class AuthController {
   async logoutAdmin(@Headers("authorization") token: string) {
     try {
       return await this.authService.logoutAdmin(token);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Admin logout failed" },
+        { error: error?.message || "Admin logout failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -95,10 +95,10 @@ export class AuthController {
         );
       }
       return result;
-    } catch (error) {
-      if (error.status) throw error;
+    } catch (error: any) {
+      if (error?.status) throw error;
       throw new HttpException(
-        { error: error.message || "Profile fetch failed" },
+        { error: error?.message || "Profile fetch failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -109,9 +109,9 @@ export class AuthController {
   async forgotPassword(@Body() body: { email: string }) {
     try {
       return await this.authService.sendPasswordResetEmail(body.email);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Password reset failed" },
+        { error: error?.message || "Password reset failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -125,10 +125,10 @@ export class AuthController {
         throw new HttpException({ error: result.error }, result.status || HttpStatus.BAD_REQUEST);
       }
       return result;
-    } catch (error) {
-      if (error.status) throw error;
+    } catch (error: any) {
+      if (error?.status) throw error;
       throw new HttpException(
-        { error: error.message || "Password reset failed" },
+        { error: error?.message || "Password reset failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -139,9 +139,9 @@ export class AuthController {
   async verifyEmail(@Body() body: { email: string; code: string }) {
     try {
       return await this.authService.verifyEmail(body.email, body.code);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Email verification failed" },
+        { error: error?.message || "Email verification failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -152,9 +152,9 @@ export class AuthController {
   async googleLogin(@Body() body: { idToken: string }) {
     try {
       return await this.authService.googleLogin(body.idToken);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "Google login failed" },
+        { error: error?.message || "Google login failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -164,9 +164,9 @@ export class AuthController {
   async githubLogin(@Body() body: { code: string }) {
     try {
       return await this.authService.githubLogin(body.code);
-    } catch (error) {
+    } catch (error: any) {
       throw new HttpException(
-        { error: error.message || "GitHub login failed" },
+        { error: error?.message || "GitHub login failed" },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
