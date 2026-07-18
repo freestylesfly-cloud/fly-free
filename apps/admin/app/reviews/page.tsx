@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DataTable, Column } from '../components/DataTable';
 import { Search, Check, X, Eye, Star } from 'lucide-react';
+import { apiService } from '../services/api';
 
 interface Review {
   id: string;
@@ -28,6 +29,9 @@ export default function ReviewsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRating, setFilterRating] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<keyof Review>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
@@ -37,19 +41,28 @@ export default function ReviewsPage() {
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, [currentPage, filterStatus, filterRating, searchTerm]);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${baseUrl}/api/admin/reviews?page=1&limit=100`);
-      if (!res.ok) throw new Error('Failed to fetch reviews');
-
-      const result = await res.json();
+      setError('');
+      const result: any = await apiService.getReviews({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm || undefined,
+        filter: filterStatus === 'all' ? undefined : filterStatus,
+        rating: filterRating === 'all' ? undefined : filterRating
+      });
       setReviews(result.data || []);
+      setTotalPages(result.pagination?.pages || 1);
+      setTotalReviews(result.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch reviews');
+      setReviews([]);
+      setTotalPages(1);
+      setTotalReviews(0);
     } finally {
       setLoading(false);
     }
@@ -57,48 +70,23 @@ export default function ReviewsPage() {
 
   const handleReviewStatus = async (reviewId: string, status: Review['status']) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${baseUrl}/api/admin/reviews/${reviewId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-
-      if (res.ok) {
-        setReviews(reviews.map(r => r.id === reviewId ? { ...r, status } : r));
-        if (selectedReview?.id === reviewId) {
-          setSelectedReview({ ...selectedReview, status });
-        }
+      await apiService.updateReviewStatus(reviewId, status);
+      setReviews(reviews.map(r => r.id === reviewId ? { ...r, status } : r));
+      if (selectedReview?.id === reviewId) {
+        setSelectedReview({ ...selectedReview, status });
       }
     } catch (error) {
       console.error('Failed to update review status:', error);
     }
   };
 
-  const filteredReviews = reviews.filter(review => {
-    const matchesSearch =
-      review.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      review.user.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
-    const matchesRating = filterRating === 'all' || review.rating.toString() === filterRating;
-    return matchesSearch && matchesStatus && matchesRating;
-  });
-
-  const sortedReviews = [...filteredReviews].sort((a, b) => {
+  const sortedReviews = [...reviews].sort((a, b) => {
     const aVal = a[sortBy] ?? '';
     const bVal = b[sortBy] ?? '';
     if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
     if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
     return 0;
   });
-
-  const paginatedReviews = sortedReviews.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(sortedReviews.length / itemsPerPage);
 
   const renderStars = (rating: number) => (
     <div className="flex gap-1">
@@ -215,7 +203,7 @@ export default function ReviewsPage() {
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="rounded-lg bg-white border border-black/10 p-4">
               <p className="text-black/60 text-sm">Total Reviews</p>
-              <p className="text-3xl font-black text-ink">{reviews.length}</p>
+              <p className="text-3xl font-black text-ink">{totalReviews}</p>
             </div>
             <div className="rounded-lg bg-white border border-black/10 p-4">
               <p className="text-black/60 text-sm">Pending</p>
@@ -231,10 +219,17 @@ export default function ReviewsPage() {
             </div>
           </div>
 
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="font-bold text-red-700">Failed to load reviews from database</p>
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
           {/* Table */}
           <DataTable<Review>
             columns={columns}
-            data={paginatedReviews}
+            data={sortedReviews}
             keyExtractor={(row) => row.id}
             loading={loading}
             sortBy={sortBy}

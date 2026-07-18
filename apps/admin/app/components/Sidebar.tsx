@@ -2,7 +2,7 @@
 
 import { LayoutGrid, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -18,13 +18,13 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
-    router.push('/login');
+    window.location.replace('/login');
   };
 
   return (
@@ -67,7 +67,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="p-3 space-y-1">
           {menuItems.map(({ label, href, icon: Icon }) => {
-            const isActive = pathname === href;
+            const isActive = href === '/' ? pathname === href : pathname.startsWith(href);
             return (
               <Link
                 key={href}

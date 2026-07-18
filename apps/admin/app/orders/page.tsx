@@ -60,7 +60,26 @@ export default function OrdersPage() {
     { skip: false }
   );
 
-  const orders = (ordersData?.data || []) as Order[];
+  const orders = ((ordersData?.data || []) as Partial<Order>[]).map((order, index) => ({
+    ...order,
+    id: order.id ?? `order_${index}`,
+    orderNumber: order.orderNumber ?? `ORD-${String(index + 1).padStart(3, '0')}`,
+    userId: order.userId ?? '',
+    status: order.status ?? 'PLACED',
+    subtotal: order.subtotal ?? 0,
+    tax: order.tax ?? 0,
+    shippingCost: order.shippingCost ?? 0,
+    totalAmount: order.totalAmount ?? 0,
+    paymentStatus: order.paymentStatus ?? 'PENDING',
+    user: {
+      name: order.user?.name ?? 'Guest Customer',
+      email: order.user?.email ?? 'guest@example.com',
+      phone: order.user?.phone ?? ''
+    },
+    items: order.items ?? [],
+    createdAt: order.createdAt ?? new Date().toISOString(),
+    updatedAt: order.updatedAt ?? new Date().toISOString()
+  })) as Order[];
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -72,10 +91,11 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter(order => {
+    const query = searchTerm.toLowerCase();
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      order.orderNumber.toLowerCase().includes(query) ||
+      order.user.name.toLowerCase().includes(query) ||
+      order.user.email.toLowerCase().includes(query);
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     return matchesSearch && matchesStatus;
   });

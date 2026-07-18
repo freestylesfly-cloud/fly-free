@@ -6,16 +6,29 @@ export class AdminService {
   constructor(private prisma: PrismaService) {}
 
   // ==================== PRODUCTS ====================
-  async listProducts(page: number = 1, limit: number = 10) {
+  async listCategories() {
+    return this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] });
+  }
+
+  async listProducts(page: number = 1, limit: number = 10, search?: string) {
     const skip = (page - 1) * limit;
+    const where = search?.trim()
+      ? {
+          OR: [
+            { name: { contains: search.trim(), mode: "insensitive" as const } },
+            { sku: { contains: search.trim(), mode: "insensitive" as const } }
+          ]
+        }
+      : {};
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
+        where,
         skip,
         take: limit,
-        include: { category: true, variants: true, images: true },
+        include: { category: true, variants: { include: { inventory: true } }, images: true },
         orderBy: { createdAt: "desc" }
       }),
-      this.prisma.product.count()
+      this.prisma.product.count({ where })
     ]);
 
     return {
@@ -27,49 +40,140 @@ export class AdminService {
   async getProduct(id: string) {
     return this.prisma.product.findUnique({
       where: { id },
-      include: { category: true, variants: true, images: true, collection: true }
+      include: { category: true, variants: { include: { inventory: true } }, images: true, collection: true, theme: true }
     });
   }
 
   async createProduct(data: any) {
+    const categoryId = data.categoryId || (await this.ensureDefaultCategory()).id;
     return this.prisma.product.create({
       data: {
         name: data.name,
-        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, "-"),
+        slug: data.slug || this.slugify(data.name),
         sku: data.sku || `SKU-${Date.now()}`,
-        description: data.description,
-        price: data.price,
-        mrp: data.mrp || data.price,
+        description: data.description || "",
+        gender: data.gender || "UNISEX",
+        tags: data.tags || [],
+        material: data.material,
+        washCare: data.washCare,
+        price: Number(data.price),
+        mrp: Number(data.mrp || data.price),
         discountPercent: data.discountPercent || 0,
-        categoryId: data.categoryId || "default",
+        gstPercent: data.gstPercent || 5,
+        weightGrams: data.weightGrams,
+        seoTitle: data.seoTitle,
+        seoDescription: data.seoDescription,
+        isVisible: data.isVisible ?? true,
+        isFeatured: data.isFeatured ?? false,
+        isTrending: data.isTrending ?? false,
+        isNewArrival: data.isNewArrival ?? false,
+        categoryId,
         collectionId: data.collectionId,
-        variants: data.variants ? {
-          createMany: { data: data.variants }
+        themeId: data.themeId,
+        variants: Array.isArray(data.variants) ? {
+          create: data.variants.map((variant: any) => ({
+            sku: variant.sku,
+            color: variant.color,
+            size: variant.size,
+            price: variant.price ? Number(variant.price) : undefined,
+            inventory: {
+              create: {
+                stock: Number(variant.stock || 0),
+                lowStockAlert: Number(variant.lowStockAlert || 5),
+                warehouse: variant.warehouse || undefined,
+                barcode: variant.barcode || undefined
+              }
+            }
+          }))
         } : undefined,
         images: data.images ? {
           createMany: { data: data.images }
         } : undefined
       },
-      include: { category: true, variants: true, images: true }
+      include: { category: true, variants: { include: { inventory: true } }, images: true }
     });
   }
 
   async updateProduct(id: string, data: any) {
-    return this.prisma.product.update({
-      where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        mrp: data.mrp,
-        discountPercent: data.discountPercent
-      },
-      include: { category: true, variants: true, images: true }
+    return this.prisma.$transaction(async (tx) => {
+      if (Array.isArray(data.variants)) {
+        const existingVariants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
+        await tx.inventory.deleteMany({ where: { variantId: { in: existingVariants.map((variant) => variant.id) } } });
+        await tx.productVariant.deleteMany({ where: { productId: id } });
+      }
+
+      if (Array.isArray(data.images)) {
+        await tx.productImage.deleteMany({ where: { productId: id } });
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: {
+          name: data.name,
+          slug: data.slug,
+          sku: data.sku,
+          description: data.description,
+          gender: data.gender,
+          tags: data.tags,
+          material: data.material,
+          washCare: data.washCare,
+          price: data.price === undefined ? undefined : Number(data.price),
+          mrp: data.mrp === undefined ? undefined : Number(data.mrp),
+          discountPercent: data.discountPercent,
+          gstPercent: data.gstPercent,
+          weightGrams: data.weightGrams,
+          seoTitle: data.seoTitle,
+          seoDescription: data.seoDescription,
+          isVisible: data.isVisible,
+          isFeatured: data.isFeatured,
+          isTrending: data.isTrending,
+          isNewArrival: data.isNewArrival,
+          categoryId: data.categoryId,
+          collectionId: data.collectionId,
+          themeId: data.themeId,
+          images: Array.isArray(data.images) ? { createMany: { data: data.images } } : undefined,
+          variants: Array.isArray(data.variants) ? {
+            create: data.variants.map((variant: any) => ({
+              sku: variant.sku,
+              color: variant.color,
+              size: variant.size,
+              price: variant.price ? Number(variant.price) : undefined,
+              inventory: {
+                create: {
+                  stock: Number(variant.stock || 0),
+                  lowStockAlert: Number(variant.lowStockAlert || 5),
+                  warehouse: variant.warehouse || undefined,
+                  barcode: variant.barcode || undefined
+                }
+              }
+            }))
+          } : undefined
+        },
+        include: { category: true, variants: { include: { inventory: true } }, images: true }
+      });
     });
   }
 
   async deleteProduct(id: string) {
-    return this.prisma.product.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      const variants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
+      await tx.inventory.deleteMany({ where: { variantId: { in: variants.map((variant) => variant.id) } } });
+      await tx.productVariant.deleteMany({ where: { productId: id } });
+      await tx.productImage.deleteMany({ where: { productId: id } });
+      return tx.product.delete({ where: { id } });
+    });
+  }
+
+  private slugify(value: string) {
+    return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+  }
+
+  private async ensureDefaultCategory() {
+    return this.prisma.category.upsert({
+      where: { slug: "uncategorized" },
+      update: {},
+      create: { name: "Uncategorized", slug: "uncategorized" }
+    });
   }
 
   // ==================== ORDERS ====================
@@ -172,6 +276,76 @@ export class AdminService {
         image: data.image
       }
     });
+  }
+
+  // ==================== REVIEWS ====================
+  async listReviews(params: { page: number; limit: number; status?: string; rating?: number; search?: string }) {
+    const page = Math.max(params.page || 1, 1);
+    const limit = Math.min(Math.max(params.limit || 10, 1), 100);
+    const skip = (page - 1) * limit;
+    const normalizedStatus = params.status?.toUpperCase();
+    const where: any = {};
+
+    if (normalizedStatus && ["PENDING", "APPROVED", "REJECTED"].includes(normalizedStatus)) {
+      where.status = normalizedStatus;
+    }
+
+    if (params.rating && params.rating >= 1 && params.rating <= 5) {
+      where.rating = params.rating;
+    }
+
+    if (params.search?.trim()) {
+      const search = params.search.trim();
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { body: { contains: search, mode: "insensitive" } },
+        { product: { name: { contains: search, mode: "insensitive" } } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } }
+      ];
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          product: { select: { id: true, name: true, slug: true, sku: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } }
+        },
+        orderBy: { createdAt: "desc" }
+      }),
+      this.prisma.review.count({ where })
+    ]);
+
+    return {
+      data: reviews.map((review) => ({
+        ...review,
+        content: review.body
+      })),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+    };
+  }
+
+  async updateReviewStatus(id: string, status: string) {
+    const normalizedStatus = status.toUpperCase();
+    const validStatuses = ["PENDING", "APPROVED", "REJECTED"];
+
+    if (!validStatuses.includes(normalizedStatus)) {
+      throw new Error(`Invalid review status. Must be one of: ${validStatuses.join(", ")}`);
+    }
+
+    const review = await this.prisma.review.update({
+      where: { id },
+      data: { status: normalizedStatus as any },
+      include: {
+        product: { select: { id: true, name: true, slug: true, sku: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } }
+      }
+    });
+
+    return { ...review, content: review.body };
   }
 
   // ==================== THEMES ====================

@@ -50,12 +50,26 @@ export default function UsersPage() {
     { skip: false }
   );
 
-  const users = (usersData?.data || []) as User[];
+  const users = ((usersData?.data || []) as Partial<User>[]).map((user, index) => ({
+    ...user,
+    id: user.id ?? `user_${index}`,
+    name: user.name ?? user.email?.split('@')[0] ?? 'Customer',
+    email: user.email ?? 'customer@example.com',
+    phone: user.phone ?? null,
+    avatar: user.avatar ?? null,
+    totalOrders: user.totalOrders ?? 0,
+    totalSpent: user.totalSpent ?? 0,
+    lastOrderDate: user.lastOrderDate ?? null,
+    createdAt: user.createdAt ?? new Date().toISOString(),
+    isActive: user.isActive ?? true,
+    addresses: user.addresses ?? []
+  })) as User[];
 
   const filteredUsers = users.filter(user => {
+    const query = searchTerm.toLowerCase();
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query);
     const matchesActive = filterActive === 'all' || (filterActive === 'active' ? user.isActive : !user.isActive);
     return matchesSearch && matchesActive;
   });

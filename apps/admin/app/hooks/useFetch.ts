@@ -28,15 +28,19 @@ export function useFetch<T>(
   const retryCountRef = useRef(0);
   const maxRetries = options?.retries ?? 1;
   const isMountedRef = useRef(true);
+  const fetchFnRef = useRef(fetchFn);
 
-  // Separate function that doesn't depend on itself
+  useEffect(() => {
+    fetchFnRef.current = fetchFn;
+  }, [fetchFn]);
+
   const performFetch = useCallback(async () => {
     if (!isMountedRef.current) return;
 
     setState({ data: null, loading: true, error: null });
 
     try {
-      const result = await fetchFn();
+      const result = await fetchFnRef.current();
       if (isMountedRef.current) {
         setState({ data: result, loading: false, error: null });
         retryCountRef.current = 0;
@@ -54,7 +58,7 @@ export function useFetch<T>(
         setState({ data: null, loading: false, error: errorMessage });
       }
     }
-  }, [fetchFn, maxRetries]);
+  }, [maxRetries]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -66,7 +70,7 @@ export function useFetch<T>(
     return () => {
       isMountedRef.current = false;
     };
-  }, [fetchFn, options?.skip]); // Only depend on fetchFn and skip, NOT performFetch
+  }, [options?.skip, performFetch]);
 
   const refetch = useCallback(async () => {
     retryCountRef.current = 0;

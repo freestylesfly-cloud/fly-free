@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, Search, Settings, User, LogOut } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -13,6 +14,7 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -21,7 +23,7 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-black/10 md:ml-64">
+    <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-black/10">
       <div className="flex items-center justify-between px-5 py-4 gap-4">
         {/* Left: Title */}
         <div className="flex-1">
@@ -37,6 +39,13 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
               <input
                 type="text"
                 placeholder="Search..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && searchTerm.trim()) {
+                    window.location.href = `/products?search=${encodeURIComponent(searchTerm.trim())}`;
+                  }
+                }}
                 autoFocus
                 onBlur={() => setSearchOpen(false)}
                 className="px-4 py-2 rounded-lg border border-black/10 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/30 transition-all"
@@ -66,9 +75,9 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
           </button>
 
           {/* Settings */}
-          <button className="p-2 rounded-lg hover:bg-black/5 text-ink/70 hover:text-ink transition-all">
+          <Link href="/settings" className="p-2 rounded-lg hover:bg-black/5 text-ink/70 hover:text-ink transition-all" aria-label="Open settings">
             <Settings size={20} />
-          </button>
+          </Link>
 
           {/* Profile */}
           <div className="relative">
