@@ -1,11 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { getApiBaseUrl, readApiResponse } from '../../lib/api';
+
+const API_BASE = getApiBaseUrl();
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailLoading />}>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
@@ -36,16 +47,16 @@ export default function VerifyEmailPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/user/verify-email', {
+      const response = await fetch(`${API_BASE}/auth/user/verify-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code })
       });
 
-      const data = await response.json();
+      const data = await readApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Verification failed');
+        throw new Error(data?.error || 'Verification failed');
       }
 
       setSuccess(true);
@@ -64,16 +75,16 @@ export default function VerifyEmailPage() {
     setResending(true);
 
     try {
-      const response = await fetch('/api/auth/user/resend-email', {
+      const response = await fetch(`${API_BASE}/auth/user/resend-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
 
-      const data = await response.json();
+      const data = await readApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to resend');
+        throw new Error(data?.error || 'Failed to resend');
       }
 
       setCode('');
@@ -176,6 +187,17 @@ export default function VerifyEmailPage() {
             Back to login
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function VerifyEmailLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10 px-5">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 size={36} className="animate-spin text-coral" />
+        <p className="font-bold text-white">Loading verification...</p>
       </div>
     </div>
   );

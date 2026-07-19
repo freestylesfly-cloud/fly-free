@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Search, Trash2 } from 'lucide-react';
 import { apiService } from '../services/api';
 
 type Category = { id: string; name: string; slug: string };
+type Theme = { id: string; name: string; slug: string; active?: boolean };
 type ProductFormData = {
   name: string;
   slug: string;
@@ -13,6 +14,7 @@ type ProductFormData = {
   description: string;
   gender: 'MEN' | 'WOMEN' | 'UNISEX';
   categoryId: string;
+  themeId: string;
   price: number;
   mrp: number;
   discountPercent: number;
@@ -47,6 +49,7 @@ const emptyForm: ProductFormData = {
   description: '',
   gender: 'UNISEX',
   categoryId: '',
+  themeId: '',
   price: 0,
   mrp: 0,
   discountPercent: 0,
@@ -77,6 +80,7 @@ const emptyVariant: VariantRow = {
 export function ProductForm({ productId }: { productId?: string }) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [themes, setThemes] = useState<Theme[]>([]);
   const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [images, setImages] = useState<ImageRow[]>([{ ...emptyImage }]);
   const [variants, setVariants] = useState<VariantRow[]>([{ ...emptyVariant }]);
@@ -91,8 +95,12 @@ export function ProductForm({ productId }: { productId?: string }) {
   async function loadBaseData() {
     try {
       setLoading(true);
-      const categoryResult: any = await apiService.getCategories();
+      const [categoryResult, themeResult]: any[] = await Promise.all([
+        apiService.getCategories(),
+        apiService.getThemes()
+      ]);
       setCategories(Array.isArray(categoryResult) ? categoryResult : categoryResult.data || []);
+      setThemes(Array.isArray(themeResult) ? themeResult : themeResult.data || []);
 
       if (!productId) return;
 
@@ -104,6 +112,7 @@ export function ProductForm({ productId }: { productId?: string }) {
         description: product.description || '',
         gender: product.gender || 'UNISEX',
         categoryId: product.categoryId || '',
+        themeId: product.themeId || '',
         price: product.price || 0,
         mrp: product.mrp || 0,
         discountPercent: product.discountPercent || 0,
@@ -150,6 +159,8 @@ export function ProductForm({ productId }: { productId?: string }) {
       const payload = {
         ...form,
         slug: form.slug || slugify(form.name),
+        categoryId: form.categoryId || undefined,
+        themeId: form.themeId || null,
         tags: form.tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
         images: images.filter((image) => image.url.trim()).map((image, index) => ({ ...image, priority: image.priority || index })),
         variants: variants.filter((variant) => variant.sku && variant.color && variant.size)
@@ -183,21 +194,30 @@ export function ProductForm({ productId }: { productId?: string }) {
           <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
           <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="auto-generated if empty" />
           <Field label="SKU" value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} required />
+          <SearchableSelect
+            label="Product category"
+            value={form.categoryId}
+            placeholder="Search Men, Women, Unisex..."
+            emptyLabel="Auto / Uncategorized"
+            options={categories.map((category) => ({ value: category.id, label: category.name, hint: category.slug }))}
+            onChange={(value) => setForm({ ...form, categoryId: value })}
+          />
           <label className="grid gap-2 text-sm font-bold">
-            Category
-            <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} className="rounded border border-black/10 px-3 py-2">
-              <option value="">Auto / Uncategorized</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-bold">
-            Gender
+            Product type
             <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value as ProductFormData['gender'] })} className="rounded border border-black/10 px-3 py-2">
               <option value="UNISEX">Unisex</option>
               <option value="MEN">Men</option>
               <option value="WOMEN">Women</option>
             </select>
           </label>
+          <SearchableSelect
+            label="Shop-by-theme campaign"
+            value={form.themeId}
+            placeholder="Search Puja, Bihu, Spider-Man..."
+            emptyLabel="No campaign theme"
+            options={themes.map((theme) => ({ value: theme.id, label: theme.name, hint: theme.active ? `${theme.slug} - active` : theme.slug }))}
+            onChange={(value) => setForm({ ...form, themeId: value })}
+          />
           <Field label="Tags" value={form.tagsText} onChange={(value) => setForm({ ...form, tagsText: value })} placeholder="anime, oversized, assam" />
           <label className="grid gap-2 text-sm font-bold md:col-span-2">
             Description
@@ -305,6 +325,79 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
     <label className="grid gap-2 text-sm font-bold">
       {label}
       <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} className="rounded border border-black/10 px-3 py-2" />
+    </label>
+  );
+}
+
+function SearchableSelect({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+  emptyLabel
+}: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string; hint?: string }>;
+  onChange: (value: string) => void;
+  placeholder: string;
+  emptyLabel: string;
+}) {
+  const selected = options.find((option) => option.value === value);
+  const [query, setQuery] = useState(selected?.label || '');
+  const filtered = options
+    .filter((option) => `${option.label} ${option.hint || ''}`.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 8);
+
+  useEffect(() => {
+    setQuery(selected?.label || '');
+  }, [selected?.label]);
+
+  return (
+    <label className="grid gap-2 text-sm font-bold">
+      {label}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-black/35" />
+        <input
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            if (!event.target.value) onChange('');
+          }}
+          placeholder={placeholder}
+          className="w-full rounded border border-black/10 py-2 pl-9 pr-3"
+        />
+        {query && query !== selected?.label && (
+          <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded border border-black/10 bg-white shadow-xl">
+            <button
+              type="button"
+              onClick={() => {
+                onChange('');
+                setQuery('');
+              }}
+              className="block w-full px-3 py-2 text-left text-sm font-bold hover:bg-black/5"
+            >
+              {emptyLabel}
+            </button>
+            {filtered.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setQuery(option.label);
+                }}
+                className="block w-full px-3 py-2 text-left hover:bg-black/5"
+              >
+                <span className="block text-sm font-black">{option.label}</span>
+                {option.hint && <span className="block text-xs text-black/45">{option.hint}</span>}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-3 py-2 text-sm text-black/50">No match found</p>}
+          </div>
+        )}
+      </div>
     </label>
   );
 }

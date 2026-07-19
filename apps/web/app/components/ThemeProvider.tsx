@@ -4,16 +4,16 @@ import { useEffect } from 'react';
 import { useThemeStore } from '../../src/store/themeStore';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { isDarkMode } = useThemeStore();
+  const { resolvedUiTheme } = useThemeStore();
 
   useEffect(() => {
     const html = document.documentElement;
-    if (isDarkMode) {
+    if (resolvedUiTheme === 'dark') {
       html.setAttribute('data-theme', 'dark');
     } else {
       html.removeAttribute('data-theme');
     }
-  }, [isDarkMode]);
+  }, [resolvedUiTheme]);
 
   return <>{children}</>;
 }

@@ -7,10 +7,16 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Fly Free - Premium T-Shirts & Streetwear",
   description: "Explore our collection of stylish and comfortable t-shirts with unique designs. Custom t-shirt designer, multiple themes, and secure checkout.",
-  viewport: "width=device-width, initial-scale=1.0",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#111827",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -18,13 +24,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <meta name="theme-color" content="#1a1a2e" />
-        <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="bg-ink text-white min-h-screen flex flex-col">
+      <body style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)' }} className="min-h-screen flex flex-col">
         <Providers>
           <Header />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
           <Footer />
         </Providers>
       </body>

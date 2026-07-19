@@ -2,14 +2,14 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useAuthStore } from './stores/authStore';
-import { useThemeStore } from './stores/themeStore';
+import { useThemeStore } from '../src/store/themeStore';
 
 export function Providers({ children }: { children: ReactNode }) {
   const { checkAuth } = useAuthStore();
   const { initTheme } = useThemeStore();
 
   useEffect(() => {
-    // Initialize theme from localStorage
+    // Initialize UI theme and fetch admin theme
     initTheme();
 
     // Check if user is logged in

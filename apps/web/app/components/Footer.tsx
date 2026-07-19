@@ -6,45 +6,47 @@ import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'luc
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
+  const linkStyle = { color: 'var(--text-secondary)', transition: 'color 0.3s ease' };
+
   return (
-    <footer className="bg-ink/50 border-t border-white/10 mt-20">
+    <footer className="mt-20 transition" style={{ backgroundColor: 'var(--bg-secondary)', borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
       <div className="container mx-auto px-4 py-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-coral to-mint flex items-center justify-center">
-                <span className="text-lg font-black text-white">FF</span>
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-cyan-500 flex items-center justify-center">
+                <span className="text-lg font-black" style={{ color: 'var(--text-primary)' }}>FF</span>
               </div>
               <h3 className="font-black text-lg">Fly Free</h3>
             </div>
-            <p className="text-white/60 text-sm">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Premium t-shirts with unique designs. Express yourself with our collection of stylish and comfortable apparel.
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h4 className="font-bold text-white">Shop</h4>
+            <h4 className="font-bold">Shop</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/products" className="text-white/60 hover:text-coral transition">
+                <Link href="/products" className="transition hover:opacity-80" style={linkStyle}>
                   All Products
                 </Link>
               </li>
               <li>
-                <Link href="/products?theme=anime" className="text-white/60 hover:text-coral transition">
+                <Link href="/products?theme=anime" className="transition hover:opacity-80" style={linkStyle}>
                   Anime Collection
                 </Link>
               </li>
               <li>
-                <Link href="/products?theme=marvel" className="text-white/60 hover:text-coral transition">
-                  Marvel Collection
+                <Link href="/products?theme=spider-man" className="transition hover:opacity-80" style={linkStyle}>
+                  Spider-Man Collection
                 </Link>
               </li>
               <li>
-                <Link href="/designer" className="text-white/60 hover:text-coral transition">
+                <Link href="/designer" className="transition hover:opacity-80" style={linkStyle}>
                   Design Your Own
                 </Link>
               </li>
@@ -53,25 +55,25 @@ export function Footer() {
 
           {/* Company */}
           <div className="space-y-4">
-            <h4 className="font-bold text-white">Company</h4>
+            <h4 className="font-bold">Company</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/about" className="text-white/60 hover:text-coral transition">
+                <Link href="/about" className="transition hover:opacity-80" style={linkStyle}>
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-white/60 hover:text-coral transition">
+                <Link href="/blog" className="transition hover:opacity-80" style={linkStyle}>
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="text-white/60 hover:text-coral transition">
+                <Link href="/careers" className="transition hover:opacity-80" style={linkStyle}>
                   Careers
                 </Link>
               </li>
               <li>
-                <Link href="/press" className="text-white/60 hover:text-coral transition">
+                <Link href="/press" className="transition hover:opacity-80" style={linkStyle}>
                   Press Kit
                 </Link>
               </li>
@@ -80,21 +82,21 @@ export function Footer() {
 
           {/* Support */}
           <div className="space-y-4">
-            <h4 className="font-bold text-white">Support</h4>
+            <h4 className="font-bold">Support</h4>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-center gap-2 text-white/60">
+              <li className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                 <Mail size={16} />
-                <a href="mailto:support@flyfree.com" className="hover:text-coral transition">
+                <a href="mailto:support@flyfree.com" className="transition hover:opacity-80" style={linkStyle}>
                   support@flyfree.com
                 </a>
               </li>
-              <li className="flex items-center gap-2 text-white/60">
+              <li className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                 <Phone size={16} />
-                <a href="tel:+919876543210" className="hover:text-coral transition">
+                <a href="tel:+919876543210" className="transition hover:opacity-80" style={linkStyle}>
                   +91 98765 43210
                 </a>
               </li>
-              <li className="flex items-start gap-2 text-white/60">
+              <li className="flex items-start gap-2" style={{ color: 'var(--text-secondary)' }}>
                 <MapPin size={16} className="mt-0.5" />
                 <span>123 Fashion Street, Delhi 110001, India</span>
               </li>
@@ -103,23 +105,23 @@ export function Footer() {
         </div>
 
         {/* Policies and Social */}
-        <div className="border-t border-white/10 pt-8 space-y-6">
+        <div className="pt-8 space-y-6" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Legal Links */}
-            <div className="flex flex-wrap gap-4 text-xs text-white/60">
-              <Link href="/privacy" className="hover:text-coral transition">
+            <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <Link href="/privacy" className="transition hover:opacity-80" style={linkStyle}>
                 Privacy Policy
               </Link>
               <span>•</span>
-              <Link href="/terms" className="hover:text-coral transition">
+              <Link href="/terms" className="transition hover:opacity-80" style={linkStyle}>
                 Terms of Service
               </Link>
               <span>•</span>
-              <Link href="/cookies" className="hover:text-coral transition">
+              <Link href="/cookies" className="transition hover:opacity-80" style={linkStyle}>
                 Cookie Policy
               </Link>
               <span>•</span>
-              <Link href="/contact" className="hover:text-coral transition">
+              <Link href="/contact" className="transition hover:opacity-80" style={linkStyle}>
                 Contact Us
               </Link>
             </div>
@@ -130,43 +132,47 @@ export function Footer() {
                 href="https://facebook.com/flyfree"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-white/10 rounded-lg transition"
+                className="p-2 rounded-lg transition"
+                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
                 title="Facebook"
               >
-                <Facebook size={18} className="text-white/60" />
+                <Facebook size={18} />
               </a>
               <a
                 href="https://instagram.com/flyfree"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-white/10 rounded-lg transition"
+                className="p-2 rounded-lg transition"
+                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
                 title="Instagram"
               >
-                <Instagram size={18} className="text-white/60" />
+                <Instagram size={18} />
               </a>
               <a
                 href="https://twitter.com/flyfree"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-white/10 rounded-lg transition"
+                className="p-2 rounded-lg transition"
+                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
                 title="Twitter"
               >
-                <Twitter size={18} className="text-white/60" />
+                <Twitter size={18} />
               </a>
               <a
                 href="https://linkedin.com/company/flyfree"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 hover:bg-white/10 rounded-lg transition"
+                className="p-2 rounded-lg transition"
+                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
                 title="LinkedIn"
               >
-                <Linkedin size={18} className="text-white/60" />
+                <Linkedin size={18} />
               </a>
             </div>
           </div>
 
           {/* Copyright */}
-          <div className="border-t border-white/10 pt-6 text-center text-xs text-white/40">
+          <div className="pt-6 text-center text-xs" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px', color: 'var(--text-tertiary)' }}>
             <p>
               © {currentYear} Fly Free. All rights reserved. Made with ❤️ for fashion lovers worldwide.
             </p>
@@ -179,8 +185,9 @@ export function Footer() {
 
       {/* Offline Indicator */}
       <div
-        className="bg-red-500/10 border-t border-red-500/30 px-4 py-3 text-center text-sm text-red-400 hidden"
+        className="border-t px-4 py-3 text-center text-sm hidden"
         id="offline-banner"
+        style={{ backgroundColor: 'var(--bg-tertiary)', borderTopColor: 'var(--accent-primary)', color: 'var(--text-primary)' }}
       >
         ⚠️ You're currently offline. Some features may be limited.
       </div>

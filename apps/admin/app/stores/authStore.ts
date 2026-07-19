@@ -55,11 +55,26 @@ function clearStoredSession() {
 }
 
 function getNetworkErrorMessage(error: unknown) {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return `API request timed out at ${API_BASE}. Check that @flyfree/api is healthy on port 3001.`;
+  }
+
   if (error instanceof TypeError && error.message === 'Failed to fetch') {
     return `Cannot connect to API at ${API_BASE}. Start @flyfree/api on port 3001 and try again.`;
   }
 
   return error instanceof Error ? error.message : 'Request failed';
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -72,7 +87,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ loading: true });
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/admin/login`, {
+      const response = await fetchWithTimeout(`${API_BASE}/api/auth/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -129,7 +144,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ user: stored.user, token: stored.token, loading: true, hydrated: true });
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/admin/profile`, {
+      const response = await fetchWithTimeout(`${API_BASE}/api/auth/admin/profile`, {
         headers: { Authorization: `Bearer ${stored.token}` }
       });
 

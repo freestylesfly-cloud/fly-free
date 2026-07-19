@@ -12,7 +12,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const loginHref = `/login?next=${encodeURIComponent(pathname || '/')}`;
 
   useEffect(() => {
-    useAuthStore.getState().checkAuth();
+    if (!useAuthStore.getState().hydrated) {
+      useAuthStore.getState().checkAuth();
+    }
   }, []);
 
   useEffect(() => {
@@ -21,14 +23,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, loading, loginHref, user]);
 
-  if (!hydrated || loading) {
+  if (!hydrated || (loading && !user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10">
-        <div className="text-center space-y-4">
-          <div className="inline-block">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-coral to-mint animate-spin" />
-          </div>
-          <p className="text-white font-bold text-sm">Loading dashboard...</p>
+      <div className="min-h-screen bg-[#f6f7fb]">
+        <div className="h-1 w-full overflow-hidden bg-black/5">
+          <div className="h-full w-1/3 animate-pulse bg-coral" />
         </div>
       </div>
     );
@@ -36,14 +35,14 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10 px-5">
+      <div className="min-h-screen flex items-center justify-center bg-[#f6f7fb] px-5">
         <div className="w-full max-w-sm text-center space-y-5">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-coral to-mint">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-ink">
             <span className="text-lg font-black text-white">FF</span>
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-black text-white">Opening login...</h1>
-            <p className="text-sm leading-6 text-white/65">
+            <h1 className="text-xl font-black text-ink">Opening login</h1>
+            <p className="text-sm leading-6 text-black/60">
               Your admin session is not active. If the page does not move automatically, use the button below.
             </p>
           </div>

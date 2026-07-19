@@ -17,6 +17,8 @@ type Product = {
   mrp: number;
   discountPercent: number;
   category?: { name: string };
+  theme?: { name: string; active?: boolean } | null;
+  gender: 'MEN' | 'WOMEN' | 'UNISEX';
   variants?: Array<{ inventory?: { stock: number } | null }>;
   images?: Array<{ url: string; color?: string | null }>;
   isFeatured: boolean;
@@ -98,6 +100,8 @@ export default function ProductsPage() {
                 <thead className="bg-black/5">
                   <tr>
                     <th className="px-5 py-3 text-left">Product</th>
+                    <th className="px-5 py-3 text-left">Theme</th>
+                    <th className="px-5 py-3 text-left">Type</th>
                     <th className="px-5 py-3 text-left">SKU</th>
                     <th className="px-5 py-3 text-left">Price</th>
                     <th className="px-5 py-3 text-left">Variants</th>
@@ -108,9 +112,9 @@ export default function ProductsPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={7} className="px-5 py-8 text-center text-black/60">Loading products...</td></tr>
+                    <tr><td colSpan={9} className="px-5 py-8 text-center text-black/60">Loading products...</td></tr>
                   ) : products.length === 0 ? (
-                    <tr><td colSpan={7} className="px-5 py-8 text-center text-black/60">No products found in database</td></tr>
+                    <tr><td colSpan={9} className="px-5 py-8 text-center text-black/60">No products found in database</td></tr>
                   ) : products.map((product) => {
                     const stock = (product.variants || []).reduce((sum, variant) => sum + (variant.inventory?.stock || 0), 0);
                     return (
@@ -119,6 +123,16 @@ export default function ProductsPage() {
                           <p className="font-black">{product.name}</p>
                           <p className="text-sm text-black/50">{product.category?.name || 'Uncategorized'}</p>
                         </td>
+                        <td className="px-5 py-4">
+                          {product.theme ? (
+                            <span className="rounded bg-black/[0.04] px-2 py-1 text-xs font-black">
+                              {product.theme.name}{product.theme.active ? ' · Active' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-black/45">No campaign</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-sm font-bold">{product.gender || 'UNISEX'}</td>
                         <td className="px-5 py-4 text-sm">{product.sku}</td>
                         <td className="px-5 py-4">
                           <p className="font-bold">Rs {product.price}</p>

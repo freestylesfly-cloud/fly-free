@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { getApiBaseUrl, readApiResponse } from '../../lib/api';
+
+const API_BASE = getApiBaseUrl();
 
 export default function SignupPage() {
   const router = useRouter();
@@ -99,7 +102,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/user/signup', {
+      const response = await fetch(`${API_BASE}/auth/user/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -110,10 +113,10 @@ export default function SignupPage() {
         })
       });
 
-      const data = await response.json();
+      const data = await readApiResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Signup failed');
+        throw new Error(data?.error || 'Signup failed');
       }
 
       setSuccess(true);
@@ -277,7 +280,14 @@ export default function SignupPage() {
             </Link>
           </p>
           <p className="text-xs text-white/40">
-            By signing up, you agree to our Terms of Service and Privacy Policy
+            By signing up, you agree to our{' '}
+            <Link href="/terms" className="font-bold text-coral hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="font-bold text-coral hover:underline">
+              Privacy Policy
+            </Link>
           </p>
         </div>
       </div>

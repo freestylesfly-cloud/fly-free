@@ -5,17 +5,19 @@ import { PrismaService } from "../prisma/prisma.service";
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listProducts(category?: string) {
+  listProducts(category?: string, theme?: string) {
     return this.prisma.product.findMany({
       where: {
         isVisible: true,
-        category: category ? { slug: category } : undefined
+        category: category ? { slug: category } : undefined,
+        theme: theme ? { slug: theme } : undefined
       },
       include: {
         category: true,
         collection: true,
-        images: true,
-        variants: true
+        theme: true,
+        images: { orderBy: { priority: "asc" } },
+        variants: { include: { inventory: true } }
       },
       orderBy: { createdAt: "desc" }
     });
@@ -27,9 +29,14 @@ export class CatalogService {
       include: {
         category: true,
         collection: true,
-        images: true,
+        theme: true,
+        images: { orderBy: { priority: "asc" } },
         variants: { include: { inventory: true } },
-        reviews: { where: { status: "APPROVED" } }
+        reviews: {
+          where: { status: "APPROVED" },
+          include: { user: { select: { name: true, image: true } } },
+          orderBy: { createdAt: "desc" }
+        }
       }
     });
 
@@ -42,5 +49,18 @@ export class CatalogService {
 
   listCollections() {
     return this.prisma.collection.findMany({ orderBy: { priority: "asc" } });
+  }
+
+  async listFilters() {
+    const [categories, themes, collections] = await Promise.all([
+      this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
+      this.prisma.theme.findMany({
+        where: { active: true },
+        orderBy: [{ priority: "asc" }, { name: "asc" }]
+      }),
+      this.listCollections()
+    ]);
+
+    return { categories, themes, collections };
   }
 }

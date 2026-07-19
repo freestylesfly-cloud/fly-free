@@ -51,7 +51,19 @@ class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        let details = response.statusText;
+        try {
+          const body = await response.json();
+          details = body?.error || body?.message || JSON.stringify(body);
+        } catch {
+          try {
+            details = await response.text();
+          } catch {
+            details = response.statusText;
+          }
+        }
+
+        throw new Error(`${endpoint} failed: HTTP ${response.status} ${details}`);
       }
 
       const result = await response.json();
@@ -86,6 +98,26 @@ class ApiService {
   // ============ PRODUCTS ============
   async getCategories() {
     return this.request('/api/admin/categories');
+  }
+
+  async createCategory(data: any) {
+    return this.request('/api/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCategory(id: string, data: any) {
+    return this.request(`/api/admin/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCategory(id: string) {
+    return this.request(`/api/admin/categories/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   async getProducts(params?: PaginationParams) {
@@ -369,9 +401,77 @@ class ApiService {
     return this.request('/api/admin/themes');
   }
 
+  async createTheme(data: any) {
+    return this.request('/api/admin/themes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTheme(themeId: string, data: any) {
+    return this.request(`/api/admin/themes/${themeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   async setActiveTheme(themeId: string) {
     return this.request(`/api/admin/themes/${themeId}/activate`, {
       method: 'PUT',
+    });
+  }
+
+  async getWebsiteThemes() {
+    return this.request('/api/admin/website-themes');
+  }
+
+  async createWebsiteTheme(data: any) {
+    return this.request('/api/admin/website-themes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateWebsiteTheme(themeId: string, data: any) {
+    return this.request(`/api/admin/website-themes/${themeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async setActiveWebsiteTheme(themeId: string) {
+    return this.request(`/api/admin/website-themes/${themeId}/activate`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteWebsiteTheme(themeId: string) {
+    return this.request(`/api/admin/website-themes/${themeId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAnnouncements() {
+    return this.request('/api/admin/announcements');
+  }
+
+  async createAnnouncement(data: any) {
+    return this.request('/api/admin/announcements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAnnouncement(id: string, data: any) {
+    return this.request(`/api/admin/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAnnouncement(id: string) {
+    return this.request(`/api/admin/announcements/${id}`, {
+      method: 'DELETE',
     });
   }
 

@@ -21,7 +21,7 @@ export function useFetch<T>(
 ): UseFetchState<T> & { refetch: () => Promise<void> } {
   const [state, setState] = useState<UseFetchState<T>>({
     data: null,
-    loading: true,
+    loading: !options?.skip,
     error: null,
   });
 
@@ -37,7 +37,7 @@ export function useFetch<T>(
   const performFetch = useCallback(async () => {
     if (!isMountedRef.current) return;
 
-    setState({ data: null, loading: true, error: null });
+    setState((current) => ({ ...current, loading: true, error: null }));
 
     try {
       const result = await fetchFnRef.current();
@@ -63,7 +63,9 @@ export function useFetch<T>(
   useEffect(() => {
     isMountedRef.current = true;
 
-    if (!options?.skip) {
+    if (options?.skip) {
+      setState((current) => ({ ...current, loading: false }));
+    } else {
       performFetch();
     }
 

@@ -16,6 +16,38 @@ export class AdminService {
     return this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] });
   }
 
+  async createCategory(data: any) {
+    return this.prisma.category.create({
+      data: {
+        name: data.name,
+        slug: data.slug || this.slugify(data.name),
+        imageUrl: data.imageUrl || undefined,
+        priority: data.priority === undefined ? 0 : Number(data.priority)
+      }
+    });
+  }
+
+  async updateCategory(id: string, data: any) {
+    return this.prisma.category.update({
+      where: { id },
+      data: {
+        name: data.name,
+        slug: data.slug,
+        imageUrl: data.imageUrl,
+        priority: data.priority === undefined ? undefined : Number(data.priority)
+      }
+    });
+  }
+
+  async deleteCategory(id: string) {
+    const productCount = await this.prisma.product.count({ where: { categoryId: id } });
+    if (productCount > 0) {
+      throw new Error(`Cannot delete category while ${productCount} product(s) use it.`);
+    }
+
+    return this.prisma.category.delete({ where: { id } });
+  }
+
   async listProducts(page: number = 1, limit: number = 10, search?: string) {
     const skip = (page - 1) * limit;
     const where = search?.trim()
@@ -31,7 +63,7 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        include: { category: true, variants: { include: { inventory: true } }, images: true },
+        include: { category: true, theme: true, collection: true, variants: { include: { inventory: true } }, images: true },
         orderBy: { createdAt: "desc" }
       }),
       this.prisma.product.count({ where })
@@ -575,28 +607,188 @@ export class AdminService {
   // ==================== THEMES ====================
   async listThemes() {
     return this.prisma.theme.findMany({
-      orderBy: { id: "asc" }
+      include: { products: { select: { id: true, name: true, slug: true, sku: true }, take: 6 }, announcements: true },
+      orderBy: [{ priority: "asc" }, { name: "asc" }]
     });
   }
 
   async getActiveTheme() {
-    return this.prisma.theme.findFirst({
-      where: { active: true }
+    const now = new Date();
+    return this.prisma.theme.findMany({
+      where: {
+        active: true,
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] }
+        ]
+      },
+      orderBy: [{ priority: "asc" }, { name: "asc" }]
+    });
+  }
+
+  async createTheme(data: any) {
+    const normalized = this.normalizeThemeData(data);
+
+    return this.prisma.theme.create({
+      data: normalized,
+      include: { products: true, announcements: true }
+    });
+  }
+
+  async updateTheme(id: string, data: any) {
+    const normalized = this.normalizeThemeData(data, true);
+
+    return this.prisma.theme.update({
+      where: { id },
+      data: normalized,
+      include: { products: true, announcements: true }
     });
   }
 
   async setActiveTheme(id: string) {
-    // Deactivate all themes
-    await this.prisma.theme.updateMany({
-      where: { active: true },
-      data: { active: false }
-    });
-
-    // Activate selected theme
+    const theme = await this.prisma.theme.findUnique({ where: { id }, select: { active: true } });
     return this.prisma.theme.update({
       where: { id },
-      data: { active: true }
+      data: { active: !theme?.active }
     });
+  }
+
+  async listWebsiteThemes() {
+    return this.prisma.websiteTheme.findMany({ orderBy: [{ isActive: "desc" }, { priority: "asc" }, { name: "asc" }] });
+  }
+
+  async createWebsiteTheme(data: any) {
+    const normalized = this.normalizeWebsiteThemeData(data);
+
+    if (normalized.isActive) {
+      return this.prisma.$transaction(async (tx) => {
+        await tx.websiteTheme.updateMany({ where: { isActive: true }, data: { isActive: false } });
+        return tx.websiteTheme.create({ data: normalized });
+      });
+    }
+
+    return this.prisma.websiteTheme.create({ data: normalized });
+  }
+
+  async updateWebsiteTheme(id: string, data: any) {
+    const normalized = this.normalizeWebsiteThemeData(data, true);
+
+    if (normalized.isActive) {
+      return this.prisma.$transaction(async (tx) => {
+        await tx.websiteTheme.updateMany({ where: { id: { not: id }, isActive: true }, data: { isActive: false } });
+        return tx.websiteTheme.update({ where: { id }, data: { ...normalized, isActive: true } });
+      });
+    }
+
+    return this.prisma.websiteTheme.update({ where: { id }, data: normalized });
+  }
+
+  async setActiveWebsiteTheme(id: string) {
+    await this.prisma.websiteTheme.updateMany({ where: { isActive: true }, data: { isActive: false } });
+    return this.prisma.websiteTheme.update({ where: { id }, data: { isActive: true } });
+  }
+
+  async deleteWebsiteTheme(id: string) {
+    return this.prisma.websiteTheme.delete({ where: { id } });
+  }
+
+  async listAnnouncements() {
+    return { data: await this.prisma.announcement.findMany({ include: { theme: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }) };
+  }
+
+  async createAnnouncement(data: any) {
+    return this.prisma.announcement.create({
+      data: this.normalizeAnnouncementData(data),
+      include: { theme: true }
+    });
+  }
+
+  async updateAnnouncement(id: string, data: any) {
+    return this.prisma.announcement.update({
+      where: { id },
+      data: this.normalizeAnnouncementData(data, true),
+      include: { theme: true }
+    });
+  }
+
+  async deleteAnnouncement(id: string) {
+    return this.prisma.announcement.delete({ where: { id } });
+  }
+
+  private normalizeThemeData(data: any, partial = false) {
+    const normalized: any = {};
+    const set = (key: string, value: any) => {
+      if (!partial || value !== undefined) normalized[key] = value;
+    };
+
+    set("name", data.name);
+    set("slug", data.slug || (data.name ? this.slugify(data.name) : undefined));
+    set("description", data.description);
+    set("story", data.story);
+    set("imageUrl", data.imageUrl);
+    set("bannerImageUrl", data.bannerImageUrl);
+    set("primaryColor", data.primaryColor);
+    set("secondaryColor", data.secondaryColor);
+    set("accentColor", data.accentColor);
+    set("fontFamily", data.fontFamily);
+    set("animationStyle", data.animationStyle);
+    set("priority", data.priority === undefined ? undefined : Number(data.priority));
+    set("active", data.active);
+    set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
+    set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
+
+    return normalized;
+  }
+
+  private normalizeWebsiteThemeData(data: any, partial = false) {
+    const normalized: any = {};
+    const set = (key: string, value: any) => {
+      if (!partial || value !== undefined) normalized[key] = value;
+    };
+
+    set("name", data.name);
+    set("slug", data.slug || (data.name ? this.slugify(data.name) : undefined));
+    set("description", data.description);
+    set("primaryColor", data.primaryColor);
+    set("secondaryColor", data.secondaryColor);
+    set("backgroundColor", data.backgroundColor);
+    set("textColor", data.textColor);
+    set("accentColor", data.accentColor);
+    set("fontFamily", data.fontFamily);
+    set("animationStyle", data.animationStyle);
+    set("heroTitle", data.heroTitle);
+    set("heroSubtitle", data.heroSubtitle);
+    set("heroDesktopImageUrl", data.heroDesktopImageUrl);
+    set("heroMobileImageUrl", data.heroMobileImageUrl);
+    set("heroCtaLabel", data.heroCtaLabel);
+    set("heroHref", data.heroHref);
+    set("priority", data.priority === undefined ? undefined : Number(data.priority));
+    set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
+    set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
+    set("isActive", data.isActive);
+
+    return normalized;
+  }
+
+  private normalizeAnnouncementData(data: any, partial = false) {
+    const normalized: any = {};
+    const set = (key: string, value: any) => {
+      if (!partial || value !== undefined) normalized[key] = value;
+    };
+
+    set("title", data.title);
+    set("message", data.message);
+    set("href", data.href);
+    set("imageUrl", data.imageUrl);
+    set("ctaLabel", data.ctaLabel);
+    set("type", data.type);
+    set("priority", data.priority === undefined ? undefined : Number(data.priority));
+    set("isActive", data.isActive);
+    set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
+    set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
+    set("themeId", data.themeId || (data.themeId === null ? null : undefined));
+
+    return normalized;
   }
 
   // ==================== SETTINGS ====================

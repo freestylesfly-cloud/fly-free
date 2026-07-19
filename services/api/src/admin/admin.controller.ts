@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Header, StreamableFile } from "@nestjs/common";
+import { ApiTags } from "@nestjs/swagger";
 import { AdminService } from "./admin.service";
 
 @Controller("admin")
@@ -6,11 +7,31 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // ==================== PRODUCTS ====================
+  @ApiTags("👨‍💼 Admin Products")
   @Get("categories")
   listCategories() {
     return this.adminService.listCategories();
   }
 
+  @ApiTags("👨‍💼 Admin Products")
+  @Post("categories")
+  createCategory(@Body() data: any) {
+    return this.adminService.createCategory(data);
+  }
+
+  @ApiTags("👨‍💼 Admin Products")
+  @Put("categories/:id")
+  updateCategory(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateCategory(id, data);
+  }
+
+  @ApiTags("👨‍💼 Admin Products")
+  @Delete("categories/:id")
+  deleteCategory(@Param("id") id: string) {
+    return this.adminService.deleteCategory(id);
+  }
+
+  @ApiTags("👨‍💼 Admin Products")
   @Get("products")
   listProducts(@Query("page") page?: string, @Query("limit") limit?: string, @Query("search") search?: string) {
     return this.adminService.listProducts(page ? parseInt(page) : 1, limit ? parseInt(limit) : 10, search);
@@ -124,9 +145,64 @@ export class AdminController {
     return this.adminService.getActiveTheme();
   }
 
+  @Get("website-themes")
+  listWebsiteThemes() {
+    return this.adminService.listWebsiteThemes();
+  }
+
+  @Post("website-themes")
+  createWebsiteTheme(@Body() data: any) {
+    return this.adminService.createWebsiteTheme(data);
+  }
+
+  @Put("website-themes/:id")
+  updateWebsiteTheme(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateWebsiteTheme(id, data);
+  }
+
+  @Put("website-themes/:id/activate")
+  setActiveWebsiteTheme(@Param("id") id: string) {
+    return this.adminService.setActiveWebsiteTheme(id);
+  }
+
+  @Delete("website-themes/:id")
+  deleteWebsiteTheme(@Param("id") id: string) {
+    return this.adminService.deleteWebsiteTheme(id);
+  }
+
+  @Post("themes")
+  createTheme(@Body() data: any) {
+    return this.adminService.createTheme(data);
+  }
+
+  @Put("themes/:id")
+  updateTheme(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateTheme(id, data);
+  }
+
   @Put("themes/:id/activate")
   setActiveTheme(@Param("id") id: string) {
     return this.adminService.setActiveTheme(id);
+  }
+
+  @Get("announcements")
+  listAnnouncements() {
+    return this.adminService.listAnnouncements();
+  }
+
+  @Post("announcements")
+  createAnnouncement(@Body() data: any) {
+    return this.adminService.createAnnouncement(data);
+  }
+
+  @Put("announcements/:id")
+  updateAnnouncement(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateAnnouncement(id, data);
+  }
+
+  @Delete("announcements/:id")
+  deleteAnnouncement(@Param("id") id: string) {
+    return this.adminService.deleteAnnouncement(id);
   }
 
   // ==================== SETTINGS ====================

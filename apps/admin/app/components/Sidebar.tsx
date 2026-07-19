@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare, Share2 } from 'lucide-react';
+import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Palette, Sliders, LogOut, Menu, X, MessageSquare, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -12,6 +12,7 @@ const menuItems = [
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutGrid },
       { label: 'Products', href: '/products', icon: Package },
+      { label: 'Categories', href: '/categories', icon: Tags },
       { label: 'Orders', href: '/orders', icon: ShoppingCart },
       { label: 'Users', href: '/users', icon: Users },
     ],
@@ -29,7 +30,8 @@ const menuItems = [
     label: 'Website',
     items: [
       { label: 'Pages', href: '/pages', icon: FileText },
-      { label: 'Themes', href: '/themes', icon: Palette },
+      { label: 'Product Themes', href: '/themes', icon: Palette },
+      { label: 'Website Themes', href: '/website-themes', icon: Sparkles },
       { label: 'Settings', href: '/settings', icon: Sliders },
     ],
   },

@@ -106,11 +106,24 @@ model Category {
 }
 
 model Theme {
-  id       String    @id @default(cuid())
-  name     String
-  slug     String    @unique
-  active   Boolean   @default(false)
-  products Product[]
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  description    String?
+  story          String?
+  imageUrl       String?
+  bannerImageUrl String?
+  primaryColor   String         @default("#111827")
+  secondaryColor String         @default("#ff6b5b")
+  accentColor    String         @default("#4ecdc4")
+  fontFamily     String         @default("Inter, Arial, sans-serif")
+  animationStyle String         @default("fade")
+  priority       Int            @default(0)
+  active         Boolean        @default(false)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  products       Product[]
+  announcements  Announcement[]
 }
 
 model Collection {
@@ -354,11 +367,33 @@ model HeroBanner {
 }
 
 model GiftOption {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
+  imageUrl    String?
   price       Int
-  isActive    Boolean @default(true)
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  message   String
+  href      String?
+  imageUrl  String?
+  ctaLabel  String?
+  type      String    @default("INFO")
+  priority  Int       @default(0)
+  isActive  Boolean   @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  themeId   String?
+  theme     Theme?    @relation(fields: [themeId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Notification {
@@ -455,18 +490,29 @@ model Referral {
 }
 
 model WebsiteTheme {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  slug            String   @unique
-  primaryColor    String
-  secondaryColor  String
-  backgroundColor String
-  textColor       String
-  accentColor     String
-  fontFamily      String
-  isActive        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  name               String    @unique
+  slug               String    @unique
+  description        String?
+  primaryColor       String
+  secondaryColor     String
+  backgroundColor    String
+  textColor          String
+  accentColor        String
+  fontFamily         String
+  animationStyle     String    @default("fade")
+  heroTitle          String?
+  heroSubtitle       String?
+  heroDesktopImageUrl String?
+  heroMobileImageUrl  String?
+  heroCtaLabel       String?
+  heroHref           String?
+  priority           Int       @default(0)
+  startsAt           DateTime?
+  endsAt             DateTime?
+  isActive           Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Return {

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getApiBaseUrl, readApiResponse } from '../lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = getApiBaseUrl();
 
 interface User {
   id: string;
@@ -22,8 +23,8 @@ interface AuthStore {
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
-  updateProfile: (data: { name?: string; phone?: string; image?: string }) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateProfile: (data: { name?: string; phone?: string; image?: string }) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -46,10 +47,10 @@ const useAuthStore = create<AuthStore>()(
             body: JSON.stringify({ email, password })
           });
 
-          const data = await response.json();
+          const data = await readApiResponse(response);
 
           if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
+            throw new Error(data?.error || 'Login failed');
           }
 
           set({
@@ -94,10 +95,10 @@ const useAuthStore = create<AuthStore>()(
             body: JSON.stringify({ name, email, phone, password })
           });
 
-          const data = await response.json();
+          const data = await readApiResponse(response);
 
           if (!response.ok) {
-            throw new Error(data.error || 'Signup failed');
+            throw new Error(data?.error || 'Signup failed');
           }
 
           set({ loading: false, hydrated: true });
@@ -117,8 +118,8 @@ const useAuthStore = create<AuthStore>()(
           });
 
           if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Verification failed');
+            const data = await readApiResponse(response);
+            throw new Error(data?.error || 'Verification failed');
           }
 
           set({ loading: false, hydrated: true });
@@ -138,8 +139,8 @@ const useAuthStore = create<AuthStore>()(
           });
 
           if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Resend failed');
+            const data = await readApiResponse(response);
+            throw new Error(data?.error || 'Resend failed');
           }
 
           set({ loading: false });
@@ -164,14 +165,15 @@ const useAuthStore = create<AuthStore>()(
             body: JSON.stringify(data)
           });
 
-          const result = await response.json();
+          const result = await readApiResponse(response);
 
           if (!response.ok) {
-            throw new Error(result.error || 'Update failed');
+            throw new Error(result?.error || 'Update failed');
           }
 
           set({ user: result.user, loading: false });
           localStorage.setItem('flyfree_user_data', JSON.stringify(result.user));
+          return true;
         } catch (error) {
           set({ loading: false });
           throw error;
@@ -194,11 +196,12 @@ const useAuthStore = create<AuthStore>()(
           });
 
           if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Password change failed');
+            const data = await readApiResponse(response);
+            throw new Error(data?.error || 'Password change failed');
           }
 
           set({ loading: false });
+          return true;
         } catch (error) {
           set({ loading: false });
           throw error;
@@ -221,7 +224,7 @@ const useAuthStore = create<AuthStore>()(
               throw new Error('Token invalid');
             }
 
-            const data = await response.json();
+            const data = await readApiResponse(response);
             set({ user: data, token, loading: false, hydrated: true });
             localStorage.setItem('flyfree_user_data', JSON.stringify(data));
           } catch {

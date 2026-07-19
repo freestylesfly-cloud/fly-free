@@ -1,6 +1,8 @@
 import { Controller, Post, Get, Body } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { EmailAdminService } from './email-admin.service';
 
+@ApiTags("📧 Email")
 @Controller('admin/email')
 export class EmailAdminController {
   constructor(private emailAdminService: EmailAdminService) {}

@@ -22,6 +22,7 @@ async function main() {
   await prisma.inventory.deleteMany(); // Delete inventory before variants
   await prisma.productVariant.deleteMany();
   await prisma.product.deleteMany();
+  await prisma.announcement.deleteMany();
   await prisma.collection.deleteMany();
   await prisma.theme.deleteMany();
   await prisma.category.deleteMany();
@@ -37,6 +38,7 @@ async function main() {
   await prisma.appSetting.deleteMany();
   await prisma.customizationRequest.deleteMany();
   await prisma.giftOption.deleteMany();
+  await prisma.websiteTheme.deleteMany();
 
   // Create Categories
   const categories = await Promise.all([
@@ -64,14 +66,15 @@ async function main() {
   ]);
 
   // Create Themes
+  const themeStory = 'A merch theme is a storytelling drop: visual direction, campaign colors, animation feel, and product grouping. It is separate from the customer dark/light mode preference.';
   const themes = await Promise.all([
-    prisma.theme.create({ data: { name: 'Anime', slug: 'anime' } }),
-    prisma.theme.create({ data: { name: 'Marvel', slug: 'marvel' } }),
-    prisma.theme.create({ data: { name: 'Spider-Man', slug: 'spider-man' } }),
-    prisma.theme.create({ data: { name: 'Assam', slug: 'assam' } }),
-    prisma.theme.create({ data: { name: 'Minimal', slug: 'minimal' } }),
-    prisma.theme.create({ data: { name: 'Graphic', slug: 'graphic' } }),
-    prisma.theme.create({ data: { name: 'Gaming', slug: 'gaming' } }),
+    prisma.theme.create({ data: { name: 'Anime', slug: 'anime', description: 'Bold anime-inspired drops for fans.', story: `${themeStory} Anime focuses on energetic art, expressive poses, and fandom confidence.`, primaryColor: '#ff4f8b', secondaryColor: '#111827', accentColor: '#ffd166', fontFamily: 'Poppins, Arial, sans-serif', animationStyle: 'snap-slide', priority: 1, active: true, imageUrl: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1600' } }),
+    prisma.theme.create({ data: { name: 'Bihu', slug: 'bihu', description: 'Assam heritage and festival expression.', story: 'Rooted in the vibrant heritage of Northeast India, this drop celebrates Bihu, culture, rhythm, and everyday pride through wearable stories.', primaryColor: '#8b1e16', secondaryColor: '#f2c14e', accentColor: '#2f6f4e', fontFamily: 'Georgia, serif', animationStyle: 'soft-wave', priority: 2, active: true, imageUrl: 'https://images.unsplash.com/photo-1600694446265-358f7fabc2c6?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1602848597941-0d3d3a2c1241?w=1600' } }),
+    prisma.theme.create({ data: { name: 'Puja Festival', slug: 'puja-festival', description: 'Festive gifting and family-ready tees.', story: 'A celebratory drop for Puja season with warm palettes, gift-ready styling, and pieces made for family, friends, and mass orders.', primaryColor: '#b42318', secondaryColor: '#f97316', accentColor: '#facc15', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'glow', priority: 3, active: true, imageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600' } }),
+    prisma.theme.create({ data: { name: 'Spider-Man', slug: 'spider-man', description: 'Red-blue superhero inspired energy.', story: `${themeStory} Spider-Man is a high-motion campaign for web-slinger fans, comic style, and bold color-block graphics.`, primaryColor: '#d90429', secondaryColor: '#0057b8', accentColor: '#ffffff', fontFamily: 'Arial Black, Arial, sans-serif', animationStyle: 'web-swing', priority: 4, active: true, imageUrl: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1636487658580-04eeffec7d7d?w=1600' } }),
+    prisma.theme.create({ data: { name: 'Minimal', slug: 'minimal', description: 'Clean essentials for everyday wear.', story: 'A comfort-first theme for simple, premium basics with careful fabric, fit, and no compromise in quality.', primaryColor: '#111111', secondaryColor: '#f5f5f5', accentColor: '#777777', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'fade', priority: 5, active: true } }),
+    prisma.theme.create({ data: { name: 'Graphic', slug: 'graphic', description: 'Art-led graphic apparel.', story: 'A creative playground for expressive artwork, bold prints, and custom crafted visuals.', primaryColor: '#ff006e', secondaryColor: '#00d9ff', accentColor: '#8338ec', fontFamily: 'Bebas Neue, Arial, sans-serif', animationStyle: 'pop', priority: 6, active: true } }),
+    prisma.theme.create({ data: { name: 'Gaming', slug: 'gaming', description: 'Game culture and esports-inspired tees.', story: 'Fast, electric, and playful pieces for gamers and creators.', primaryColor: '#00ff41', secondaryColor: '#0d0221', accentColor: '#ff00ff', fontFamily: 'Courier New, monospace', animationStyle: 'pulse', priority: 7, active: true } }),
   ]);
 
   // Create Collections
@@ -149,7 +152,7 @@ async function main() {
       sku: 'IRONMAN-001',
       description: 'Classic Iron Man armor design',
       categoryId: categories[0].id,
-      themeId: themes[1].id,
+      themeId: themes[3].id,
       collectionId: collections[3].id,
       price: 54900,
       mrp: 89900,
@@ -165,7 +168,7 @@ async function main() {
       sku: 'CAPAMERICA-001',
       description: 'Classic Captain America shield design',
       categoryId: categories[1].id,
-      themeId: themes[1].id,
+      themeId: themes[3].id,
       collectionId: collections[3].id,
       price: 49900,
       mrp: 79900,
@@ -181,7 +184,7 @@ async function main() {
       sku: 'THOR-001',
       description: 'Thunder God Thor with Mjolnir',
       categoryId: categories[0].id,
-      themeId: themes[1].id,
+      themeId: themes[3].id,
       collectionId: collections[3].id,
       price: 52900,
       mrp: 84900,
@@ -199,7 +202,7 @@ async function main() {
       sku: 'SPIDERMAN-001',
       description: 'Amazing Spider-Man iconic red suit',
       categoryId: categories[0].id,
-      themeId: themes[2].id,
+      themeId: themes[3].id,
       collectionId: collections[3].id,
       price: 49900,
       mrp: 79900,
@@ -215,7 +218,7 @@ async function main() {
       sku: 'SPIDERMAN-002',
       description: 'Symbiote Black Suit Spider-Man',
       categoryId: categories[0].id,
-      themeId: themes[2].id,
+      themeId: themes[3].id,
       collectionId: collections[3].id,
       price: 49900,
       mrp: 79900,
@@ -233,7 +236,7 @@ async function main() {
       sku: 'BIHU-001',
       description: 'Celebrate Bihu with this cultural design',
       categoryId: categories[2].id,
-      themeId: themes[3].id,
+      themeId: themes[1].id,
       collectionId: collections[2].id,
       price: 39900,
       mrp: 64900,
@@ -249,7 +252,7 @@ async function main() {
       sku: 'ASSAM-001',
       description: 'Proud Assamese heritage tee',
       categoryId: categories[1].id,
-      themeId: themes[3].id,
+      themeId: themes[1].id,
       collectionId: collections[2].id,
       price: 39900,
       mrp: 64900,
@@ -388,15 +391,38 @@ async function main() {
       },
     });
 
-    // Create product images
-    await prisma.productImage.create({
-      data: {
-        productId: product.id,
-        color: productData.color,
-        url: `https://via.placeholder.com/500?text=${encodeURIComponent(product.name)}`,
-        alt: product.name,
-        priority: 0,
-      },
+    // Create product images for gallery and color switching
+    await prisma.productImage.createMany({
+      data: [
+        {
+          productId: product.id,
+          color: productData.color,
+          url: `https://via.placeholder.com/900x1100/111827/ffffff?text=${encodeURIComponent(product.name)}`,
+          alt: `${product.name} front view`,
+          priority: 0,
+        },
+        {
+          productId: product.id,
+          color: 'Black',
+          url: `https://via.placeholder.com/900x1100/0b0b0b/ffffff?text=${encodeURIComponent(`${product.name} Black`)}`,
+          alt: `${product.name} black color`,
+          priority: 1,
+        },
+        {
+          productId: product.id,
+          color: 'White',
+          url: `https://via.placeholder.com/900x1100/f8fafc/111827?text=${encodeURIComponent(`${product.name} White`)}`,
+          alt: `${product.name} white color`,
+          priority: 2,
+        },
+        {
+          productId: product.id,
+          color: productData.color,
+          url: `https://via.placeholder.com/900x1100/ff6b5b/ffffff?text=${encodeURIComponent(`${product.name} Detail`)}`,
+          alt: `${product.name} print detail`,
+          priority: 3,
+        },
+      ],
     });
 
     // Create product variants (colors & sizes)
@@ -927,41 +953,91 @@ async function main() {
     }),
     prisma.heroBanner.create({
       data: {
-        title: 'Marvel Universe',
-        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Marvel+Universe',
-        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Marvel',
-        buttonLabel: 'Shop Marvel',
-        href: '/themes/marvel',
+        title: 'Spider-Man Drop',
+        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Spider-Man+Drop',
+        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Spider-Man',
+        buttonLabel: 'Shop Spider-Man',
+        href: '/themes/spider-man',
         priority: 3,
         isActive: true,
       },
     }),
   ]);
 
+  await Promise.all([
+    prisma.websiteTheme.create({
+      data: {
+        name: 'Fly Free Classic Light',
+        slug: 'flyfree-classic-light',
+        primaryColor: '#111827',
+        secondaryColor: '#ff6b5b',
+        backgroundColor: '#f7f3ea',
+        textColor: '#161616',
+        accentColor: '#4ecdc4',
+        fontFamily: 'Inter, Arial, sans-serif',
+        isActive: true,
+      },
+    }),
+    prisma.websiteTheme.create({
+      data: {
+        name: 'Fly Free Night',
+        slug: 'flyfree-night',
+        primaryColor: '#ffffff',
+        secondaryColor: '#ff6b5b',
+        backgroundColor: '#050505',
+        textColor: '#ffffff',
+        accentColor: '#4ecdc4',
+        fontFamily: 'Inter, Arial, sans-serif',
+        isActive: false,
+      },
+    }),
+  ]);
+
   // Create app settings, editable pages, and admin notifications
+  const aboutContent = `Fly Free was founded by Miss Sneha Jyoti Naiding Shah with a simple yet powerful vision: to celebrate freedom, individuality, and self-expression through fashion. The name Fly Free reflects our belief that everyone deserves the confidence and freedom to wear what they love without limitations.
+
+At Fly Free, we are more than a clothing brand. We are a movement that encourages people to embrace their unique identity, culture, and personal style. Every piece we create is designed with the idea that fashion should feel empowering, comfortable, and liberating.
+
+Rooted deeply in the vibrant heritage of Northeast India, our collections transform everyday apparel into wearable stories, celebrating rich diversity while making it affordable for all.
+
+We believe true style is a balance of creativity and comfort. Our focus goes beyond striking visuals: every garment is thoughtfully made with no compromise in quality and custom crafted for everyday wear.
+
+Meet the Team
+Founder and Designer: Sneha Jyoti Naiding Shah
+Management Team: Mr Abidul Islam, Mr Sourav Das
+Graphic Designer: Mr Ghanshyam Deka
+Website Developer: Fly Free Web Team
+
+Together, our team is committed to building a brand that inspires, connects, and empowers individuals through meaningful fashion.`;
+
+  const missionContent = `Fly Free is not just about clothing. It is about self-expression, flexible creation, customisation, and quality without compromise. We create fashion that lets you celebrate who you are. We also support company bulk orders at special pricing and keep the brand running with emotion, effort, and care.`;
+
   await prisma.appSetting.create({
     data: {
       key: 'admin_settings',
       value: {
         appName: 'Fly Free',
         appTitle: 'Fly Free - Custom T-shirts',
-        appDescription: 'Premium custom, anime, gaming, Assam, and graphic t-shirts.',
-        appLogo: 'FF',
+        appDescription: 'Freedom, individuality, and self-expression through fashion.',
+        appLogo: '/brand/flyfree-logo.png',
         appFavicon: '/favicon.ico',
         seoTitle: 'Fly Free - Custom T-shirts',
-        seoDescription: 'Shop custom, anime, gaming, Assam, and graphic t-shirts from Fly Free.',
-        seoKeywords: 'custom t-shirts, anime tees, gaming t-shirts, Assam t-shirts',
+        seoDescription: 'Shop Fly Free custom, anime, Bihu, Puja, gaming, Assam, and graphic t-shirts.',
+        seoKeywords: 'custom t-shirts, anime tees, bihu t-shirts, puja t-shirts, assam t-shirts, gifting',
         contactEmail: 'support@flyfree.com',
         supportEmail: 'support@flyfree.com',
         contactPhone: '9876543210',
         businessName: 'Fly Free',
-        ownerName: 'Fly Free Owner',
-        teamName: 'Fly Free Creative Team',
+        ownerName: 'Sneha Jyoti Naiding Shah',
+        founderName: 'Sneha Jyoti Naiding Shah',
+        teamName: 'Sneha Jyoti Naiding Shah, Abidul Islam, Sourav Das, Ghanshyam Deka',
         businessAddress: 'Guwahati, Assam, India',
         gstNumber: 'GSTIN-DEMO-UPDATE-IN-ADMIN',
         invoicePrefix: 'INV',
         taxRate: 18,
-        footerText: 'Designed for comfort, culture, and self-expression.',
+        footerText: 'Fly Free: freedom, comfort, culture, and self-expression.',
+        brandStory: aboutContent,
+        mission: missionContent,
         socialLinks: {
           instagram: 'https://instagram.com/flyfree',
           facebook: 'https://facebook.com/flyfree',
@@ -978,7 +1054,7 @@ async function main() {
       data: {
         slug: 'about-us',
         title: 'About Us',
-        content: 'Fly Free creates expressive t-shirts inspired by culture, fandom, design, and everyday comfort.',
+        content: aboutContent,
         metaTitle: 'About Fly Free',
         metaDesc: 'Learn about Fly Free and our t-shirt brand story.',
       },
@@ -987,7 +1063,7 @@ async function main() {
       data: {
         slug: 'vision-mission',
         title: 'Vision and Mission',
-        content: 'Our vision is to help people wear what they love. Our mission is to make custom and themed apparel easy, reliable, and high quality.',
+        content: missionContent,
         metaTitle: 'Fly Free Vision and Mission',
         metaDesc: 'Fly Free brand vision and mission.',
       },
@@ -996,7 +1072,15 @@ async function main() {
       data: {
         slug: 'terms-and-conditions',
         title: 'Terms and Conditions',
-        content: 'These terms describe purchase, payment, delivery, cancellation, and usage rules for Fly Free customers.',
+        content: `Welcome to Fly Free. By using our website, placing an order, or requesting a custom design, you agree to provide accurate account, contact, payment, and delivery details.
+
+Product photos, colours, sizes, prices, and stock may change as collections are updated. Custom, gifting, festival, anime, Bihu, Puja, Spider-Man-inspired, and bulk order requests are confirmed only after design scope, quantity, pricing, and delivery timing are accepted by Fly Free.
+
+Payments must be completed through the supported checkout methods. Orders may be cancelled, paused, or delayed if payment fails, delivery information is incomplete, the requested item is unavailable, or the custom brief needs clarification.
+
+Fly Free designs, campaign stories, product photos, brand assets, and website content belong to Fly Free or are used with permission. Customers may not copy, reproduce, resell, or misuse them without written approval.
+
+For order support, returns, cancellations, customisation, or bulk gifting questions, contact Fly Free with your order details so the team can help quickly.`,
         metaTitle: 'Terms and Conditions',
         metaDesc: 'Fly Free terms and conditions.',
       },
@@ -1014,7 +1098,15 @@ async function main() {
       data: {
         slug: 'privacy-policy',
         title: 'Privacy Policy',
-        content: 'We use customer information to process orders, provide support, send updates, and improve the shopping experience.',
+        content: `Fly Free collects the information needed to create accounts, process orders, deliver products, support customisation requests, and improve the shopping experience.
+
+This may include your name, email address, phone number, delivery address, order history, payment status, saved preferences, and messages or files you share for custom designs, gifting, or bulk orders.
+
+We use this information to confirm purchases, send verification codes, share order and delivery updates, manage returns, prevent fraud, improve our products, and show relevant website messages such as scheduled theme announcements.
+
+We do not sell customer personal information. Trusted providers for payment, delivery, email, analytics, hosting, and storage may process information only to help operate Fly Free services.
+
+You can contact Fly Free support for privacy questions, account help, or communication preferences. We keep customer information only as long as needed for service, legal, security, and business requirements.`,
         metaTitle: 'Privacy Policy',
         metaDesc: 'Fly Free privacy policy.',
       },
@@ -1037,9 +1129,74 @@ async function main() {
         metaDesc: 'Fly Free customer support and contact details.',
       },
     }),
+    prisma.page.create({
+      data: {
+        slug: 'gifting',
+        title: 'Gifting',
+        content: 'Fly Free gifting makes birthdays, festivals, team celebrations, and corporate moments more personal. Choose curated gift-ready tees, custom message cards, and bulk gifting support.',
+        metaTitle: 'Fly Free Gifting',
+        metaDesc: 'Gift-ready t-shirts, custom cards, and bulk gifting from Fly Free.',
+      },
+    }),
   ]);
 
   await Promise.all([
+    prisma.giftOption.create({
+      data: {
+        name: 'Festival Gift Box',
+        description: 'Gift-ready packaging for Puja, Bihu, birthdays, and family celebrations.',
+        imageUrl: 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=900',
+        price: 9900,
+        priority: 1,
+      },
+    }),
+    prisma.giftOption.create({
+      data: {
+        name: 'Custom Message Card',
+        description: 'Printed note card added to the package with your message.',
+        imageUrl: 'https://images.unsplash.com/photo-1512909006721-3d6018887383?w=900',
+        price: 2900,
+        priority: 2,
+      },
+    }),
+    prisma.giftOption.create({
+      data: {
+        name: 'Company Bulk Gifting',
+        description: 'Special pricing for teams, events, corporate gifting, and mass orders.',
+        imageUrl: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=900',
+        price: 0,
+        priority: 3,
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.announcement.create({
+      data: {
+        title: 'Bihu drop is live',
+        message: 'Wear Northeast stories with the new Bihu collection.',
+        href: '/themes/bihu',
+        ctaLabel: 'Shop Bihu',
+        type: 'THEME',
+        priority: 1,
+        themeId: themes[1].id,
+        startsAt: new Date(Date.now() - 86400000),
+        endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      },
+    }),
+    prisma.announcement.create({
+      data: {
+        title: 'Puja gifting open',
+        message: 'Schedule gift-ready tees and custom cards for Puja season.',
+        href: '/gifting',
+        ctaLabel: 'Explore gifts',
+        type: 'GIFTING',
+        priority: 2,
+        themeId: themes[2].id,
+        startsAt: new Date(Date.now() - 86400000),
+        endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
+      },
+    }),
     prisma.notification.create({
       data: {
         channel: 'ADMIN',
