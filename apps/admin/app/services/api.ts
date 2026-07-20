@@ -527,27 +527,27 @@ class ApiService {
     });
   }
 
-  // ============ HERO BANNERS ============
-  async getHeroBanners() {
-    return this.request('/api/admin/hero-banners');
+  // ============ HAMPERS ============
+  async getHampers() {
+    return this.request('/api/admin/hampers');
   }
 
-  async createHeroBanner(data: any) {
-    return this.request('/api/admin/hero-banners', {
+  async createHamper(data: any) {
+    return this.request('/api/admin/hampers', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateHeroBanner(id: string, data: any) {
-    return this.request(`/api/admin/hero-banners/${id}`, {
+  async updateHamper(id: string, data: any) {
+    return this.request(`/api/admin/hampers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteHeroBanner(id: string) {
-    return this.request(`/api/admin/hero-banners/${id}`, {
+  async deleteHamper(id: string) {
+    return this.request(`/api/admin/hampers/${id}`, {
       method: 'DELETE',
     });
   }

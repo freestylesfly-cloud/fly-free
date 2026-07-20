@@ -48,14 +48,6 @@ async function main() {
     console.log('ℹ️  SizeGuide table not yet available');
   }
 
-  // Delete hero banners
-  try {
-    // @ts-ignore - Type checking may lag behind schema
-    await prisma.heroBanner.deleteMany();
-  } catch (error) {
-    console.log('ℹ️  HeroBanner table not yet available');
-  }
-
   // Create Categories
   const categories = await Promise.all([
     prisma.category.create({
@@ -1250,47 +1242,6 @@ You can contact Fly Free support for privacy questions, account help, or communi
 
   // Gift options removed - using hampers instead
 
-  // Create Hero Banners
-  // @ts-ignore - Prisma types may lag behind schema
-  await Promise.all([
-    prisma.heroBanner.create({
-      data: {
-        title: 'Summer Collection',
-        subtitle: 'Light, breathable tees for sunny days',
-        imageUrl: 'https://images.unsplash.com/photo-1591026151698-64e3d6541f9b?w=1920',
-        mobileImageUrl: 'https://images.unsplash.com/photo-1591026151698-64e3d6541f9b?w=600',
-        ctaLabel: 'Shop Summer',
-        ctaHref: '/collections/summer',
-        priority: 1,
-        isActive: true,
-      },
-    }),
-    prisma.heroBanner.create({
-      data: {
-        title: 'Puja Festival Special',
-        subtitle: 'Gift-ready tees and custom cards for celebrations',
-        imageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1920',
-        mobileImageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=600',
-        ctaLabel: 'Explore Puja',
-        ctaHref: '/themes/puja-festival',
-        priority: 2,
-        isActive: true,
-      },
-    }),
-    prisma.heroBanner.create({
-      data: {
-        title: 'Anime Collection',
-        subtitle: 'Bold anime-inspired designs for fans',
-        imageUrl: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=1920',
-        mobileImageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600',
-        ctaLabel: 'Browse Anime',
-        ctaHref: '/themes/anime',
-        priority: 3,
-        isActive: true,
-      },
-    }),
-  ]);
-
   await Promise.all([
     prisma.announcement.create({
       data: {
@@ -1355,7 +1306,6 @@ You can contact Fly Free support for privacy questions, account help, or communi
   console.log(`✅ Created 4 product reviews`);
   console.log(`✅ Created 3 wishlist items`);
   console.log(`✅ Created 3 cart items`);
-  console.log(`✅ Created 3 hero banners`);
 }
 
 main()

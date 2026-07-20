@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Shirt, Ruler, Image } from 'lucide-react';
+import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Shirt, Ruler, Gift } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -31,7 +31,6 @@ const menuItems = [
   {
     label: 'Website',
     items: [
-      { label: 'Hero Banners', href: '/hero-banners', icon: Image },
       { label: 'Announcements', href: '/announcements', icon: Bell },
       { label: 'Pages', href: '/pages', icon: FileText },
       { label: 'Appearance', href: '/website-themes', icon: Sparkles },
@@ -42,6 +41,7 @@ const menuItems = [
     label: 'Product Setup',
     items: [
       { label: 'Size Guides', href: '/size-guides', icon: Ruler },
+      { label: 'Hampers', href: '/hampers', icon: Gift },
     ],
   },
 ];
@@ -84,9 +84,11 @@ export function Sidebar() {
         {/* Logo */}
         <div className="border-b border-black/10 p-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded border border-ink bg-ink flex items-center justify-center">
-              <span className="text-lg font-black text-white">FF</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="Fly Free logo"
+              className="w-10 h-10 rounded border border-black/10 bg-white object-contain"
+            />
             <div>
               <h1 className="text-sm font-black uppercase tracking-wide">Fly Free</h1>
               <p className="text-xs text-black/40">Admin Panel</p>

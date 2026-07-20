@@ -121,16 +121,23 @@ export default function CheckoutPage() {
       if (!orderResponse.ok) throw new Error(orderData?.error || 'Failed to create order');
 
       if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+        console.warn('Razorpay key missing: NEXT_PUBLIC_RAZORPAY_KEY_ID is not set.');
         alert('Razorpay key is not configured. Order was created as pending payment.');
         router.push(`/orders/${orderData.data.id}`);
         return;
       }
 
-      // Initialize Razorpay payment
+      console.log('Razorpay checkout starting with key:', process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ? 'configured' : 'missing');
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
+        if (!(window as any).Razorpay) {
+          console.error('Razorpay script loaded but window.Razorpay is unavailable.');
+          alert('Payment gateway failed to initialize. Please refresh the page and try again.');
+          return;
+        }
+
         const options: any = {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: orderData.data.amount,
@@ -140,8 +147,7 @@ export default function CheckoutPage() {
           order_id: orderData.data.razorpayOrderId,
           handler: async (response: any) => {
             try {
-              // Verify payment
-              const verifyResponse = await fetch(`${API_URL}/commerce/checkout/verify`, {
+              const verifyResponse = await fetch(`${API_URL}/commerce/verify-payment`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -155,7 +161,8 @@ export default function CheckoutPage() {
                 }),
               });
 
-              if (!verifyResponse.ok) throw new Error('Payment verification failed');
+              const verifyData = await readApiResponse(verifyResponse);
+              if (!verifyResponse.ok) throw new Error(verifyData?.error || 'Payment verification failed');
 
               // Clear cart and redirect
               useCartStore.setState({ items: [] });

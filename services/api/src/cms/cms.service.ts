@@ -57,6 +57,16 @@ export class CmsService {
     });
   }
 
+  async getSettingsLogo() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+
+    return {
+      logoUrl: value?.appLogo || '/logo.png',
+      faviconUrl: value?.appFavicon || value?.appLogo || '/logo.png'
+    };
+  }
+
   getActiveThemes() {
     const now = new Date();
     return this.prisma.theme.findMany({

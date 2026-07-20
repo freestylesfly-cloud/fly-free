@@ -28,20 +28,24 @@ export function Logo({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 800);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/settings/logo`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/cms/settings/logo`, {
       signal: controller.signal,
       headers: { 'Accept': 'application/json' }
     })
       .then(res => res.ok ? res.json() : null)
-      .then(data => {
+      .then((data) => {
         if (data?.logoUrl) {
           setLogoSrc(data.logoUrl);
+        } else {
+          console.warn('Logo endpoint returned no logoUrl, using local fallback.');
         }
       })
-      .catch(() => {
-        // Use public logo.png as fallback
+      .catch((error) => {
+        console.warn('Logo fetch failed, using local fallback:', error);
       })
-      .finally(() => clearTimeout(timeoutId));
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
   }, []);
 
   return (
@@ -51,12 +55,14 @@ export function Logo({
         alt="Logo"
         width={width}
         height={height}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLogoSrc('/logo.png')}
+        onError={() => {
+          console.warn('Logo image failed to load, falling back to local logo.');
+          setLogoSrc('/logo.png');
+        }}
         style={{
-          objectFit: 'contain',
-          maxWidth: '100%',
-          height: 'auto'
+          width,
+          height,
+          objectFit: 'contain'
         }}
       />
       {showText && size !== 'sm' && (

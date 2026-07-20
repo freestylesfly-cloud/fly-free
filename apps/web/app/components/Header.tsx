@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import type React from 'react';
@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
+import { Logo } from './Logo';
 
 const API_BASE = getApiBaseUrl();
 
@@ -89,8 +90,8 @@ export function Header() {
           </button>
 
           {/* Center: Logo */}
-          <Link href="/" className="flex-1 text-center font-black text-lg uppercase tracking-wider hover:opacity-80">
-            Fly Free
+          <Link href="/" className="flex-1 flex items-center justify-center hover:opacity-80">
+            <Logo size="md" showText={false} />
           </Link>
 
           {/* Right: Search & Cart */}
@@ -126,8 +127,8 @@ export function Header() {
         {/* Desktop Header - Professional Layout */}
         <div className="hidden md:flex items-center justify-between px-6 py-4 max-w-7xl mx-auto gap-8">
           {/* Left: Logo */}
-          <Link href="/" className="text-2xl font-black uppercase tracking-wider hover:opacity-80 whitespace-nowrap flex-shrink-0">
-            Fly Free
+          <Link href="/" className="flex items-center justify-center hover:opacity-80 whitespace-nowrap flex-shrink-0">
+            <Logo size="md" showText={false} />
           </Link>
 
           {/* Center: Navigation Menu */}

@@ -1344,54 +1344,56 @@ export class AdminService {
     });
   }
 
-  // ==================== HERO BANNERS ====================
-  async listHeroBanners() {
-    return await this.prisma.heroBanner.findMany({
-      orderBy: { priority: "asc" }
+  // ==================== HAMPERS ====================
+  async listHampers() {
+    return await this.prisma.productHamper.findMany({
+      orderBy: { priority: "asc" },
+      include: { product: true }
     });
   }
 
-  async createHeroBanner(data: any) {
-    const input: any = {
-      title: data.title,
-      imageUrl: data.imageUrl,
-      priority: data.priority || 0,
-      isActive: data.isActive !== false
-    };
-
-    if (data.subtitle) input.subtitle = data.subtitle;
-    if (data.mobileImageUrl) input.mobileImageUrl = data.mobileImageUrl;
-    if (data.ctaLabel) input.ctaLabel = data.ctaLabel;
-    if (data.ctaHref) input.ctaHref = data.ctaHref;
-    if (data.startsAt) input.startsAt = new Date(data.startsAt);
-    if (data.endsAt) input.endsAt = new Date(data.endsAt);
-
-    return await this.prisma.heroBanner.create({ data: input });
+  async createHamper(data: any) {
+    return await this.prisma.productHamper.create({
+      data: {
+        productId: data.productId,
+        name: data.name,
+        description: data.description || null,
+        contents: data.contents || [],
+        imageUrl: data.imageUrl || null,
+        images: data.images || [],
+        sizeNote: data.sizeNote || null,
+        price: data.price || 0,
+        gstPercent: data.gstPercent || 5,
+        isActive: data.isActive !== false,
+        priority: data.priority || 0
+      },
+      include: { product: true }
+    });
   }
 
-  async updateHeroBanner(id: string, data: any) {
-    const input: any = {};
-
-    if (data.title !== undefined) input.title = data.title;
-    if (data.subtitle !== undefined) input.subtitle = data.subtitle;
-    if (data.imageUrl !== undefined) input.imageUrl = data.imageUrl;
-    if (data.mobileImageUrl !== undefined) input.mobileImageUrl = data.mobileImageUrl;
-    if (data.ctaLabel !== undefined) input.ctaLabel = data.ctaLabel;
-    if (data.ctaHref !== undefined) input.ctaHref = data.ctaHref;
-    if (data.priority !== undefined) input.priority = data.priority;
-    if (data.isActive !== undefined) input.isActive = data.isActive;
-    if (data.startsAt !== undefined) input.startsAt = data.startsAt ? new Date(data.startsAt) : null;
-    if (data.endsAt !== undefined) input.endsAt = data.endsAt ? new Date(data.endsAt) : null;
-
-    return await this.prisma.heroBanner.update({
+  async updateHamper(id: string, data: any) {
+    return await this.prisma.productHamper.update({
       where: { id },
-      data: input
+      data: {
+        name: data.name,
+        description: data.description,
+        contents: data.contents,
+        imageUrl: data.imageUrl,
+        images: data.images,
+        sizeNote: data.sizeNote,
+        price: data.price,
+        gstPercent: data.gstPercent,
+        isActive: data.isActive,
+        priority: data.priority
+      },
+      include: { product: true }
     });
   }
 
-  async deleteHeroBanner(id: string) {
-    return await this.prisma.heroBanner.delete({
+  async deleteHamper(id: string) {
+    return await this.prisma.productHamper.delete({
       where: { id }
     });
   }
+
 }

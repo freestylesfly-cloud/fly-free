@@ -58,8 +58,8 @@ export default function AdminLoginPage() {
       <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_480px]">
         <section className="hidden min-h-screen flex-col justify-between bg-gradient-to-br from-[#101318] via-[#151922] to-[#243b3a] p-10 lg:flex">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded border border-white/15 bg-white text-2xl font-black text-ink shadow-xl">
-              FF
+            <div className="flex h-14 w-14 items-center justify-center rounded border border-white/15 bg-white shadow-xl overflow-hidden">
+              <img src="/logo.png" alt="Fly Free" className="h-full w-full object-contain" />
             </div>
             <div>
               <p className="text-xl font-black uppercase tracking-wide">Fly Free</p>
@@ -83,7 +83,9 @@ export default function AdminLoginPage() {
         <section className="flex min-h-screen items-center justify-center bg-[#f7f7f4] px-5 py-8 text-ink">
           <div className="w-full max-w-md">
             <div className="mb-8 text-center lg:hidden">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded bg-ink text-2xl font-black text-white">FF</div>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded bg-ink overflow-hidden">
+                <img src="/logo.png" alt="Fly Free" className="h-full w-full object-contain" />
+              </div>
               <h1 className="text-3xl font-black">Fly Free Admin</h1>
               <p className="mt-1 text-sm text-black/55">Commerce operations dashboard</p>
             </div>

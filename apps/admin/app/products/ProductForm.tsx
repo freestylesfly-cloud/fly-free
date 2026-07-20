@@ -43,6 +43,18 @@ type VariantRow = {
   barcode: string;
 };
 
+type HamperRow = {
+  name: string;
+  description: string;
+  contentsText: string;
+  imageUrl: string;
+  sizeNote: string;
+  price: number;
+  gstPercent: number;
+  isActive: boolean;
+  priority: number;
+};
+
 const emptyForm: ProductFormData = {
   name: '',
   slug: '',
@@ -85,6 +97,7 @@ export function ProductForm({ productId }: { productId?: string }) {
   const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [images, setImages] = useState<ImageRow[]>([{ ...emptyImage }]);
   const [variants, setVariants] = useState<VariantRow[]>([{ ...emptyVariant }]);
+  const [hampers, setHampers] = useState<HamperRow[]>([]);
   const [loading, setLoading] = useState(Boolean(productId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -143,6 +156,17 @@ export function ProductForm({ productId }: { productId?: string }) {
         lowStockAlert: variant.inventory?.lowStockAlert || 5,
         warehouse: variant.inventory?.warehouse || '',
         barcode: variant.inventory?.barcode || ''
+      })));
+      setHampers((product.hampers || []).map((hamper: any) => ({
+        name: hamper.name || '',
+        description: hamper.description || '',
+        contentsText: Array.isArray(hamper.contents) ? hamper.contents.join(', ') : String(hamper.contents || ''),
+        imageUrl: hamper.imageUrl || '',
+        sizeNote: hamper.sizeNote || '',
+        price: hamper.price || 0,
+        gstPercent: hamper.gstPercent ?? 5,
+        isActive: hamper.isActive ?? true,
+        priority: hamper.priority || 0
       })));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product form');

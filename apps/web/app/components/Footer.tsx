@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { Logo } from './Logo';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -13,8 +14,7 @@ export function Footer() {
         <div className="grid gap-8 md:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>FF</span>
-              <span className="text-lg font-black uppercase">Fly Free</span>
+              <Logo size="md" showText={false} />
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
               Freedom, culture, comfort, and self-expression through premium tees and custom-crafted apparel.

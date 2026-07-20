@@ -12,6 +12,11 @@ export class CmsController {
     return this.cmsService.getHomePage();
   }
 
+  @Get("settings/logo")
+  getSettingsLogo() {
+    return this.cmsService.getSettingsLogo();
+  }
+
   @Get("announcements")
   getAnnouncements() {
     return this.cmsService.getActiveAnnouncements();

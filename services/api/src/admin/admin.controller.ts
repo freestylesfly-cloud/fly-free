@@ -326,25 +326,25 @@ export class AdminController {
     return this.adminService.deleteSizeGuide(id);
   }
 
-  // ==================== HERO BANNERS ====================
-  @Get("hero-banners")
-  listHeroBanners() {
-    return this.adminService.listHeroBanners();
+  // ==================== HAMPERS ====================
+  @Get("hampers")
+  listHampers() {
+    return this.adminService.listHampers();
   }
 
-  @Post("hero-banners")
-  createHeroBanner(@Body() data: any) {
-    return this.adminService.createHeroBanner(data);
+  @Post("hampers")
+  createHamper(@Body() data: any) {
+    return this.adminService.createHamper(data);
   }
 
-  @Put("hero-banners/:id")
-  updateHeroBanner(@Param("id") id: string, @Body() data: any) {
-    return this.adminService.updateHeroBanner(id, data);
+  @Put("hampers/:id")
+  updateHamper(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateHamper(id, data);
   }
 
-  @Delete("hero-banners/:id")
-  deleteHeroBanner(@Param("id") id: string) {
-    return this.adminService.deleteHeroBanner(id);
+  @Delete("hampers/:id")
+  deleteHamper(@Param("id") id: string) {
+    return this.adminService.deleteHamper(id);
   }
 
   // ==================== ANALYTICS ====================

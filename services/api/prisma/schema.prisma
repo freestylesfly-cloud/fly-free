@@ -433,6 +433,8 @@ model Page {
 model CustomizationRequest {
   id          String              @id @default(cuid())
   userId      String
+  title       String?
+  description String?
   productId   String?
   placement   String
   quantity    Int
@@ -440,11 +442,19 @@ model CustomizationRequest {
   color       String
   message     String?
   fileUrls    String[]
+  images      String[] @default([])
   status      CustomizationStatus @default(REQUESTED)
   quotedPrice Int?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  orderId     String?
   user        User                @relation(fields: [userId], references: [id])
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderId])
 }
 
 model Influencer {
@@ -563,22 +573,4 @@ model SizeGuide {
   @@index([active])
 }
 
-model HeroBanner {
-  id               String   @id @default(cuid())
-  title            String
-  subtitle         String?
-  imageUrl         String
-  mobileImageUrl   String?
-  ctaLabel         String?
-  ctaHref          String?
-  priority         Int      @default(0)
-  isActive         Boolean  @default(true)
-  startsAt         DateTime?
-  endsAt           DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([isActive])
-  @@index([priority])
-}
 

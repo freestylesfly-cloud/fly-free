@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Explore our collection of stylish and comfortable t-shirts with unique designs. Custom t-shirt designer, multiple themes, and secure checkout.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.png",
   },
 };
 
