@@ -43,7 +43,11 @@ export default function AdminLoginPage() {
     try {
       await login(email, password);
       setSuccess('Login successful. Opening dashboard...');
-      window.location.replace(nextPath);
+
+      // Wait a moment for state to update, then redirect
+      setTimeout(() => {
+        window.location.href = nextPath;
+      }, 500);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
     }

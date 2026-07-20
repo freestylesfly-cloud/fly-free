@@ -126,9 +126,12 @@ export class AdminService {
         } : undefined,
         images: data.images ? {
           createMany: { data: data.images }
+        } : undefined,
+        hampers: Array.isArray(data.hampers) ? {
+          createMany: { data: data.hampers.map((hamper: any, index: number) => this.normalizeProductHamperData(hamper, index)) }
         } : undefined
       },
-      include: { category: true, variants: { include: { inventory: true } }, images: true }
+      include: { category: true, variants: { include: { inventory: true } }, images: true, hampers: true }
     });
   }
 
@@ -142,6 +145,10 @@ export class AdminService {
 
       if (Array.isArray(data.images)) {
         await tx.productImage.deleteMany({ where: { productId: id } });
+      }
+
+      if (Array.isArray(data.hampers)) {
+        await tx.productHamper.deleteMany({ where: { productId: id } });
       }
 
       return tx.product.update({
@@ -170,6 +177,9 @@ export class AdminService {
           collectionId: data.collectionId,
           themeId: data.themeId,
           images: Array.isArray(data.images) ? { createMany: { data: data.images } } : undefined,
+          hampers: Array.isArray(data.hampers) ? {
+            createMany: { data: data.hampers.map((hamper: any, index: number) => this.normalizeProductHamperData(hamper, index)) }
+          } : undefined,
           variants: Array.isArray(data.variants) ? {
             create: data.variants.map((variant: any) => ({
               sku: variant.sku,
@@ -187,7 +197,7 @@ export class AdminService {
             }))
           } : undefined
         },
-        include: { category: true, variants: { include: { inventory: true } }, images: true }
+        include: { category: true, variants: { include: { inventory: true } }, images: true, hampers: true }
       });
     });
   }
@@ -198,8 +208,34 @@ export class AdminService {
       await tx.inventory.deleteMany({ where: { variantId: { in: variants.map((variant) => variant.id) } } });
       await tx.productVariant.deleteMany({ where: { productId: id } });
       await tx.productImage.deleteMany({ where: { productId: id } });
+      await tx.productHamper.deleteMany({ where: { productId: id } });
       return tx.product.delete({ where: { id } });
     });
+  }
+
+  private normalizeProductHamperData(hamper: any, index = 0) {
+    return {
+      name: hamper.name || "Hamper package",
+      description: hamper.description || undefined,
+      contents: Array.isArray(hamper.contents)
+        ? hamper.contents.filter(Boolean)
+        : String(hamper.contentsText || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      imageUrl: hamper.imageUrl || undefined,
+      images: Array.isArray(hamper.images)
+        ? hamper.images.filter(Boolean)
+        : String(hamper.imagesText || "")
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      sizeNote: hamper.sizeNote || undefined,
+      price: Number(hamper.price || 0),
+      gstPercent: hamper.gstPercent === undefined ? 5 : Number(hamper.gstPercent),
+      isActive: hamper.isActive ?? true,
+      priority: hamper.priority === undefined ? index : Number(hamper.priority)
+    };
   }
 
   private slugify(value: string) {
@@ -653,6 +689,81 @@ export class AdminService {
     });
   }
 
+  // ==================== PRODUCT THEMES ====================
+  async listProductThemes() {
+    return this.prisma.theme.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        priority: true,
+        active: true,
+        _count: { select: { products: true } }
+      },
+      orderBy: [{ priority: "asc" }, { name: "asc" }]
+    });
+  }
+
+  async createProductTheme(data: any) {
+    return this.prisma.theme.create({
+      data: {
+        name: data.name,
+        slug: data.slug || this.slugify(data.name),
+        description: data.description || "",
+        priority: data.priority === undefined ? 0 : Number(data.priority),
+        active: data.active !== false,
+        // Don't set these fields for product themes
+        story: "",
+        imageUrl: "",
+        bannerImageUrl: "",
+        primaryColor: "#111827",
+        secondaryColor: "#ff6b5b",
+        accentColor: "#4ecdc4",
+        fontFamily: "Inter, Arial, sans-serif",
+        animationStyle: "fade"
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        priority: true,
+        active: true
+      }
+    });
+  }
+
+  async updateProductTheme(id: string, data: any) {
+    return this.prisma.theme.update({
+      where: { id },
+      data: {
+        name: data.name,
+        slug: data.slug,
+        description: data.description,
+        priority: data.priority === undefined ? undefined : Number(data.priority),
+        active: data.active
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        priority: true,
+        active: true
+      }
+    });
+  }
+
+  async deleteProductTheme(id: string) {
+    const productCount = await this.prisma.product.count({ where: { themeId: id } });
+    if (productCount > 0) {
+      throw new Error(`Cannot delete theme while ${productCount} product(s) use it.`);
+    }
+
+    return this.prisma.theme.delete({ where: { id } });
+  }
+
   async listWebsiteThemes() {
     return this.prisma.websiteTheme.findMany({ orderBy: [{ isActive: "desc" }, { priority: "asc" }, { name: "asc" }] });
   }
@@ -693,13 +804,13 @@ export class AdminService {
   }
 
   async listAnnouncements() {
-    return { data: await this.prisma.announcement.findMany({ include: { theme: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }) };
+    return { data: await this.prisma.announcement.findMany({ include: { theme: true, websiteTheme: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }) };
   }
 
   async createAnnouncement(data: any) {
     return this.prisma.announcement.create({
       data: this.normalizeAnnouncementData(data),
-      include: { theme: true }
+      include: { theme: true, websiteTheme: true }
     });
   }
 
@@ -707,7 +818,7 @@ export class AdminService {
     return this.prisma.announcement.update({
       where: { id },
       data: this.normalizeAnnouncementData(data, true),
-      include: { theme: true }
+      include: { theme: true, websiteTheme: true }
     });
   }
 
@@ -742,30 +853,35 @@ export class AdminService {
 
   private normalizeWebsiteThemeData(data: any, partial = false) {
     const normalized: any = {};
-    const set = (key: string, value: any) => {
-      if (!partial || value !== undefined) normalized[key] = value;
+    const set = (key: string, value: any, fallback?: any) => {
+      if (partial) {
+        if (value !== undefined) normalized[key] = value;
+        return;
+      }
+
+      normalized[key] = value === undefined || value === "" ? fallback : value;
     };
 
-    set("name", data.name);
-    set("slug", data.slug || (data.name ? this.slugify(data.name) : undefined));
-    set("description", data.description);
-    set("primaryColor", data.primaryColor);
-    set("secondaryColor", data.secondaryColor);
-    set("backgroundColor", data.backgroundColor);
-    set("textColor", data.textColor);
-    set("accentColor", data.accentColor);
-    set("fontFamily", data.fontFamily);
-    set("animationStyle", data.animationStyle);
-    set("heroTitle", data.heroTitle);
-    set("heroSubtitle", data.heroSubtitle);
-    set("heroDesktopImageUrl", data.heroDesktopImageUrl);
-    set("heroMobileImageUrl", data.heroMobileImageUrl);
-    set("heroCtaLabel", data.heroCtaLabel);
-    set("heroHref", data.heroHref);
+    set("name", data.name, "Untitled Website Theme");
+    set("slug", data.slug || (data.name ? this.slugify(data.name) : undefined), `website-theme-${Date.now()}`);
+    set("description", data.description, null);
+    set("primaryColor", data.primaryColor, "#111827");
+    set("secondaryColor", data.secondaryColor, "#ff6b5b");
+    set("backgroundColor", data.backgroundColor, "#f7f3ea");
+    set("textColor", data.textColor, "#161616");
+    set("accentColor", data.accentColor, "#4ecdc4");
+    set("fontFamily", data.fontFamily, "Inter, Arial, sans-serif");
+    set("animationStyle", data.animationStyle, "fade");
+    set("heroTitle", data.heroTitle, null);
+    set("heroSubtitle", data.heroSubtitle, null);
+    set("heroDesktopImageUrl", data.heroDesktopImageUrl, null);
+    set("heroMobileImageUrl", data.heroMobileImageUrl, null);
+    set("heroCtaLabel", data.heroCtaLabel, "Shop now");
+    set("heroHref", data.heroHref, "/products");
     set("priority", data.priority === undefined ? undefined : Number(data.priority));
     set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
     set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
-    set("isActive", data.isActive);
+    set("isActive", data.isActive, false);
 
     return normalized;
   }
@@ -787,6 +903,7 @@ export class AdminService {
     set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
     set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
     set("themeId", data.themeId || (data.themeId === null ? null : undefined));
+    set("websiteThemeId", data.websiteThemeId || (data.websiteThemeId === null ? null : undefined));
 
     return normalized;
   }
@@ -1183,5 +1300,98 @@ export class AdminService {
     });
 
     return { period: `${days} days`, byStatus };
+  }
+
+  // ==================== SIZE GUIDES ====================
+  async listSizeGuides() {
+    return await this.prisma.sizeGuide.findMany({
+      orderBy: { priority: "asc" }
+    });
+  }
+
+  async createSizeGuide(data: any) {
+    return await this.prisma.sizeGuide.create({
+      data: {
+        size: data.size,
+        chest: data.chest,
+        shoulder: data.shoulder,
+        length: data.length,
+        sleeve: data.sleeve,
+        priority: data.priority || 0,
+        active: data.active !== false
+      }
+    });
+  }
+
+  async updateSizeGuide(id: string, data: any) {
+    return await this.prisma.sizeGuide.update({
+      where: { id },
+      data: {
+        size: data.size,
+        chest: data.chest,
+        shoulder: data.shoulder,
+        length: data.length,
+        sleeve: data.sleeve,
+        priority: data.priority,
+        active: data.active
+      }
+    });
+  }
+
+  async deleteSizeGuide(id: string) {
+    return await this.prisma.sizeGuide.delete({
+      where: { id }
+    });
+  }
+
+  // ==================== HERO BANNERS ====================
+  async listHeroBanners() {
+    return await this.prisma.heroBanner.findMany({
+      orderBy: { priority: "asc" }
+    });
+  }
+
+  async createHeroBanner(data: any) {
+    const input: any = {
+      title: data.title,
+      imageUrl: data.imageUrl,
+      priority: data.priority || 0,
+      isActive: data.isActive !== false
+    };
+
+    if (data.subtitle) input.subtitle = data.subtitle;
+    if (data.mobileImageUrl) input.mobileImageUrl = data.mobileImageUrl;
+    if (data.ctaLabel) input.ctaLabel = data.ctaLabel;
+    if (data.ctaHref) input.ctaHref = data.ctaHref;
+    if (data.startsAt) input.startsAt = new Date(data.startsAt);
+    if (data.endsAt) input.endsAt = new Date(data.endsAt);
+
+    return await this.prisma.heroBanner.create({ data: input });
+  }
+
+  async updateHeroBanner(id: string, data: any) {
+    const input: any = {};
+
+    if (data.title !== undefined) input.title = data.title;
+    if (data.subtitle !== undefined) input.subtitle = data.subtitle;
+    if (data.imageUrl !== undefined) input.imageUrl = data.imageUrl;
+    if (data.mobileImageUrl !== undefined) input.mobileImageUrl = data.mobileImageUrl;
+    if (data.ctaLabel !== undefined) input.ctaLabel = data.ctaLabel;
+    if (data.ctaHref !== undefined) input.ctaHref = data.ctaHref;
+    if (data.priority !== undefined) input.priority = data.priority;
+    if (data.isActive !== undefined) input.isActive = data.isActive;
+    if (data.startsAt !== undefined) input.startsAt = data.startsAt ? new Date(data.startsAt) : null;
+    if (data.endsAt !== undefined) input.endsAt = data.endsAt ? new Date(data.endsAt) : null;
+
+    return await this.prisma.heroBanner.update({
+      where: { id },
+      data: input
+    });
+  }
+
+  async deleteHeroBanner(id: string) {
+    return await this.prisma.heroBanner.delete({
+      where: { id }
+    });
   }
 }

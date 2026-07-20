@@ -1,9 +1,14 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
+import * as jwt from "jsonwebtoken";
 
 @Injectable()
 export class EcommerceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService
+  ) {}
 
   // ==================== WISHLIST ====================
   async getWishlist(token: string) {
@@ -168,9 +173,25 @@ export class EcommerceService {
 
   // ==================== COUPONS ====================
   async validateCoupon(code: string) {
-    const coupon = await this.prisma.coupon.findUnique({
-      where: { code }
-    });
+    const normalized = String(code || "").trim().toUpperCase();
+    const coupon = await this.prisma.coupon.findUnique({ where: { code: normalized } });
+    const influencer = await this.prisma.influencer.findUnique({ where: { code: normalized } }).catch(() => null);
+
+    if (!coupon && influencer?.isActive) {
+      return {
+        valid: true,
+        code: influencer.code,
+        discountPercent: influencer.buyerDiscountPercent,
+        discountAmount: null,
+        minOrderAmount: null,
+        type: "INFLUENCER",
+        influencer: {
+          name: influencer.name,
+          socialHandle: influencer.socialHandle,
+          imageUrl: influencer.imageUrl
+        }
+      };
+    }
 
     if (!coupon || !coupon.isActive) {
       return { valid: false, message: "Coupon is invalid or expired" };
@@ -204,22 +225,33 @@ export class EcommerceService {
     const where: any = { userId };
     if (status) where.status = status;
 
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where,
-      include: { items: { include: { product: true } }, shippingAddress: true },
+      include: { items: { include: { product: { include: { images: true } } } }, shippingAddress: true, payment: true },
       orderBy: { createdAt: "desc" }
     });
+
+    return {
+      data: orders.map((order) => this.toOrderDto(order))
+    };
   }
 
-  async trackOrder(orderId: string) {
-    return this.prisma.order.findUnique({
-      where: { id: orderId },
+  async trackOrder(orderId: string, token?: string) {
+    const userId = token ? this.extractUserId(token) : undefined;
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, ...(userId ? { userId } : {}) },
       include: {
-        items: { include: { product: true } },
+        items: { include: { product: { include: { images: true } } } },
         shippingAddress: true,
-        payment: true
+        payment: true,
+        invoice: true,
+        statusHistory: { orderBy: { createdAt: "asc" } },
+        referrals: { include: { influencer: true } }
       }
     });
+
+    if (!order) return { error: "Order not found" };
+    return { data: this.toOrderDto(order) };
   }
 
   async getOrderInvoice(orderId: string) {
@@ -251,9 +283,68 @@ export class EcommerceService {
 
   // ==================== HELPER METHODS ====================
   private extractUserId(token: string): string {
-    // Extract user ID from Bearer token
-    // Format: "Bearer jwt_token_userId"
-    const parts = token.replace("Bearer ", "").split("_");
-    return parts[parts.length - 1];
+    if (!token) {
+      throw new UnauthorizedException("Login required");
+    }
+
+    try {
+      const secret = this.config.get<string>("JWT_SECRET") || "dev-secret-key";
+      const decoded = jwt.verify(token.replace("Bearer ", ""), secret) as any;
+      if (!decoded.userId) throw new Error("Missing userId");
+      return decoded.userId;
+    } catch {
+      throw new UnauthorizedException("Invalid login session");
+    }
+  }
+
+  private toOrderDto(order: any) {
+    return {
+      id: order.id,
+      orderNumber: order.invoice?.invoiceNumber || order.id,
+      status: order.status,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      tax: order.tax,
+      shipping: order.shippingFee,
+      shippingFee: order.shippingFee,
+      total: order.total,
+      paymentStatus: order.payment?.status || "PENDING",
+      createdAt: order.createdAt,
+      shippingAddress: order.shippingAddress ? {
+        name: order.shippingAddress.fullName,
+        fullName: order.shippingAddress.fullName,
+        phone: order.shippingAddress.phone,
+        street: order.shippingAddress.line1,
+        line1: order.shippingAddress.line1,
+        line2: order.shippingAddress.line2,
+        city: order.shippingAddress.city,
+        state: order.shippingAddress.state,
+        pincode: order.shippingAddress.postalCode,
+        postalCode: order.shippingAddress.postalCode,
+        country: order.shippingAddress.country
+      } : null,
+      statusHistory: order.statusHistory || [],
+      influencer: order.referrals?.[0]?.influencer || null,
+      items: (order.items || []).map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.name,
+        name: item.name,
+        sku: item.sku,
+        price: item.price,
+        quantity: item.quantity,
+        productSlug: item.product?.slug,
+        productImage: item.product?.images?.[0]?.url || null,
+        currentProduct: item.product ? {
+          id: item.product.id,
+          name: item.product.name,
+          slug: item.product.slug,
+          price: item.product.price,
+          mrp: item.product.mrp,
+          images: item.product.images || []
+        } : null
+      }))
+    };
   }
 }

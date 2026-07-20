@@ -1,42 +1,81 @@
 'use client';
 
-import { ProductCard } from '../components/ProductCard';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import type React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { ArrowRight, Grid3x3, List, Search, Shirt, SlidersHorizontal, Star } from 'lucide-react';
+import { formatCurrency } from '@flyfree/utils';
+import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
-import { useEffect, useState } from 'react';
-import { Sparkles, Grid3x3, List, ArrowRight, Search } from 'lucide-react';
 
 const API_URL = getApiBaseUrl();
 
+type FilterData = {
+  categories: any[];
+  themes: any[];
+  collections: any[];
+};
+
 export default function ProductsPage() {
+  return (
+    <Suspense fallback={<ProductsSkeleton />}>
+      <ProductsBrowser />
+    </Suspense>
+  );
+}
+
+function ProductsBrowser() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
-  const [filters, setFilters] = useState({ categories: [], themes: [], collections: [] });
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedTheme, setSelectedTheme] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filters, setFilters] = useState<FilterData>({ categories: [], themes: [], collections: [] });
+  const [category, setCategory] = useState('');
+  const [theme, setTheme] = useState('');
+  const [collection, setCollection] = useState('');
+  const [query, setQuery] = useState('');
+  const [gender, setGender] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [rating, setRating] = useState('');
+  const [sort, setSort] = useState('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setCategory(searchParams.get('category') || '');
+    setTheme(searchParams.get('theme') || '');
+    setCollection(searchParams.get('collection') || '');
+    setQuery(searchParams.get('q') || '');
+    setGender(searchParams.get('gender') || '');
+    setMinPrice(searchParams.get('minPrice') || '');
+    setMaxPrice(searchParams.get('maxPrice') || '');
+    setRating(searchParams.get('rating') || '');
+    setSort(searchParams.get('sort') || 'newest');
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        let url = `${API_URL}/catalog/products`;
         const params = new URLSearchParams();
-        if (selectedCategory) params.append('category', selectedCategory);
-        if (selectedTheme) params.append('theme', selectedTheme);
-        if (searchQuery) params.append('q', searchQuery);
-        if (params.toString()) url += `?${params.toString()}`;
+        if (category) params.set('category', category);
+        if (theme) params.set('theme', theme);
+        if (collection) params.set('collection', collection);
+        if (query) params.set('q', query);
+        if (gender) params.set('gender', gender);
+        if (minPrice) params.set('minPrice', minPrice);
+        if (maxPrice) params.set('maxPrice', maxPrice);
+        if (rating) params.set('rating', rating);
+        if (sort) params.set('sort', sort);
 
-        const [productsRes, filtersRes] = await Promise.all([
-          fetch(url),
-          fetch(`${API_URL}/catalog/filters`)
+        const [productsResponse, filtersResponse] = await Promise.all([
+          fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }),
+          fetch(`${API_URL}/catalog/filters`, { cache: 'no-store' })
         ]);
 
-        const productsData = await productsRes.json();
+        const productsData = await productsResponse.json();
+        const filtersData = await filtersResponse.json();
         setProducts(Array.isArray(productsData) ? productsData : productsData?.data || []);
-
-        const filtersData = await filtersRes.json();
         setFilters(filtersData || { categories: [], themes: [], collections: [] });
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -46,281 +85,261 @@ export default function ProductsPage() {
       }
     };
 
-    const timer = setTimeout(fetchData, 300);
-    return () => clearTimeout(timer);
-  }, [selectedCategory, selectedTheme, searchQuery]);
+    const timer = window.setTimeout(fetchData, 250);
+    return () => window.clearTimeout(timer);
+  }, [category, theme, collection, query, gender, minPrice, maxPrice, rating, sort]);
+
+  const activeCount = useMemo(
+    () => [category, theme, collection, query, gender, minPrice, maxPrice, rating].filter(Boolean).length,
+    [category, theme, collection, query, gender, minPrice, maxPrice, rating]
+  );
+
+  function clearFilters() {
+    setCategory('');
+    setTheme('');
+    setCollection('');
+    setQuery('');
+    setGender('');
+    setMinPrice('');
+    setMaxPrice('');
+    setRating('');
+    setSort('newest');
+  }
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <style jsx>{`
-        @keyframes fadeInDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-header {
-          animation: fadeInDown 0.6s ease;
-          background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-        }
-
-        .filter-chip {
-          animation: fadeInUp 0.6s ease;
-          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .filter-chip:hover {
-          transform: translateY(-2px);
-        }
-
-        .filter-chip.active {
-          transform: scale(1.05);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        .search-box {
-          animation: fadeInUp 0.6s ease;
-          animation-delay: 0.1s;
-        }
-
-        .products-section {
-          animation: fadeInUp 0.6s ease;
-          animation-delay: 0.2s;
-        }
-
-        .product-item {
-          animation: fadeInUp 0.6s ease;
-          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .product-item:hover {
-          transform: translateY(-12px);
-        }
-
-        .empty-state {
-          animation: fadeInUp 0.6s ease;
-        }
-
-        .view-toggle {
-          display: flex;
-          gap: 8px;
-          animation: fadeInUp 0.6s ease;
-          animation-delay: 0.15s;
-        }
-
-        .view-button {
-          padding: 8px 12px;
-          border-radius: 8px;
-          border: 1px solid var(--border-color);
-          background: var(--bg-secondary);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .view-button.active {
-          background: var(--color-primary);
-          color: white;
-          border-color: var(--color-primary);
-        }
-      `}</style>
-
-      {/* Page Header */}
-      <section className="page-header text-white py-12 md:py-20">
-        <div className="mx-auto max-w-7xl px-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Sparkles size={24} />
-            <span className="text-sm font-bold uppercase">Explore Collection</span>
+      <section className="border-b" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))' }}>
+        <div className="mx-auto max-w-7xl px-5 py-10 text-white md:py-14">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wide text-white/75">Fly Free Shop</p>
+              <h1 className="mt-2 text-4xl font-black md:text-6xl">Search and Filter Products</h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">
+                Find products by category, type, shop theme, collection, price, rating, or name.
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
+              {loading ? 'Loading products' : `${products.length} result${products.length === 1 ? '' : 's'}`}
+            </div>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black mb-4">Shop Premium Tees</h1>
-          <p className="text-lg text-white/80 max-w-2xl">
-            Curated streetwear from Fly Free. Browse by theme, category, or search for exactly what you want.
-          </p>
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="mx-auto max-w-7xl px-5 py-12 md:py-16">
-        <div className="space-y-8">
-          {/* Search Bar */}
-          <div className="search-box flex gap-3">
-            <div className="flex-1 relative">
-              <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border transition"
-                style={{
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-color)',
-                  borderWidth: '1px',
-                  color: 'var(--text-primary)'
-                }}
-              />
+      <section className="mx-auto grid max-w-7xl gap-6 px-5 py-8 lg:grid-cols-[290px_1fr] lg:py-10">
+        <aside className="h-fit rounded-2xl border p-4 lg:sticky lg:top-28" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-black">
+              <SlidersHorizontal size={18} /> Filters
             </div>
-            <div className="view-toggle">
-              <button
-                onClick={() => setViewMode('grid')}
-                className="view-button"
-                style={viewMode === 'grid' ? { backgroundColor: 'var(--color-primary)', color: 'white', borderColor: 'var(--color-primary)' } : {}}
-                title="Grid view"
-              >
-                <Grid3x3 size={18} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className="view-button"
-                style={viewMode === 'list' ? { backgroundColor: 'var(--color-primary)', color: 'white', borderColor: 'var(--color-primary)' } : {}}
-                title="List view"
-              >
-                <List size={18} />
-              </button>
-            </div>
+            {activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{activeCount}</span>}
           </div>
 
-          {/* Filters */}
-          <div className="space-y-4 pb-6" style={{ borderBottom: '1px solid var(--border-color)' }}>
-            {/* Category Filters */}
+          <div className="space-y-4">
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Search</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, tag, theme..." className="w-full rounded border py-2 pl-9 pr-3 text-sm" style={fieldStyle} />
+              </div>
+            </label>
+
+            <Select label="Category" value={category} onChange={setCategory} options={filters.categories} empty="All categories" />
+            <Select label="Product type" value={gender} onChange={setGender} options={[{ slug: 'MEN', name: 'Men' }, { slug: 'WOMEN', name: 'Women' }, { slug: 'UNISEX', name: 'Unisex' }]} empty="All types" />
+            <Select label="Shop theme" value={theme} onChange={setTheme} options={filters.themes} empty="All shop themes" />
+            <Select label="Collection" value={collection} onChange={setCollection} options={filters.collections} empty="All collections" />
+
             <div>
-              <h3 className="text-sm font-bold uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>Category</h3>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setSelectedCategory('')}
-                  className={`filter-chip px-4 py-2 rounded-lg font-semibold transition ${
-                    !selectedCategory ? 'active' : ''
-                  }`}
-                  style={{
-                    backgroundColor: !selectedCategory ? 'var(--color-primary)' : 'var(--bg-secondary)',
-                    color: !selectedCategory ? 'white' : 'var(--text-primary)',
-                    borderColor: 'var(--border-color)',
-                    borderWidth: '1px'
-                  }}
-                >
-                  All Products
-                </button>
-                {filters.categories.map((category: any) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.slug)}
-                    className={`filter-chip px-4 py-2 rounded-lg font-semibold transition ${
-                      selectedCategory === category.slug ? 'active' : ''
-                    }`}
-                    style={{
-                      backgroundColor: selectedCategory === category.slug ? 'var(--color-primary)' : 'var(--bg-secondary)',
-                      color: selectedCategory === category.slug ? 'white' : 'var(--text-primary)',
-                      borderColor: 'var(--border-color)',
-                      borderWidth: '1px'
-                    }}
-                  >
-                    {category.name}
-                  </button>
-                ))}
+              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Price</span>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} type="number" min="0" placeholder="Min" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
+                <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
               </div>
             </div>
 
-            {/* Theme Filters */}
-            <div>
-              <h3 className="text-sm font-bold uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>Themes</h3>
-              <div className="flex gap-2 flex-wrap">
-                {filters.themes.map((theme: any) => (
-                  <button
-                    key={theme.id}
-                    onClick={() => setSelectedTheme(selectedTheme === theme.slug ? '' : theme.slug)}
-                    className={`filter-chip px-4 py-2 rounded-lg font-semibold transition text-white ${
-                      selectedTheme === theme.slug ? 'active' : ''
-                    }`}
-                    style={{
-                      background: selectedTheme === theme.slug
-                        ? `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})`
-                        : `linear-gradient(135deg, ${theme.primaryColor}44, ${theme.secondaryColor}44)`
-                    }}
-                  >
-                    {theme.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Rating</span>
+              <select value={rating} onChange={(event) => setRating(event.target.value)} className="w-full rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
+                <option value="">All ratings</option>
+                <option value="4">4 stars and up</option>
+                <option value="3">3 stars and up</option>
+                <option value="2">2 stars and up</option>
+              </select>
+            </label>
 
-            {/* Results Count */}
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {loading ? 'Loading...' : `Showing ${products?.length || 0} products`}
-            </p>
+            <button onClick={clearFilters} className="w-full rounded border px-4 py-2 text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>
+              Clear all
+            </button>
           </div>
+        </aside>
 
-          {/* Products Grid/List */}
-          <div className="products-section">
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4 animate-spin" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                    <div className="w-8 h-8 rounded-full" style={{ borderTop: '2px solid var(--color-primary)', borderRight: '2px solid transparent' }}></div>
-                  </div>
-                  <p className="font-semibold">Loading products...</p>
-                </div>
-              </div>
-            ) : products && products.length > 0 ? (
-              <div className={viewMode === 'grid' ? 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'space-y-4'}>
-                {products.map((product: any, idx: number) => (
-                  <div
-                    key={product.id}
-                    className="product-item"
-                    style={{ animationDelay: `${(idx % 8) * 0.05}s` }}
-                  >
-                    <ProductCard
-                      id={product.id}
-                      name={product.name}
-                      price={Math.round((product.price || 0) / 100)}
-                      slug={product.slug}
-                      image={product.images?.[0]?.url}
-                      tag={product.theme?.name || product.category?.name || 'New'}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state py-20 text-center">
-                <div className="mb-4">
-                  <Sparkles size={48} style={{ color: 'var(--text-tertiary)', marginLeft: 'auto', marginRight: 'auto' }} />
-                </div>
-                <h3 className="text-2xl font-black mb-2">No products found</h3>
-                <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-                  Try adjusting your search or filters
+        <section className="min-w-0 space-y-5">
+          <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-black">Products</h2>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {loading ? 'Loading...' : `Showing ${products.length} item${products.length === 1 ? '' : 's'}`}
                 </p>
-                <Link
-                  href="/products"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold"
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
-                >
-                  View All Products <ArrowRight size={18} />
-                </Link>
               </div>
-            )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select value={sort} onChange={(event) => setSort(event.target.value)} className="rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
+                  <option value="newest">Newest first</option>
+                  <option value="popular">Popular</option>
+                  <option value="price-asc">Price low to high</option>
+                  <option value="price-desc">Price high to low</option>
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
+                  <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <ProductLoadingGrid viewMode={viewMode} />
+          ) : products.length > 0 ? (
+            <div className={viewMode === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+              {products.map((product) => (
+                viewMode === 'grid' ? (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={Math.round((product.price || 0) / 100)}
+                    slug={product.slug}
+                    image={product.images?.[0]?.url}
+                    tag={product.theme?.name || product.category?.name || 'New'}
+                  />
+                ) : (
+                  <ProductListRow key={product.id} product={product} />
+                )
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border px-5 py-16 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <Shirt className="mx-auto mb-4" size={46} style={{ color: 'var(--text-tertiary)' }} />
+              <h3 className="text-2xl font-black">No products found</h3>
+              <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Try removing a filter or searching another word.</p>
+              <button onClick={clearFilters} className="mt-6 rounded px-5 py-3 font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                Reset filters
+              </button>
+            </div>
+          )}
+        </section>
+      </section>
+    </main>
+  );
+}
+
+const fieldStyle = {
+  borderColor: 'var(--border-color)',
+  backgroundColor: 'var(--bg-primary)',
+  color: 'var(--text-primary)'
+};
+
+function Select({ label, value, onChange, options, empty }: { label: string; value: string; onChange: (value: string) => void; options: any[]; empty: string }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
+        <option value="">{empty}</option>
+        {options.map((item) => (
+          <option key={item.id || item.slug} value={item.slug}>{item.name}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function IconButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex h-10 min-w-10 items-center justify-center rounded border px-3"
+      style={{
+        borderColor: active ? 'var(--color-primary)' : 'var(--border-color)',
+        backgroundColor: active ? 'var(--color-primary)' : 'var(--bg-primary)',
+        color: active ? 'white' : 'var(--text-primary)'
+      }}
+      aria-label={label}
+      title={label}
+    >
+      {icon}
+    </button>
+  );
+}
+
+function ProductLoadingGrid({ viewMode }: { viewMode: 'grid' | 'list' }) {
+  return (
+    <div className={viewMode === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+      {[1, 2, 3, 4, 5, 6].map((item) => (
+        <div key={item} className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="aspect-[4/5] animate-pulse rounded-xl bg-black/10" />
+          <div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-black/10" />
+          <div className="mt-3 h-4 w-1/3 animate-pulse rounded bg-black/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProductListRow({ product }: { product: any }) {
+  const price = Math.round((product.price || 0) / 100);
+  const mrp = Math.round((product.mrp || 0) / 100);
+
+  return (
+    <Link
+      href={`/products/${product.slug}`}
+      className="grid gap-4 rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[150px_1fr_auto]"
+      style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+    >
+      <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-xl" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+        {product.images?.[0]?.url ? (
+          <img src={product.images[0].url} alt={product.name} className="h-full w-full object-cover" />
+        ) : (
+          <Shirt size={42} style={{ color: 'var(--text-tertiary)' }} />
+        )}
+      </div>
+      <div className="min-w-0 py-1">
+        <div className="flex flex-wrap gap-2">
+          {product.theme?.name && <span className="rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{product.theme.name}</span>}
+          {product.category?.name && <span className="rounded-full px-3 py-1 text-xs font-black" style={{ backgroundColor: 'var(--bg-tertiary)' }}>{product.category.name}</span>}
+          {product.gender && <span className="rounded-full px-3 py-1 text-xs font-black" style={{ backgroundColor: 'var(--bg-tertiary)' }}>{product.gender}</span>}
+        </div>
+        <h2 className="mt-3 text-xl font-black">{product.name}</h2>
+        <p className="mt-2 line-clamp-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>
+        <div className="mt-3 flex items-center gap-1 text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+          <Star size={15} fill="currentColor" /> {product.reviews?.length ? `${product.reviews.length} reviews` : 'New drop'}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
+        <div className="text-right">
+          <p className="text-xl font-black">{formatCurrency(price)}</p>
+          {mrp > price && <p className="text-sm line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(mrp)}</p>}
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+          View <ArrowRight size={16} />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function ProductsSkeleton() {
+  return (
+    <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <section className="mx-auto max-w-7xl px-5 py-16">
+        <div className="mb-8 h-12 w-64 animate-pulse rounded bg-black/10" />
+        <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
+          <div className="h-96 animate-pulse rounded-2xl bg-black/10" />
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((item) => <div key={item} className="aspect-[4/5] animate-pulse rounded-2xl bg-black/10" />)}
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
-      {products.length > 0 && (
-        <section className="py-16 md:py-20" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-          <div className="mx-auto max-w-7xl px-5 text-center">
-            <h2 className="text-4xl font-black mb-4">Can't find what you want?</h2>
-            <p className="text-lg mb-8 max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              Design your own custom t-shirt with our easy-to-use designer tool
-            </p>
-            <Link
-              href="/designer"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold transition-all hover:shadow-lg"
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
-            >
-              Start Designing <ArrowRight size={20} />
-            </Link>
-          </div>
-        </section>
-      )}
     </main>
   );
 }

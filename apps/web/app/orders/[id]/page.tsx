@@ -26,11 +26,15 @@ interface OrderDetail {
     pincode: string;
   };
   items: Array<{
+    productSlug?: string;
+    productImage?: string | null;
     productName: string;
+    name?: string;
+    sku?: string;
     price: number;
     quantity: number;
-    size: string;
-    color: string;
+    size?: string;
+    color?: string;
   }>;
 }
 
@@ -57,14 +61,14 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     async function fetchOrder() {
       try {
         const API_URL = getApiBaseUrl();
-        const response = await fetch(`${API_URL}/user/orders/${id}`, {
+        const response = await fetch(`${API_URL}/ecommerce/orders/${id}/track`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         });
 
         const data = await readApiResponse(response);
-        if (!response.ok) throw new Error(data?.error || 'Failed to fetch order');
+        if (!response.ok || data?.error) throw new Error(data?.error || 'Failed to fetch order');
         setOrder(data.data);
       } catch (error) {
         console.error('Error fetching order:', error);
@@ -80,7 +84,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     if (!order) return;
     try {
       const API_URL = getApiBaseUrl();
-      const response = await fetch(`${API_URL}/user/orders/${order.id}/invoice`, {
+      const response = await fetch(`${API_URL}/ecommerce/orders/${order.id}/invoice`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -88,7 +92,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
       if (!response.ok) throw new Error('Failed to download invoice');
 
-      const blob = await response.blob();
+      const invoice = await readApiResponse(response);
+      const blob = new Blob([JSON.stringify(invoice, null, 2)], { type: 'application/json' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -208,11 +213,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     key={index}
                     className="flex justify-between items-center py-4 border-b border-black/10 dark:border-white/10 last:border-b-0"
                   >
-                    <div>
-                      <p className="font-bold dark:text-white">{item.productName}</p>
-                      <p className="text-sm text-ink/60 dark:text-white/60">
-                        {item.size} • {item.color} • Qty: {item.quantity}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      {item.productImage && <img src={item.productImage} alt={item.productName} className="h-16 w-14 rounded object-cover" />}
+                      <div>
+                        {item.productSlug ? (
+                          <Link href={`/products/${item.productSlug}`} className="font-bold dark:text-white hover:text-coral">{item.productName}</Link>
+                        ) : (
+                          <p className="font-bold dark:text-white">{item.productName}</p>
+                        )}
+                        <p className="text-sm text-ink/60 dark:text-white/60">
+                          {item.sku ? `${item.sku} • ` : ''}{item.size || 'Saved size'} • {item.color || 'Saved color'} • Qty: {item.quantity}
+                        </p>
+                      </div>
                     </div>
                     <p className="text-coral font-bold">{formatCurrency(item.price * item.quantity)}</p>
                   </div>

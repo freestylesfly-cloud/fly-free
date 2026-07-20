@@ -42,7 +42,9 @@ class ApiService {
 
     try {
       const headers = new Headers(options.headers);
-      Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+      if (options.body !== undefined && options.body !== null) {
+        Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+      }
       Object.entries(this.authHeaders()).forEach(([key, value]) => headers.set(key, value));
 
       const response = await fetch(url, {
@@ -66,8 +68,8 @@ class ApiService {
         throw new Error(`${endpoint} failed: HTTP ${response.status} ${details}`);
       }
 
-      const result = await response.json();
-      return result;
+      const text = await response.text();
+      return (text ? JSON.parse(text) : null) as T;
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
       throw error;
@@ -451,6 +453,31 @@ class ApiService {
     });
   }
 
+  // ============ PRODUCT THEMES ============
+  async getProductThemes() {
+    return this.request('/api/admin/product-themes');
+  }
+
+  async createProductTheme(data: any) {
+    return this.request('/api/admin/product-themes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProductTheme(themeId: string, data: any) {
+    return this.request(`/api/admin/product-themes/${themeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProductTheme(themeId: string) {
+    return this.request(`/api/admin/product-themes/${themeId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getAnnouncements() {
     return this.request('/api/admin/announcements');
   }
@@ -475,6 +502,60 @@ class ApiService {
     });
   }
 
+  // ============ SIZE GUIDES ============
+  async getSizeGuides() {
+    return this.request('/api/admin/size-guides');
+  }
+
+  async createSizeGuide(data: any) {
+    return this.request('/api/admin/size-guides', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSizeGuide(id: string, data: any) {
+    return this.request(`/api/admin/size-guides/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSizeGuide(id: string) {
+    return this.request(`/api/admin/size-guides/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ HERO BANNERS ============
+  async getHeroBanners() {
+    return this.request('/api/admin/hero-banners');
+  }
+
+  async createHeroBanner(data: any) {
+    return this.request('/api/admin/hero-banners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateHeroBanner(id: string, data: any) {
+    return this.request(`/api/admin/hero-banners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteHeroBanner(id: string) {
+    return this.request(`/api/admin/hero-banners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  getBaseUrl() {
+    return this.baseUrl;
+  }
+
   // ============ AUTHENTICATION ============
   async login(email: string, password: string) {
     return this.request('/api/auth/admin/login', {
@@ -496,3 +577,6 @@ class ApiService {
 
 // Export singleton instance
 export const apiService = new ApiService();
+
+// Also export as default for convenience
+export const api = apiService;

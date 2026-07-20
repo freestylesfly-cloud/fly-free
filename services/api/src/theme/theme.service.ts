@@ -121,29 +121,4 @@ export class ThemeService {
     });
   }
 
-  // Get hero banners
-  async getHeroBanners() {
-    return await this.prisma.heroBanner.findMany({
-      orderBy: { priority: "asc" },
-      where: { isActive: true },
-    });
-  }
-
-  // Update hero banner
-  async updateHeroBanner(id: string, data: any) {
-    return await this.prisma.heroBanner.update({
-      where: { id },
-      data: {
-        title: data.title,
-        desktopImageUrl: data.desktopImageUrl || data.imageUrl,
-        mobileImageUrl: data.mobileImageUrl,
-        buttonLabel: data.buttonLabel || data.ctaText,
-        href: data.href || data.ctaLink,
-        priority: data.priority,
-        isActive: data.isActive,
-        startsAt: data.startsAt ? new Date(data.startsAt) : undefined,
-        endsAt: data.endsAt ? new Date(data.endsAt) : undefined,
-      },
-    });
-  }
 }

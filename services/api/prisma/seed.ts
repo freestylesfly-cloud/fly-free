@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
+declare const process: { exit(code?: number): never };
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -32,13 +34,27 @@ async function main() {
   await prisma.adminUser.deleteMany(); // Delete adminUser before role
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
-  await prisma.heroBanner.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.page.deleteMany();
   await prisma.appSetting.deleteMany();
   await prisma.customizationRequest.deleteMany();
-  await prisma.giftOption.deleteMany();
   await prisma.websiteTheme.deleteMany();
+
+  // Delete size guides
+  try {
+    // @ts-ignore - Type checking may lag behind schema
+    await prisma.sizeGuide.deleteMany();
+  } catch (error) {
+    console.log('ℹ️  SizeGuide table not yet available');
+  }
+
+  // Delete hero banners
+  try {
+    // @ts-ignore - Type checking may lag behind schema
+    await prisma.heroBanner.deleteMany();
+  } catch (error) {
+    console.log('ℹ️  HeroBanner table not yet available');
+  }
 
   // Create Categories
   const categories = await Promise.all([
@@ -90,6 +106,54 @@ async function main() {
     }),
     prisma.collection.create({
       data: { name: 'New Arrival', slug: 'new-arrival', priority: 4 },
+    }),
+  ]);
+
+  // Create Size Guides
+  await Promise.all([
+    prisma.sizeGuide.create({
+      data: {
+        size: 'S',
+        chest: '44"',
+        shoulder: '20.5"',
+        length: '28"',
+        sleeve: '8.5"',
+        priority: 1,
+        active: true,
+      },
+    }),
+    prisma.sizeGuide.create({
+      data: {
+        size: 'M',
+        chest: '46"',
+        shoulder: '21.5"',
+        length: '29"',
+        sleeve: '9"',
+        priority: 2,
+        active: true,
+      },
+    }),
+    prisma.sizeGuide.create({
+      data: {
+        size: 'L',
+        chest: '48"',
+        shoulder: '22.5"',
+        length: '30"',
+        sleeve: '9.5"',
+        priority: 3,
+        active: true,
+      },
+    }),
+    prisma.sizeGuide.create({
+      data: {
+        size: 'XL',
+        chest: '51"',
+        shoulder: '23.5"',
+        length: '30.5"',
+        sleeve: '10"',
+        priority: 4,
+        active: true,
+      },
     }),
   ]);
 
@@ -384,41 +448,48 @@ async function main() {
         tags: productData.tags,
         isFeatured: productData.isFeatured,
         isTrending: productData.isTrending,
-        isNewArrival: true,
-        isVisible: true,
+        isNewArrival: false,
+        isVisible: false,
         seoTitle: `${productData.name} - Fly Free`,
         seoDescription: productData.description,
       },
     });
 
     // Create product images for gallery and color switching
+    const imageUrls = [
+      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop',
+      'https://images.unsplash.com/photo-1554521666-7deae28e1168?w=900&h=1100&fit=crop',
+      'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=900&h=1100&fit=crop',
+      'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=900&h=1100&fit=crop',
+    ];
+
     await prisma.productImage.createMany({
       data: [
         {
           productId: product.id,
           color: productData.color,
-          url: `https://via.placeholder.com/900x1100/111827/ffffff?text=${encodeURIComponent(product.name)}`,
+          url: imageUrls[0],
           alt: `${product.name} front view`,
           priority: 0,
         },
         {
           productId: product.id,
           color: 'Black',
-          url: `https://via.placeholder.com/900x1100/0b0b0b/ffffff?text=${encodeURIComponent(`${product.name} Black`)}`,
+          url: imageUrls[1],
           alt: `${product.name} black color`,
           priority: 1,
         },
         {
           productId: product.id,
           color: 'White',
-          url: `https://via.placeholder.com/900x1100/f8fafc/111827?text=${encodeURIComponent(`${product.name} White`)}`,
+          url: imageUrls[2],
           alt: `${product.name} white color`,
           priority: 2,
         },
         {
           productId: product.id,
           color: productData.color,
-          url: `https://via.placeholder.com/900x1100/ff6b5b/ffffff?text=${encodeURIComponent(`${product.name} Detail`)}`,
+          url: imageUrls[3],
           alt: `${product.name} print detail`,
           priority: 3,
         },
@@ -926,68 +997,105 @@ async function main() {
     }),
   ]);
 
-  // Create Hero Banners
-  console.log('📸 Creating hero banners...');
-  await Promise.all([
-    prisma.heroBanner.create({
+  // Create Custom Design samples
+  console.log('🎨 Creating custom design samples...');
+  try {
+    await (prisma as any).customDesign.createMany({
+      data: [
+        {
+          userId: users[0].id,
+          title: 'My Anime Design',
+          description: 'Custom anime character design for personal use',
+          images: ['https://via.placeholder.com/300x300/111827/ffffff?text=Anime+Design'],
+          size: 'M',
+          color: 'black',
+          placement: 'front',
+          notes: 'High quality print preferred',
+          status: 'APPROVED',
+          price: 59900
+        },
+        {
+          userId: users[1].id,
+          title: 'Custom Logo Tee',
+          description: 'Custom logo design for team',
+          images: ['https://via.placeholder.com/300x300/ff6b5b/ffffff?text=Logo+Design'],
+          size: 'L',
+          color: 'white',
+          placement: 'front',
+          notes: 'For team event',
+          status: 'PENDING',
+          price: null
+        }
+      ]
+    });
+  } catch (error) {
+    console.log('⚠️ CustomDesign seeding skipped (model may not exist yet)');
+  }
+
+  const websiteThemes = await Promise.all([
+    prisma.websiteTheme.create({
       data: {
-        title: 'Summer Collection',
-        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Summer+Collection',
-        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Summer',
-        buttonLabel: 'Shop Summer',
-        href: '/collections/summer',
+        name: 'Puja Festival Website',
+        slug: 'puja-festival-website',
+        description: 'Global festive site skin with warm colors, hero banner, and Puja gifting mood.',
+        primaryColor: '#111827',
+        secondaryColor: '#b42318',
+        backgroundColor: '#f7f3ea',
+        textColor: '#161616',
+        accentColor: '#facc15',
+        fontFamily: 'Inter, Arial, sans-serif',
+        animationStyle: 'glow',
+        heroTitle: 'Fly Free Puja Festival',
+        heroSubtitle: 'Gift-ready tees, bold festive graphics, and comfortable custom apparel for family, friends, and bulk celebration orders.',
+        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600',
+        heroMobileImageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900',
+        heroCtaLabel: 'Shop Puja styles',
+        heroHref: '/themes/puja-festival',
         priority: 1,
         isActive: true,
       },
     }),
-    prisma.heroBanner.create({
+    prisma.websiteTheme.create({
       data: {
-        title: 'Anime Series',
-        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Anime+Series',
-        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Anime',
-        buttonLabel: 'Shop Anime',
-        href: '/themes/anime',
+        name: 'Winter Street Website',
+        slug: 'winter-street-website',
+        description: 'Cool winter campaign skin for hoodies, dark tees, and seasonal comfort drops.',
+        primaryColor: '#0f172a',
+        secondaryColor: '#38bdf8',
+        backgroundColor: '#f8fafc',
+        textColor: '#0f172a',
+        accentColor: '#e0f2fe',
+        fontFamily: 'Inter, Arial, sans-serif',
+        animationStyle: 'snow',
+        heroTitle: 'Winter Street Drop',
+        heroSubtitle: 'Layer-ready colors, soft cotton fits, and limited cold-weather graphics.',
+        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?w=1600',
+        heroMobileImageUrl: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?w=900',
+        heroCtaLabel: 'Explore winter',
+        heroHref: '/products',
         priority: 2,
-        isActive: true,
+        isActive: false,
       },
     }),
-    prisma.heroBanner.create({
-      data: {
-        title: 'Spider-Man Drop',
-        desktopImageUrl: 'https://via.placeholder.com/1200x600?text=Spider-Man+Drop',
-        mobileImageUrl: 'https://via.placeholder.com/600x400?text=Spider-Man',
-        buttonLabel: 'Shop Spider-Man',
-        href: '/themes/spider-man',
-        priority: 3,
-        isActive: true,
-      },
-    }),
-  ]);
-
-  await Promise.all([
     prisma.websiteTheme.create({
       data: {
-        name: 'Fly Free Classic Light',
-        slug: 'flyfree-classic-light',
+        name: 'Game Night Website',
+        slug: 'game-night-website',
+        description: 'Electric global skin for gaming and creator-led product moments.',
         primaryColor: '#111827',
-        secondaryColor: '#ff6b5b',
-        backgroundColor: '#f7f3ea',
-        textColor: '#161616',
-        accentColor: '#4ecdc4',
-        fontFamily: 'Inter, Arial, sans-serif',
-        isActive: true,
-      },
-    }),
-    prisma.websiteTheme.create({
-      data: {
-        name: 'Fly Free Night',
-        slug: 'flyfree-night',
-        primaryColor: '#ffffff',
-        secondaryColor: '#ff6b5b',
-        backgroundColor: '#050505',
+        secondaryColor: '#00ff41',
+        backgroundColor: '#0d0221',
         textColor: '#ffffff',
-        accentColor: '#4ecdc4',
-        fontFamily: 'Inter, Arial, sans-serif',
+        accentColor: '#ff00ff',
+        fontFamily: 'Courier New, monospace',
+        animationStyle: 'game-pulse',
+        heroTitle: 'Game Night Graphics',
+        heroSubtitle: 'Fast, electric tees for gamers, creators, and fans of loud graphic energy.',
+        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+        heroMobileImageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=900',
+        heroCtaLabel: 'Shop gaming',
+        heroHref: '/themes/gaming',
+        priority: 3,
         isActive: false,
       },
     }),
@@ -1140,32 +1248,45 @@ You can contact Fly Free support for privacy questions, account help, or communi
     }),
   ]);
 
+  // Gift options removed - using hampers instead
+
+  // Create Hero Banners
+  // @ts-ignore - Prisma types may lag behind schema
   await Promise.all([
-    prisma.giftOption.create({
+    prisma.heroBanner.create({
       data: {
-        name: 'Festival Gift Box',
-        description: 'Gift-ready packaging for Puja, Bihu, birthdays, and family celebrations.',
-        imageUrl: 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=900',
-        price: 9900,
+        title: 'Summer Collection',
+        subtitle: 'Light, breathable tees for sunny days',
+        imageUrl: 'https://images.unsplash.com/photo-1591026151698-64e3d6541f9b?w=1920',
+        mobileImageUrl: 'https://images.unsplash.com/photo-1591026151698-64e3d6541f9b?w=600',
+        ctaLabel: 'Shop Summer',
+        ctaHref: '/collections/summer',
         priority: 1,
+        isActive: true,
       },
     }),
-    prisma.giftOption.create({
+    prisma.heroBanner.create({
       data: {
-        name: 'Custom Message Card',
-        description: 'Printed note card added to the package with your message.',
-        imageUrl: 'https://images.unsplash.com/photo-1512909006721-3d6018887383?w=900',
-        price: 2900,
+        title: 'Puja Festival Special',
+        subtitle: 'Gift-ready tees and custom cards for celebrations',
+        imageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1920',
+        mobileImageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=600',
+        ctaLabel: 'Explore Puja',
+        ctaHref: '/themes/puja-festival',
         priority: 2,
+        isActive: true,
       },
     }),
-    prisma.giftOption.create({
+    prisma.heroBanner.create({
       data: {
-        name: 'Company Bulk Gifting',
-        description: 'Special pricing for teams, events, corporate gifting, and mass orders.',
-        imageUrl: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=900',
-        price: 0,
+        title: 'Anime Collection',
+        subtitle: 'Bold anime-inspired designs for fans',
+        imageUrl: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=1920',
+        mobileImageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600',
+        ctaLabel: 'Browse Anime',
+        ctaHref: '/themes/anime',
         priority: 3,
+        isActive: true,
       },
     }),
   ]);
@@ -1177,9 +1298,9 @@ You can contact Fly Free support for privacy questions, account help, or communi
         message: 'Wear Northeast stories with the new Bihu collection.',
         href: '/themes/bihu',
         ctaLabel: 'Shop Bihu',
-        type: 'THEME',
+        type: 'EVENT',
         priority: 1,
-        themeId: themes[1].id,
+        websiteThemeId: websiteThemes[0].id,
         startsAt: new Date(Date.now() - 86400000),
         endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
       },
@@ -1190,9 +1311,9 @@ You can contact Fly Free support for privacy questions, account help, or communi
         message: 'Schedule gift-ready tees and custom cards for Puja season.',
         href: '/gifting',
         ctaLabel: 'Explore gifts',
-        type: 'GIFTING',
+        type: 'OFFER',
         priority: 2,
-        themeId: themes[2].id,
+        websiteThemeId: websiteThemes[0].id,
         startsAt: new Date(Date.now() - 86400000),
         endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
       },

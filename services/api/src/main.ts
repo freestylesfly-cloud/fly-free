@@ -47,6 +47,7 @@ async function bootstrap() {
     .addTag("⚙️ Admin Settings", "Manage app settings and configuration")
     .addTag("📊 Admin Analytics", "Dashboard stats, sales, revenue reports")
     .addTag("📧 Email", "Send emails, notifications, invoices")
+    .addTag("📊 Admin Logs", "View server logs and system status")
     .addBearerAuth()
     .build();
 

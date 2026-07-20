@@ -17,10 +17,15 @@ import {
   ShoppingCart,
   Sparkles,
   Truck,
-  X
+  X,
+  Copy,
+  MessageCircle,
+  Mail,
+  Instagram
 } from 'lucide-react';
 import { formatCurrency } from '@flyfree/utils';
 import { useCartStore } from '../../stores/cartStore';
+import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
 
 interface ProductDetailProps {
@@ -64,8 +69,10 @@ const API_URL = getApiBaseUrl();
 
 export default function ProductDetailPage({ params }: ProductDetailProps) {
   const { slug } = use(params);
+  const token = useAuthStore((state) => state.token);
   const addItem = useCartStore((state) => state.addItem);
   const [product, setProduct] = useState<any>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [giftOptions, setGiftOptions] = useState<GiftOption[]>([]);
   const [sizeChart, setSizeChart] = useState('');
   const [loading, setLoading] = useState(true);
@@ -79,7 +86,33 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
   const [notice, setNotice] = useState('');
-  const [pincode, setPincode] = useState('');
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const variants: Variant[] = useMemo(() => {
+    if (!product?.variants) return [];
+    return product.variants.map((variant: any) => ({
+      ...variant,
+      color: variant.color || product.variants[0]?.color,
+      size: variant.size || product.variants[0]?.size
+    }));
+  }, [product]);
+
+  const colors = useMemo(() => uniqueValues(variants.map((v) => v.color)), [variants]);
+  const sizes = useMemo(() => uniqueValues(variants.map((v) => v.size)), [variants]);
+  const offers = useMemo(() => buildOffers(product), [product]);
+  const activeImage = selectedImage || (product?.images?.[0] && normalizeImages(product.images, product.name)[0]);
+  const images = product ? normalizeImages(product.images, product.name) : [];
+
+  const selectedVariant = useMemo(
+    () => variants.find((v) => v.color === selectedColor && v.size === selectedSize),
+    [variants, selectedColor, selectedSize]
+  );
+
+  const stock = selectedVariant?.inventory?.stock ?? 0;
+  const canAdd = Boolean(selectedColor && selectedSize && selectedVariant && stock > 0);
 
   useEffect(() => {
     async function fetchProductFlow() {
@@ -97,29 +130,41 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           throw new Error('This product could not be loaded right now.');
         }
 
-        const productData = await productResponse.json();
-        const loadedProduct = productData.data || productData;
-        setProduct(loadedProduct);
+        const productResponseData = await productResponse.json();
+        const productData = productResponseData?.data || productResponseData;
+        setProduct(productData);
 
-        const colors = uniqueValues((loadedProduct.variants || []).map((variant: Variant) => variant.color));
-        const sizes = uniqueValues((loadedProduct.variants || []).map((variant: Variant) => variant.size));
-        const images = normalizeImages(loadedProduct.images, loadedProduct.name);
+        if (productData.images?.length > 0) {
+          setSelectedImage(normalizeImages(productData.images, productData.name)[0]);
+        }
 
-        setSelectedColor(colors[0] || images[0]?.color || 'Default');
-        setSelectedSize(sizes.includes('M') ? 'M' : sizes[0] || '');
-        setSelectedImage(images[0] || null);
+        if (productData?.variants?.length > 0) {
+          const firstColor = uniqueValues(productData.variants.map((v: any) => v.color))[0];
+          if (firstColor) setSelectedColor(firstColor);
+        }
 
         if (homeResponse?.ok) {
           const homeData = await homeResponse.json();
-          setGiftOptions(homeData.giftOptions || []);
+          const homePayload = homeData?.data || homeData;
+          setGiftOptions(homePayload?.giftOptions || []);
+          const homeSectionData = homePayload?.sections?.find?.((s: any) => s.type === 'product-recommendation');
+          if (homeSectionData?.productIds) {
+            const recResponse = await fetch(
+              `${API_URL}/catalog/products?ids=${homeSectionData.productIds.slice(0, 6).join(',')}`
+            );
+            if (recResponse.ok) {
+              const recData = await recResponse.json();
+              setRecommendations((Array.isArray(recData) ? recData : recData.data || []).filter((p: any) => p.slug !== slug).slice(0, 6));
+            }
+          }
         }
 
         if (sizeChartResponse?.ok) {
-          const pageData = await sizeChartResponse.json();
-          setSizeChart(pageData.content || pageData.data?.content || '');
+          const sizeChartData = await sizeChartResponse.json();
+          setSizeChart(sizeChartData?.content || '');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Product failed to load.');
+        setError(err instanceof Error ? err.message : 'Failed to load product');
       } finally {
         setLoading(false);
       }
@@ -128,130 +173,260 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     fetchProductFlow();
   }, [slug]);
 
-  const variants: Variant[] = product?.variants || [];
-  const images = useMemo(() => normalizeImages(product?.images || [], product?.name || 'Product'), [product]);
-  const colors = useMemo(() => uniqueValues(variants.map((variant) => variant.color)), [variants]);
-  const sizes = useMemo(() => uniqueValues(variants.filter((variant) => !selectedColor || variant.color === selectedColor).map((variant) => variant.size)), [variants, selectedColor]);
-  const selectedVariant = useMemo(
-    () => variants.find((variant) => variant.color === selectedColor && variant.size === selectedSize) || variants.find((variant) => variant.size === selectedSize) || variants[0],
-    [selectedColor, selectedSize, variants]
-  );
-  const selectedGift = giftOptions.find((gift) => gift.id === selectedGiftId) || null;
-  const offers = useMemo(() => buildOffers(product), [product]);
-  const selectedOffer = offers.find((offer) => offer.code === selectedOfferCode) || null;
-  const activeImage = selectedImage || images[0];
-  const itemPrice = selectedVariant?.price || product?.price || 0;
-  const stock = Number(selectedVariant?.inventory?.stock ?? 0);
-  const canAdd = Boolean(product && selectedSize && selectedColor && selectedVariant && stock > 0);
+  useEffect(() => {
+    if (!product?.id || !token) return;
+    checkWishlistStatus();
+  }, [product?.id, token]);
 
-  function chooseColor(color: string) {
-    setSelectedColor(color);
-    const nextVariant = variants.find((variant) => variant.color === color && variant.size === selectedSize) || variants.find((variant) => variant.color === color);
-    if (nextVariant?.size) setSelectedSize(nextVariant.size);
-
-    const colorImage = images.find((image) => image.color?.toLowerCase() === color.toLowerCase());
-    if (colorImage) setSelectedImage(colorImage);
+  async function checkWishlistStatus() {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/ecommerce/wishlist`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const wishlist = await response.json();
+        const items = Array.isArray(wishlist) ? wishlist : wishlist?.data || [];
+        setIsWishlisted(items.some((item: any) => item.productId === product.id || item.product?.id === product.id));
+      }
+    } catch (err) {
+      console.error('Failed to check wishlist status:', err);
+    }
   }
 
   function handleAddToCart() {
-    if (!canAdd || !product) {
-      setNotice('Choose an available color and size before adding to cart.');
-      return;
-    }
-
+    if (!canAdd) return;
     addItem({
       productId: product.id,
       productName: product.name,
-      price: itemPrice,
+      variantId: selectedVariant?.id || '',
       quantity,
-      size: selectedSize,
+      price: Math.round((selectedVariant?.price || product.price || product.basePrice || 0) / 100),
       color: selectedColor,
-      image: activeImage?.url,
-      variantId: selectedVariant?.id,
-      giftOption: selectedGift ? { id: selectedGift.id, name: selectedGift.name, price: selectedGift.price } : null,
-      offerCode: selectedOffer?.code,
-      offerLabel: selectedOffer?.label
+      size: selectedSize,
+      image: activeImage?.url || '',
+      giftOption: selectedGiftId ? {
+        id: selectedGiftId,
+        name: giftOptions.find((gift) => gift.id === selectedGiftId)?.name || 'Gift option',
+        price: Math.round((giftOptions.find((gift) => gift.id === selectedGiftId)?.price || 0) / 100)
+      } : null,
+      offerCode: selectedOfferCode || undefined
     });
-
-    setNotice(`${product.name} added to cart with ${selectedColor}, ${selectedSize}${selectedGift ? ` and ${selectedGift.name}` : ''}.`);
+    setNotice('Added to cart successfully!');
+    setTimeout(() => setNotice(''), 3000);
   }
 
-  if (loading) {
-    return <ProductSkeleton />;
+  async function handleWishlist() {
+    if (!token) {
+      setNotice('Please login to add to wishlist');
+      return;
+    }
+
+    setWishlistLoading(true);
+    try {
+      const method = isWishlisted ? 'DELETE' : 'POST';
+      const response = await fetch(`${API_URL}/ecommerce/wishlist/${product.id}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        setIsWishlisted(!isWishlisted);
+        setNotice(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+        setTimeout(() => setNotice(''), 2000);
+      }
+    } catch (err) {
+      setNotice('Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
+    }
   }
+
+  function handleCopyLink() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    navigator.clipboard.writeText(url);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  }
+
+  function handleShareWhatsApp() {
+    const text = `Check out ${product.name} at Fly Free! ${typeof window !== 'undefined' ? window.location.href : ''}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  function handleShareEmail() {
+    const subject = `Check out: ${product.name}`;
+    const body = `I found this product at Fly Free: ${product.name}\n\n${typeof window !== 'undefined' ? window.location.href : ''}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  if (loading) return <ProductSkeleton />;
 
   if (error || !product) {
     return (
-      <main className="min-h-screen bg-white px-5 py-20 text-center dark:bg-ink">
-        <p className="text-2xl font-black text-ink dark:text-white">{error || 'Product not found'}</p>
-        <Link href="/products" className="mt-5 inline-flex rounded bg-coral px-5 py-3 font-bold text-white">
-          Back to products
-        </Link>
+      <main className="min-h-screen px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="text-2xl font-black">Product Not Found</h1>
+          <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>{error || 'This product could not be loaded.'}</p>
+          <Link href="/products" className="mt-6 inline-block rounded px-6 py-2 text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
+            Back to Products
+          </Link>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <div className="mx-auto max-w-7xl px-4 py-4 text-sm text-black/55 dark:text-white/55">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/" className="hover:text-coral">Home</Link>
-          <ChevronRight size={14} />
-          <Link href="/products" className="hover:text-coral">Products</Link>
-          <ChevronRight size={14} />
-          <span className="font-bold text-ink dark:text-white">{product.name}</span>
-        </div>
-      </div>
-
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-14 pt-4 lg:grid-cols-[minmax(0,1fr)_440px]">
-        <div className="space-y-4">
-          <div className="relative aspect-square overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-            {activeImage?.url ? (
-              <img src={activeImage.url} alt={activeImage.alt || product.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm font-bold text-black/45 dark:text-white/45">No product photo</div>
+    <main className="min-h-screen px-4 py-6 pb-20 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {/* Product Hero */}
+      <section className="mx-auto mb-10 grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
+        {/* Image Gallery */}
+        <div className="flex flex-col gap-4">
+          <div
+            className="relative flex min-h-96 items-center justify-center rounded-lg border"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+          >
+            {activeImage?.url && (
+              <>
+                <img src={activeImage.url} alt={activeImage.alt || product.name} className="max-h-full max-w-full object-contain" />
+                <button
+                  onClick={() => setShowZoom(true)}
+                  className="absolute right-3 top-3 rounded-lg border p-2 transition hover:opacity-70"
+                  style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+                  aria-label="Zoom image"
+                >
+                  <Maximize2 size={18} />
+                </button>
+              </>
             )}
-            <button onClick={() => setShowZoom(true)} className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-ink shadow" aria-label="Zoom product image">
-              <Maximize2 size={18} />
+          </div>
+
+          {images.length > 1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(img)}
+                  className="flex-shrink-0 rounded-lg border-2 transition"
+                  style={{
+                    borderColor: activeImage?.url === img.url ? 'var(--color-primary)' : 'var(--border-color)',
+                    backgroundColor: 'var(--bg-secondary)'
+                  }}
+                >
+                  <img src={img.url} alt={img.alt || `${product.name} ${idx}`} className="h-20 w-20 object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Product Info Sidebar */}
+        <aside className="flex flex-col gap-5">
+          {/* Header */}
+          <div>
+            <div className="mb-2 text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+              {product.theme?.name || 'Fly Free'} • {product.category?.name || 'Apparel'}
+            </div>
+            <h1 className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{product.name}</h1>
+            {product.tagline && <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>{product.tagline}</p>}
+          </div>
+
+          {/* Price & Rating */}
+          <div className="flex items-center justify-between gap-4 border-t border-b py-3" style={{ borderColor: 'var(--border-color)' }}>
+            <div>
+              <p className="text-2xl font-black">{formatCurrency(Math.round((selectedVariant?.price || product.basePrice) / 100))}</p>
+              {product.basePrice && selectedVariant?.price && selectedVariant.price < product.basePrice && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="line-through">{formatCurrency(Math.round(product.basePrice / 100))}</span>
+                </p>
+              )}
+            </div>
+            {product.reviews?.length > 0 && (
+              <div className="text-right">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={16} fill={i < Math.round(product.averageRating || 4) ? 'currentColor' : 'none'} style={{ color: 'var(--accent-tertiary)' }} />
+                  ))}
+                </div>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>({product.reviews.length})</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleWishlist}
+              disabled={wishlistLoading}
+              className="flex min-h-11 items-center justify-center gap-2 rounded border px-4 font-black transition hover:opacity-70 disabled:opacity-50"
+              style={{
+                borderColor: isWishlisted ? 'var(--color-primary)' : 'var(--border-color)',
+                backgroundColor: isWishlisted ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent',
+                color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)'
+              }}
+              aria-label="Add to wishlist"
+            >
+              <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
+              {isWishlisted ? 'Saved' : 'Save'}
+            </button>
+
+            <button
+              onClick={() => setShowShareMenu(!showShareMenu)}
+              className="flex min-h-11 items-center justify-center gap-2 rounded border px-4 font-black transition hover:opacity-70"
+              style={{ borderColor: 'var(--border-color)' }}
+              aria-label="Share product"
+            >
+              <Share2 size={18} />
+              Share
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-            {images.map((image, index) => (
+          {/* Share Menu */}
+          {showShareMenu && (
+            <div
+              className="grid gap-2 rounded-lg border p-3"
+              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+            >
               <button
-                key={`${image.url}-${index}`}
-                onClick={() => setSelectedImage(image)}
-                className={`aspect-square overflow-hidden rounded border ${activeImage?.url === image.url ? 'border-coral ring-2 ring-coral/25' : 'border-black/10 dark:border-white/10'}`}
+                onClick={handleCopyLink}
+                className="flex items-center gap-3 rounded px-3 py-2 text-sm font-bold transition hover:opacity-70"
+                style={{ backgroundColor: 'var(--bg-tertiary)' }}
               >
-                <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                <Copy size={16} /> {copySuccess ? 'Copied!' : 'Copy Link'}
               </button>
-            ))}
-          </div>
-        </div>
-
-        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <div>
-            {product.theme?.name && <span className="inline-flex rounded bg-coral/10 px-3 py-1 text-xs font-black text-coral">{product.theme.name}</span>}
-            <h1 className="mt-3 text-3xl font-black leading-tight md:text-4xl">{product.name}</h1>
-            {product.description && <p className="mt-3 leading-7 theme-muted">{product.description}</p>}
-          </div>
-
-          <div className="rounded-lg border border-black/10 p-4 dark:border-white/10">
-            <div className="flex flex-wrap items-end gap-3">
-              <p className="text-3xl font-black text-coral">{formatCurrency(Math.round(itemPrice / 100))}</p>
-              {product.mrp && product.mrp > itemPrice && <p className="pb-1 text-sm font-bold text-black/45 line-through dark:text-white/45">{formatCurrency(Math.round(product.mrp / 100))}</p>}
-              {product.discountPercent > 0 && <span className="mb-1 rounded bg-mint/15 px-2 py-1 text-xs font-black text-ink dark:text-white">{product.discountPercent}% OFF</span>}
+              <button
+                onClick={handleShareWhatsApp}
+                className="flex items-center gap-3 rounded px-3 py-2 text-sm font-bold transition hover:opacity-70"
+                style={{ backgroundColor: 'var(--bg-tertiary)' }}
+              >
+                <MessageCircle size={16} /> WhatsApp
+              </button>
+              <button
+                onClick={handleShareEmail}
+                className="flex items-center gap-3 rounded px-3 py-2 text-sm font-bold transition hover:opacity-70"
+                style={{ backgroundColor: 'var(--bg-tertiary)' }}
+              >
+                <Mail size={16} /> Email
+              </button>
             </div>
-            <p className="mt-2 text-xs font-bold text-black/45 dark:text-white/45">GST {product.gstPercent || 5}% included. Final total updates in cart.</p>
-          </div>
+          )}
 
-          <ChoiceBlock title="Color" subtitle="Photos switch when a matching color image is available.">
+          {/* Choices */}
+          <ChoiceBlock
+            title="Color"
+            subtitle={selectedColor ? `${selectedColor} selected` : 'Choose a color'}
+          >
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => (
                 <button
                   key={color}
-                  onClick={() => chooseColor(color)}
-                  className={`min-h-11 rounded px-4 text-sm font-black transition ${selectedColor === color ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'border border-black/10 dark:border-white/10'}`}
+                  onClick={() => setSelectedColor(color)}
+                  className="min-h-11 rounded px-4 text-sm font-black transition"
+                  style={{
+                    backgroundColor: selectedColor === color ? 'var(--color-primary)' : 'var(--bg-tertiary)',
+                    color: selectedColor === color ? 'white' : 'var(--text-primary)',
+                    border: `1px solid ${selectedColor === color ? 'var(--color-primary)' : 'var(--border-color)'}`
+                  }}
                 >
                   {color}
                 </button>
@@ -262,7 +437,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <ChoiceBlock
             title="Size"
             subtitle={selectedVariant ? `${stock} in stock for selected option` : 'Choose a color to see available sizes.'}
-            action={<button onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 text-xs font-black text-coral"><Ruler size={14} /> Size chart</button>}
+            action={<button onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 text-xs font-black" style={{ color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
           >
             <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
@@ -273,7 +448,12 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     key={size}
                     onClick={() => available && setSelectedSize(size)}
                     disabled={!available}
-                    className={`min-h-11 min-w-12 rounded px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-35 ${selectedSize === size ? 'bg-coral text-white' : 'border border-black/10 dark:border-white/10'}`}
+                    className="min-h-11 min-w-12 rounded px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-35"
+                    style={{
+                      backgroundColor: selectedSize === size ? 'var(--color-primary)' : 'var(--bg-tertiary)',
+                      color: selectedSize === size ? 'white' : 'var(--text-primary)',
+                      border: `1px solid ${selectedSize === size ? 'var(--color-primary)' : 'var(--border-color)'}`
+                    }}
                   >
                     {size}
                   </button>
@@ -309,40 +489,30 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             </ChoiceBlock>
           )}
 
-          <ChoiceBlock title="Delivery Details" subtitle="Check availability before checkout.">
-            <div className="flex gap-2">
-              <input
-                value={pincode}
-                onChange={(event) => setPincode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter Pincode"
-                className="min-h-11 flex-1 rounded border px-3 font-bold outline-none"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-              />
-              <button
-                type="button"
-                className="rounded px-4 text-sm font-black text-white"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-                onClick={() => setNotice(pincode.length === 6 ? 'Delivery available. Estimated dispatch in 2-4 business days.' : 'Enter a valid 6 digit pincode.')}
-              >
-                CHECK
-              </button>
+          <ChoiceBlock title="Delivery Details" subtitle="Delivery and serviceability are calculated at checkout from admin settings.">
+            <div className="rounded border p-4 text-sm font-bold" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+              Add or choose your shipping address during checkout. Paid orders keep the address used at order time, so later profile address changes do not rewrite old invoices.
             </div>
           </ChoiceBlock>
 
           <div className="flex items-center gap-3">
-            <div className="flex min-h-12 items-center rounded border border-black/10 dark:border-white/10">
+            <div className="flex min-h-12 items-center rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3"><Minus size={18} /></button>
               <span className="min-w-10 text-center font-black">{quantity}</span>
               <button onClick={() => setQuantity(quantity + 1)} className="p-3"><Plus size={18} /></button>
             </div>
-            <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded bg-coral px-5 font-black text-white transition hover:bg-coral/90 disabled:cursor-not-allowed disabled:opacity-50">
+            <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded px-5 font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
               <ShoppingCart size={20} /> Add to cart
             </button>
           </div>
 
-          {notice && <p className="rounded border border-mint/30 bg-mint/10 p-3 text-sm font-bold text-ink dark:text-white">{notice}</p>}
+          {notice && (
+            <p className="rounded border p-3 text-sm font-bold" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+              {notice}
+            </p>
+          )}
 
-          <div className="grid gap-3 border-t border-black/10 pt-5 text-sm text-black/65 dark:border-white/10 dark:text-white/65">
+          <div className="grid gap-3 border-t pt-5 text-sm" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
             <InfoRow icon={<Truck size={18} />} title="Delivery and GST" text="Cart shows subtotal, GST, shipping, gift pack, and final total before checkout." />
             <InfoRow icon={<PackageCheck size={18} />} title="Return Policy" text="Eligible items can be returned or exchanged under the configured return policy." />
             <InfoRow icon={<Heart size={18} />} title="Wishlist" text="Save products after login. Guest cart still works before login." />
@@ -351,8 +521,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         </aside>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-16 lg:grid-cols-[1fr_0.9fr]">
-        <article className="theme-surface rounded border p-5">
+      {/* Product Details & Reviews */}
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1fr_0.9fr]">
+        <article className="rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <h2 className="text-2xl font-black">Product Details</h2>
           <div className="mt-5 grid gap-3 text-sm">
             <DetailRow label="Brand" value={product.brand || 'Fly Free'} />
@@ -362,10 +533,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             <DetailRow label="Category" value={product.category?.name || 'Apparel'} />
             <DetailRow label="Theme" value={product.theme?.name || 'Fly Free'} />
           </div>
-          {product.description && <p className="mt-5 leading-7 theme-muted">{product.description}</p>}
+          {product.description && <p className="mt-5 leading-7" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>}
         </article>
 
-        <article className="theme-surface rounded border p-5">
+        <article className="rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <h2 className="text-2xl font-black">Customer Reviews</h2>
           <div className="mt-5 grid gap-4">
             {(product.reviews || []).length > 0 ? (
@@ -374,27 +545,60 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-black">{review.user?.name || 'Fly Free customer'}</p>
-                      {review.title && <p className="text-sm theme-muted">{review.title}</p>}
+                      {review.title && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{review.title}</p>}
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded bg-coral/10 px-2 py-1 text-sm font-black text-coral">
+                    <span className="inline-flex items-center gap-1 rounded px-2 py-1 text-sm font-black" style={{ backgroundColor: 'var(--accent-primary)/10', color: 'var(--accent-primary)' }}>
                       <Star size={14} fill="currentColor" /> {review.rating}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm leading-6 theme-muted">{review.body}</p>
+                  <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{review.body}</p>
                 </div>
               ))
             ) : (
-              <p className="theme-muted">No approved reviews yet. Verified customers can review after purchase.</p>
+              <p style={{ color: 'var(--text-secondary)' }}>No approved reviews yet. Verified customers can review after purchase.</p>
             )}
           </div>
         </article>
       </section>
 
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pb-10">
+          <h2 className="mb-6 text-2xl font-black">You Might Like</h2>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {recommendations.map((rec) => (
+              <Link
+                key={rec.id}
+                href={`/products/${rec.slug}`}
+                className="group rounded-lg border p-4 transition hover:shadow-lg"
+                style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+              >
+                <div className="relative mb-4 aspect-square overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                  <img
+                    src={rec.images?.[0]?.url || `https://via.placeholder.com/300?text=${encodeURIComponent(rec.name)}`}
+                    alt={rec.name}
+                    className="h-full w-full object-cover transition group-hover:scale-110"
+                  />
+                </div>
+                <h3 className="font-black" style={{ color: 'var(--text-primary)' }}>{rec.name}</h3>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {rec.theme?.name || 'Fly Free'}
+                </p>
+                <p className="mt-3 font-black" style={{ color: 'var(--color-primary)' }}>
+                  {formatCurrency(Math.round((rec.basePrice || 0) / 100))}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Modals */}
       {showSizeChart && (
         <Modal title="Size chart" onClose={() => setShowSizeChart(false)}>
-          <div className="prose max-w-none text-sm leading-7 text-black/70">
+          <div className="max-w-none whitespace-pre-wrap text-sm leading-7" style={{ color: 'var(--text-secondary)' }}>
             {sizeChart ? (
-              <p className="whitespace-pre-wrap">{sizeChart}</p>
+              <p>{sizeChart}</p>
             ) : (
               <p>Size chart is not configured yet. Add the size-chart page content from admin pages.</p>
             )}
@@ -414,8 +618,8 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
-      <span className="theme-muted">{label}</span>
-      <span className="text-right font-bold">{value}</span>
+      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span className="text-right font-bold" style={{ color: 'var(--text-primary)' }}>{value}</span>
     </div>
   );
 }
@@ -426,7 +630,7 @@ function ChoiceBlock({ title, subtitle, action, children }: { title: string; sub
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-black uppercase tracking-wide">{title}</h2>
-          {subtitle && <p className="mt-1 text-xs font-bold text-black/45 dark:text-white/45">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -437,11 +641,11 @@ function ChoiceBlock({ title, subtitle, action, children }: { title: string; sub
 
 function OptionButton({ active, onClick, title, text, icon }: { active: boolean; onClick: () => void; title: string; text: string; icon?: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`flex items-start gap-3 rounded border p-3 text-left transition ${active ? 'border-coral bg-coral/10' : 'border-black/10 dark:border-white/10'}`}>
-      <span className="mt-0.5 text-coral">{icon || <Info size={16} />}</span>
+    <button onClick={onClick} className="flex items-start gap-3 rounded border p-3 text-left transition" style={{ borderColor: active ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent' }}>
+      <span className="mt-0.5" style={{ color: 'var(--color-primary)' }}>{icon || <Info size={16} />}</span>
       <span>
-        <span className="block text-sm font-black">{title}</span>
-        <span className="mt-1 block text-xs font-bold text-black/50 dark:text-white/50">{text}</span>
+        <span className="block text-sm font-black" style={{ color: 'var(--text-primary)' }}>{title}</span>
+        <span className="mt-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{text}</span>
       </span>
     </button>
   );
@@ -450,10 +654,10 @@ function OptionButton({ active, onClick, title, text, icon }: { active: boolean;
 function InfoRow({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
     <div className="flex gap-3">
-      <span className="text-coral">{icon}</span>
+      <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
       <span>
-        <span className="block font-black text-ink dark:text-white">{title}</span>
-        <span>{text}</span>
+        <span className="block font-black" style={{ color: 'var(--text-primary)' }}>{title}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{text}</span>
       </span>
     </div>
   );
@@ -462,10 +666,10 @@ function InfoRow({ icon, title, text }: { icon: React.ReactNode; title: string; 
 function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className={`max-h-[90vh] overflow-auto rounded-lg bg-white p-5 text-ink shadow-2xl ${wide ? 'w-full max-w-4xl' : 'w-full max-w-lg'}`}>
+      <div className={`max-h-[90vh] overflow-auto rounded-lg shadow-2xl p-5 ${wide ? 'w-full max-w-4xl' : 'w-full max-w-lg'}`} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-lg font-black">{title}</h2>
-          <button onClick={onClose} className="rounded border border-black/10 p-2"><X size={18} /></button>
+          <button onClick={onClose} className="rounded border p-2" style={{ borderColor: 'var(--border-color)' }}><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -475,14 +679,14 @@ function Modal({ title, children, onClose, wide }: { title: string; children: Re
 
 function ProductSkeleton() {
   return (
-    <main className="min-h-screen bg-white px-4 py-10 dark:bg-ink">
+    <main className="min-h-screen px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
-        <div className="aspect-square animate-pulse rounded-lg bg-black/5 dark:bg-white/10" />
+        <div className="aspect-square animate-pulse rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
         <div className="space-y-4">
-          <div className="h-5 w-24 animate-pulse rounded bg-black/10 dark:bg-white/10" />
-          <div className="h-10 w-3/4 animate-pulse rounded bg-black/10 dark:bg-white/10" />
-          <div className="h-24 animate-pulse rounded bg-black/10 dark:bg-white/10" />
-          <div className="h-40 animate-pulse rounded bg-black/10 dark:bg-white/10" />
+          <div className="h-5 w-24 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+          <div className="h-10 w-3/4 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+          <div className="h-24 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+          <div className="h-40 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
         </div>
       </div>
     </main>

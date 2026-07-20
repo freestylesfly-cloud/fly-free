@@ -64,7 +64,7 @@ export const useThemeStore = create<ThemeState>()(
         applyUiTheme(newTheme);
       },
 
-      setAdminTheme: (theme: AdminTheme) => {
+      setAdminTheme: (theme: WebsiteTheme) => {
         set({ adminTheme: theme });
         applyAdminTheme(theme);
       },

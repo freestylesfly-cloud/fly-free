@@ -41,14 +41,4 @@ export class ThemeController {
   async deleteTheme(@Param("id") id: string) {
     return await this.themeService.deleteTheme(id);
   }
-
-  @Get("hero-banners")
-  async getHeroBanners() {
-    return await this.themeService.getHeroBanners();
-  }
-
-  @Put("hero-banners/:id")
-  async updateHeroBanner(@Param("id") id: string, @Body() body: any) {
-    return await this.themeService.updateHeroBanner(id, body);
-  }
 }

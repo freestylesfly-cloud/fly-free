@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CommerceService } from "./commerce.service";
 
@@ -13,7 +13,12 @@ export class CommerceController {
   }
 
   @Post("checkout")
-  createCheckout(@Body() body: { cartId: string; addressId: string; couponCode?: string }) {
-    return this.commerceService.createCheckout(body);
+  createCheckout(@Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.createCheckout(body, token);
+  }
+
+  @Post("checkout/verify")
+  verifyCheckout(@Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.verifyCheckout(body, token);
   }
 }

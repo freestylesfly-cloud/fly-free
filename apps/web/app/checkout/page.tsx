@@ -34,6 +34,9 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponMessage, setCouponMessage] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -109,12 +112,19 @@ export default function CheckoutPage() {
             color: item.color,
           })),
           address: formData,
+          couponCode: couponCode || undefined,
           total: getTotal(),
         }),
       });
 
       const orderData = await readApiResponse(orderResponse);
       if (!orderResponse.ok) throw new Error(orderData?.error || 'Failed to create order');
+
+      if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
+        alert('Razorpay key is not configured. Order was created as pending payment.');
+        router.push(`/orders/${orderData.data.id}`);
+        return;
+      }
 
       // Initialize Razorpay payment
       const script = document.createElement('script');
@@ -123,7 +133,7 @@ export default function CheckoutPage() {
       script.onload = () => {
         const options: any = {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: getTotal() * 100, // Razorpay expects amount in paise
+          amount: orderData.data.amount,
           currency: 'INR',
           name: 'Fly Free',
           description: `Order #${orderData.data.id}`,
@@ -174,6 +184,32 @@ export default function CheckoutPage() {
       alert('Failed to process order. Please try again.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponMessage('Enter a coupon or influencer code.');
+      setCouponDiscount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/ecommerce/coupons/${encodeURIComponent(couponCode.trim())}`);
+      const data = await readApiResponse(response);
+
+      if (!response.ok || !data?.valid) {
+        setCouponDiscount(0);
+        setCouponMessage(data?.message || 'Code is invalid or expired.');
+        return;
+      }
+
+      const discount = data.discountPercent ? Math.round(getSubtotal() * (data.discountPercent / 100)) : data.discountAmount || 0;
+      setCouponDiscount(discount);
+      setCouponMessage(`Code applied: ${data.discountPercent ? `${data.discountPercent}% off` : formatCurrency(discount)}.`);
+    } catch {
+      setCouponDiscount(0);
+      setCouponMessage('Could not validate this code.');
     }
   };
 
@@ -331,6 +367,26 @@ export default function CheckoutPage() {
             <div className="bg-paper dark:bg-ink/50 rounded-lg p-6 sticky top-20 space-y-6">
               <h2 className="text-2xl font-black dark:text-white">Order Summary</h2>
 
+              <div className="rounded-lg border border-black/10 bg-white/60 p-3 dark:border-white/10 dark:bg-white/5">
+                <p className="mb-2 text-sm font-black dark:text-white">Coupon / Influencer code</p>
+                <div className="flex gap-2">
+                  <input
+                    value={couponCode}
+                    onChange={(event) => {
+                      setCouponCode(event.target.value.toUpperCase());
+                      setCouponMessage('');
+                      setCouponDiscount(0);
+                    }}
+                    placeholder="SNEHA10"
+                    className="min-w-0 flex-1 rounded border border-black/10 px-3 py-2 text-sm dark:border-white/10 dark:bg-ink/30 dark:text-white"
+                  />
+                  <button type="button" onClick={applyCoupon} className="rounded bg-ink px-3 py-2 text-sm font-black text-white dark:bg-white dark:text-ink">
+                    Apply
+                  </button>
+                </div>
+                {couponMessage && <p className={`mt-2 text-xs font-bold ${couponDiscount ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`}>{couponMessage}</p>}
+              </div>
+
               <div className="space-y-3 pb-6 border-b border-black/10 dark:border-white/10">
                 <div className="flex justify-between text-ink/70 dark:text-white/70">
                   <span>Subtotal</span>
@@ -340,6 +396,12 @@ export default function CheckoutPage() {
                   <span>GST (18%)</span>
                   <span>{formatCurrency(getTax())}</span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-green-700 dark:text-green-300">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-ink/70 dark:text-white/70">
                   <span>Shipping</span>
                   <span className="text-coral font-bold">FREE</span>
@@ -348,7 +410,7 @@ export default function CheckoutPage() {
 
               <div className="flex justify-between text-2xl font-black dark:text-white">
                 <span>Total</span>
-                <span className="text-coral">{formatCurrency(getTotal())}</span>
+                <span className="text-coral">{formatCurrency(Math.max(getTotal() - couponDiscount, 0))}</span>
               </div>
 
               <button

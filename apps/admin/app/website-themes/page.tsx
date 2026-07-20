@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { CalendarClock, Check, Edit3, ImageIcon, Plus, Power, Save, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
 
@@ -241,8 +242,24 @@ export default function WebsiteThemesPage() {
                 </select>
                 <Input label="Hero title" value={form.heroTitle} onChange={(value) => setForm({ ...form, heroTitle: value })} />
                 <Textarea label="Hero subtitle" value={form.heroSubtitle} onChange={(value) => setForm({ ...form, heroSubtitle: value })} />
-                <Input label="Desktop hero image URL" value={form.heroDesktopImageUrl} onChange={(value) => setForm({ ...form, heroDesktopImageUrl: value })} />
-                <Input label="Mobile hero image URL" value={form.heroMobileImageUrl} onChange={(value) => setForm({ ...form, heroMobileImageUrl: value })} />
+                <ImageUploadField
+                  label="Desktop hero banner"
+                  value={form.heroDesktopImageUrl}
+                  onChange={(value) => setForm({ ...form, heroDesktopImageUrl: value })}
+                  bucket="banners"
+                  folder={form.slug || slugify(form.name || 'website-theme')}
+                  aspect={16 / 7}
+                  alt={form.heroTitle || form.name}
+                />
+                <ImageUploadField
+                  label="Mobile hero banner"
+                  value={form.heroMobileImageUrl}
+                  onChange={(value) => setForm({ ...form, heroMobileImageUrl: value })}
+                  bucket="banners"
+                  folder={form.slug || slugify(form.name || 'website-theme')}
+                  aspect={4 / 5}
+                  alt={form.heroTitle || form.name}
+                />
                 <div className="grid grid-cols-2 gap-2">
                   <Input label="CTA label" value={form.heroCtaLabel} onChange={(value) => setForm({ ...form, heroCtaLabel: value })} />
                   <Input label="CTA link" value={form.heroHref} onChange={(value) => setForm({ ...form, heroHref: value })} />

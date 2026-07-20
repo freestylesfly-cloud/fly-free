@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Save, Search, Trash2 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ImageUploadField } from '../components/ImageUploadField';
 
 type Category = { id: string; name: string; slug: string };
 type Theme = { id: string; name: string; slug: string; active?: boolean };
@@ -243,11 +244,21 @@ export function ProductForm({ productId }: { productId?: string }) {
         </div>
         <div className="mt-5 grid gap-3">
           {images.map((image, index) => (
-            <div key={index} className="grid gap-3 rounded border border-black/10 p-3 md:grid-cols-[1fr_2fr_1fr_auto]">
-              <Field label="Color" value={image.color} onChange={(value) => updateImage(index, { color: value })} />
-              <Field label="Image URL" value={image.url} onChange={(value) => updateImage(index, { url: value })} />
-              <Field label="Alt" value={image.alt} onChange={(value) => updateImage(index, { alt: value })} />
-              <button type="button" onClick={() => setImages(images.filter((_, i) => i !== index))} className="mt-7 rounded border border-red-200 px-3 py-2 text-red-600"><Trash2 size={16} /></button>
+            <div key={index} className="grid gap-3 rounded border border-black/10 p-3 lg:grid-cols-[1fr_2fr_auto]">
+              <div className="grid gap-3">
+                <Field label="Color" value={image.color} onChange={(value) => updateImage(index, { color: value })} />
+                <Field label="Alt" value={image.alt} onChange={(value) => updateImage(index, { alt: value })} />
+              </div>
+              <ImageUploadField
+                label="Product image"
+                value={image.url}
+                onChange={(url) => updateImage(index, { url })}
+                bucket="products"
+                folder={form.slug || slugify(form.name || 'product')}
+                aspect={4 / 5}
+                alt={image.alt || form.name}
+              />
+              <button type="button" onClick={() => setImages(images.filter((_, i) => i !== index))} className="h-fit rounded border border-red-200 px-3 py-2 text-red-600"><Trash2 size={16} /></button>
             </div>
           ))}
         </div>

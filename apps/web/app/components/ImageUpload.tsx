@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Upload, X, ZoomIn, ZoomOut, RotateCw, Crop, Check } from 'lucide-react';
-import { uploadImage, deleteImage } from '../lib/supabase';
+import { uploadImage, deleteImage } from '../../lib/supabase';
 
 interface ImageUploadProps {
   bucket: string;

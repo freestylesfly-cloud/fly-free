@@ -8,8 +8,19 @@ export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
   @Get("products")
-  listProducts(@Query("category") category?: string, @Query("theme") theme?: string) {
-    return this.catalogService.listProducts(category, theme);
+  listProducts(
+    @Query("category") category?: string,
+    @Query("theme") theme?: string,
+    @Query("collection") collection?: string,
+    @Query("q") q?: string,
+    @Query("gender") gender?: string,
+    @Query("minPrice") minPrice?: string,
+    @Query("maxPrice") maxPrice?: string,
+    @Query("rating") rating?: string,
+    @Query("tag") tag?: string,
+    @Query("sort") sort?: string
+  ) {
+    return this.catalogService.listProducts({ category, theme, collection, q, gender, minPrice, maxPrice, rating, tag, sort });
   }
 
   @Get("products/:slug")

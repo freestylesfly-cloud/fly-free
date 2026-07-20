@@ -44,7 +44,7 @@ export default function OrdersPage() {
     async function fetchOrders() {
       try {
         const API_URL = getApiBaseUrl();
-        const response = await fetch(`${API_URL}/user/orders`, {
+        const response = await fetch(`${API_URL}/ecommerce/orders`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

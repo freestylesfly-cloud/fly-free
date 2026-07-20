@@ -6,19 +6,26 @@ export class CmsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHomePage() {
-    const [banners, collections, categories, themes, websiteTheme, announcements, giftOptions, influencers, settings] = await Promise.all([
-      this.prisma.heroBanner.findMany({ where: { isActive: true }, orderBy: { priority: "asc" } }),
+    const [collections, categories, themes, websiteTheme, announcements, influencers, reviews, settings] = await Promise.all([
       this.prisma.collection.findMany({ orderBy: { priority: "asc" } }),
       this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
       this.getActiveThemes(),
       this.getActiveWebsiteTheme(),
       this.getActiveAnnouncements(),
-      this.prisma.giftOption.findMany({ where: { isActive: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }),
       this.prisma.influencer.findMany({ where: { isActive: true }, take: 6, orderBy: { createdAt: "desc" } }),
+      this.prisma.review.findMany({
+        where: { status: "APPROVED" },
+        include: {
+          user: { select: { name: true, image: true } },
+          product: { select: { name: true, slug: true, images: { take: 1, orderBy: { priority: "asc" } } } }
+        },
+        take: 8,
+        orderBy: { createdAt: "desc" }
+      }),
       this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } })
     ]);
 
-    return { banners, collections, categories, themes, websiteTheme, announcements, giftOptions, influencers, settings: settings?.value || null };
+    return { collections, categories, themes, websiteTheme, announcements, influencers, reviews, settings: settings?.value || null };
   }
 
   getActiveWebsiteTheme() {
@@ -45,7 +52,7 @@ export class CmsService {
           { OR: [{ endsAt: null }, { endsAt: { gte: now } }] }
         ]
       },
-      include: { theme: true },
+      include: { theme: true, websiteTheme: true },
       orderBy: [{ priority: "asc" }, { createdAt: "desc" }]
     });
   }

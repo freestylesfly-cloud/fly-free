@@ -185,6 +185,27 @@ export class AdminController {
     return this.adminService.setActiveTheme(id);
   }
 
+  // ==================== PRODUCT THEMES ====================
+  @Get("product-themes")
+  listProductThemes() {
+    return this.adminService.listProductThemes();
+  }
+
+  @Post("product-themes")
+  createProductTheme(@Body() data: any) {
+    return this.adminService.createProductTheme(data);
+  }
+
+  @Put("product-themes/:id")
+  updateProductTheme(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateProductTheme(id, data);
+  }
+
+  @Delete("product-themes/:id")
+  deleteProductTheme(@Param("id") id: string) {
+    return this.adminService.deleteProductTheme(id);
+  }
+
   @Get("announcements")
   listAnnouncements() {
     return this.adminService.listAnnouncements();
@@ -282,6 +303,48 @@ export class AdminController {
   @Patch("notifications/:id/read")
   markNotificationRead(@Param("id") id: string) {
     return this.adminService.markNotificationRead(id);
+  }
+
+  // ==================== SIZE GUIDES ====================
+  @Get("size-guides")
+  listSizeGuides() {
+    return this.adminService.listSizeGuides();
+  }
+
+  @Post("size-guides")
+  createSizeGuide(@Body() data: any) {
+    return this.adminService.createSizeGuide(data);
+  }
+
+  @Put("size-guides/:id")
+  updateSizeGuide(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateSizeGuide(id, data);
+  }
+
+  @Delete("size-guides/:id")
+  deleteSizeGuide(@Param("id") id: string) {
+    return this.adminService.deleteSizeGuide(id);
+  }
+
+  // ==================== HERO BANNERS ====================
+  @Get("hero-banners")
+  listHeroBanners() {
+    return this.adminService.listHeroBanners();
+  }
+
+  @Post("hero-banners")
+  createHeroBanner(@Body() data: any) {
+    return this.adminService.createHeroBanner(data);
+  }
+
+  @Put("hero-banners/:id")
+  updateHeroBanner(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateHeroBanner(id, data);
+  }
+
+  @Delete("hero-banners/:id")
+  deleteHeroBanner(@Param("id") id: string) {
+    return this.adminService.deleteHeroBanner(id);
   }
 
   // ==================== ANALYTICS ====================

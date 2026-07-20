@@ -3,7 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+function getSupabaseClient() {
+  if (!supabase) {
+    throw new Error('Supabase image upload is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+  }
+
+  return supabase;
+}
 
 /**
  * Upload image to Supabase Storage
@@ -21,7 +29,8 @@ export async function uploadImage(
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}_${file.name}`;
     const filePath = folder ? `${folder}/${fileName}` : fileName;
 
-    const { data, error } = await supabase.storage
+    const client = getSupabaseClient();
+    const { data, error } = await client.storage
       .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -31,7 +40,7 @@ export async function uploadImage(
     if (error) throw error;
 
     // Get public URL
-    const { data: publicUrl } = supabase.storage
+    const { data: publicUrl } = client.storage
       .from(bucket)
       .getPublicUrl(data.path);
 
@@ -51,11 +60,13 @@ export async function deleteImage(bucket: string, filePath: string): Promise<voi
   try {
     // Extract path from URL if full URL is provided
     let path = filePath;
-    if (filePath.includes('/storage/v1/')) {
-      path = filePath.split('/storage/v1/object/public/')[1]?.split('/').slice(1).join('/') || filePath;
+    if (filePath.includes('/storage/v1/object/public/')) {
+      const publicPath = filePath.split('/storage/v1/object/public/')[1] || '';
+      const parts = publicPath.split('/');
+      path = parts[0] === bucket ? parts.slice(1).join('/') : publicPath;
     }
 
-    const { error } = await supabase.storage.from(bucket).remove([path]);
+    const { error } = await getSupabaseClient().storage.from(bucket).remove([path]);
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting image:', error);

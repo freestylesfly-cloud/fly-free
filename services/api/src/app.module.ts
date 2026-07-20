@@ -7,6 +7,9 @@ import { CmsModule } from "./cms/cms.module";
 import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { EmailModule } from "./email/email.module";
+import { LoggerModule } from "./logger/logger.module";
+import { CustomDesignModule } from "./custom-design/custom-design.module";
+import { WebsiteThemeModule } from "./theme/website-theme.module";
 
 @Module({
   imports: [
@@ -17,7 +20,10 @@ import { EmailModule } from "./email/email.module";
     CmsModule,
     AdminModule,
     AuthModule,
-    EmailModule
+    EmailModule,
+    LoggerModule,
+    CustomDesignModule,
+    WebsiteThemeModule
   ]
 })
 export class AppModule {}

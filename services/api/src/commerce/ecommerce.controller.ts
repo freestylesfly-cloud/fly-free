@@ -129,8 +129,8 @@ export class EcommerceController {
   }
 
   @Get("orders/:orderId/track")
-  trackOrder(@Param("orderId") orderId: string) {
-    return this.commerceService.trackOrder(orderId);
+  trackOrder(@Param("orderId") orderId: string, @Headers("authorization") token: string) {
+    return this.commerceService.trackOrder(orderId, token);
   }
 
   @Get("orders/:orderId/invoice")
