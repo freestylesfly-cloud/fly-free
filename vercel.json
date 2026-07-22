@@ -1,4 +1,0 @@
-﻿{
-  "buildCommand": "npm run build --workspace @flyfree/web",
-  "installCommand": "npm ci --legacy-peer-deps"
-}
