@@ -56,11 +56,11 @@ function clearStoredSession() {
 
 function getNetworkErrorMessage(error: unknown) {
   if (error instanceof DOMException && error.name === 'AbortError') {
-    return `API request timed out at ${API_BASE}. Check that @flyfree/api is healthy on port 3001.`;
+    return `API request timed out at ${API_BASE}. Check that the API service is running and healthy.`;
   }
 
   if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    return `Cannot connect to API at ${API_BASE}. Start @flyfree/api on port 3001 and try again.`;
+    return `Cannot connect to API at ${API_BASE}. Make sure the API is running and CORS is enabled.`;
   }
 
   return error instanceof Error ? error.message : 'Request failed';
