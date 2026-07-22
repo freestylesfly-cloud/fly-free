@@ -72,7 +72,12 @@ export const useThemeStore = create<ThemeState>()(
       fetchActiveTheme: async () => {
         set({ adminThemeLoading: true });
         try {
-          const response = await fetch(`${getApiBaseUrl()}/cms/home`);
+          // Use proxy route on client-side, direct API on server-side
+          const url = typeof window !== 'undefined'
+            ? '/api/proxy/cms/home'
+            : `${getApiBaseUrl()}/cms/home`;
+
+          const response = await fetch(url);
           if (response.ok) {
             const home = await response.json();
             const websiteTheme = home?.websiteTheme;
@@ -83,6 +88,7 @@ export const useThemeStore = create<ThemeState>()(
           }
         } catch (error) {
           console.error('Failed to fetch active theme:', error);
+          set({ adminThemeLoading: false });
         } finally {
           set({ adminThemeLoading: false });
         }
