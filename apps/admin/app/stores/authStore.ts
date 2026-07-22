@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Use proxy to bypass CORS issues in production
+const API_BASE = typeof window !== 'undefined'
+  ? '/api/proxy'
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
+
+const API_PREFIX = typeof window !== 'undefined' ? '' : '/api';
 const TOKEN_KEY = 'flyfree_admin_token';
 const USER_KEY = 'flyfree_admin_user';
 
@@ -87,7 +92,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ loading: true });
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/auth/admin/login`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/auth/admin/login`
+        : `${API_BASE}/api/auth/admin/login`;
+
+      const response = await fetchWithTimeout(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -122,7 +131,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     try {
       if (token) {
-        await fetch(`${API_BASE}/api/auth/admin/logout`, {
+        const url = typeof window !== 'undefined'
+          ? `/api/proxy/auth/admin/logout`
+          : `${API_BASE}/api/auth/admin/logout`;
+
+        await fetch(url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -144,7 +157,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ user: stored.user, token: stored.token, loading: true, hydrated: true });
 
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/auth/admin/profile`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/auth/admin/profile`
+        : `${API_BASE}/api/auth/admin/profile`;
+
+      const response = await fetchWithTimeout(url, {
         headers: { Authorization: `Bearer ${stored.token}` }
       });
 

@@ -1,8 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@flyfree/utils';
-import Image from 'next/image';
+import { proxyApiClient } from '@/app/lib/api-proxy';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -33,13 +32,8 @@ export function Logo({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 800);
 
-    apiClient.get('/cms/settings/logo', { signal: controller.signal })
-      .then(({ data, error }) => {
-        if (error) {
-          console.warn('Logo fetch failed, using local fallback');
-          setHasError(true);
-          return;
-        }
+    proxyApiClient.get('/cms/settings/logo')
+      .then((data: any) => {
         if (data?.logoUrl && data.logoUrl.trim()) {
           setLogoSrc(data.logoUrl);
           setHasError(false);
@@ -47,7 +41,8 @@ export function Logo({
           setHasError(true);
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        console.warn('Logo fetch failed, using local fallback:', error);
         setHasError(true);
       })
       .finally(() => {
