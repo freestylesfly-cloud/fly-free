@@ -25,13 +25,17 @@ export default function OrdersPage() {
     async function loadOrders() {
       try {
         setLoading(true);
-        const res = await fetch(`${API_URL}/ecommerce/orders`, {
+        const url = typeof window !== 'undefined'
+          ? `/api/proxy/ecommerce/orders`
+          : `${API_URL}/ecommerce/orders`;
+
+        const res = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
           const ordersList = data.data || data;
-          setOrders(Array.isArray(ordersList) ? ordersList.sort((a: any, b: any) => 
+          setOrders(Array.isArray(ordersList) ? ordersList.sort((a: any, b: any) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           ) : []);
         } else {
@@ -39,6 +43,7 @@ export default function OrdersPage() {
         }
       } catch (err) {
         setError('Failed to load orders');
+        console.error('Order loading error:', err);
       } finally {
         setLoading(false);
       }

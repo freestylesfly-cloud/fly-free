@@ -65,35 +65,49 @@ export default function ProfilePage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/orders`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/orders`
+        : `${API_BASE}/ecommerce/orders`;
+
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setOrders(Array.isArray(data) ? data : []);
+        setOrders(Array.isArray(data) ? data : data.data || []);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setOrders([]);
     }
   };
 
   const fetchWishlist = async () => {
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/wishlist`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/wishlist`
+        : `${API_BASE}/ecommerce/wishlist`;
+
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setWishlist(Array.isArray(data) ? data : []);
+        setWishlist(Array.isArray(data) ? data : data.data || []);
       }
     } catch (error) {
       console.error('Error fetching wishlist:', error);
+      setWishlist([]);
     }
   };
 
   const fetchAddresses = async () => {
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/addresses`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/addresses`
+        : `${API_BASE}/ecommerce/addresses`;
+
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -196,7 +210,11 @@ export default function ProfilePage() {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/addresses`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/addresses`
+        : `${API_BASE}/ecommerce/addresses`;
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,7 +252,11 @@ export default function ProfilePage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/addresses/${addressId}`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/addresses/${addressId}`
+        : `${API_BASE}/ecommerce/addresses/${addressId}`;
+
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -255,7 +277,11 @@ export default function ProfilePage() {
   const handleSetDefault = async (addressId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/ecommerce/addresses/${addressId}/set-default`, {
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/ecommerce/addresses/${addressId}/set-default`
+        : `${API_BASE}/ecommerce/addresses/${addressId}/set-default`;
+
+      const res = await fetch(url, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
