@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type React from 'react';
 import { Heart, PackageSearch, Package, ShoppingBag, Menu, X, Megaphone, User, Search, LogOut } from 'lucide-react';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ const API_BASE = getApiBaseUrl();
 
 export function Header() {
   const router = useRouter();
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
@@ -37,6 +38,20 @@ export function Header() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isProfileOpen]);
 
   useEffect(() => {
     fetch(`${API_BASE}/cms/announcements`)
@@ -172,7 +187,7 @@ export function Header() {
 
             {/* Profile Dropdown */}
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="p-2.5 rounded-lg border transition hover:shadow-md"
