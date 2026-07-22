@@ -8,17 +8,49 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
   const defaultCorsOrigins = [
+    // Local Development
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "http://127.0.0.1:3002"
+    "http://127.0.0.1:3002",
+    // Production Vercel
+    "https://fly-free-web.vercel.app",
+    "https://fly-free-admin.vercel.app",
+    // Custom Domains (if configured)
+    "https://web.flyfree.co.in",
+    "https://admin.flyfree.co.in",
+    "https://www.flyfree.co.in",
+    // Vercel Preview Deployments
+    /^https:\/\/.*\.vercel\.app$/
   ];
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? defaultCorsOrigins,
-    credentials: true
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl requests, etc)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if origin is in the allowed list
+      const allowed = defaultCorsOrigins.some((allowedOrigin) => {
+        if (allowedOrigin instanceof RegExp) {
+          return allowedOrigin.test(origin);
+        }
+        return allowedOrigin === origin;
+      });
+
+      if (allowed) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS blocked request from origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   });
   app.setGlobalPrefix("api");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
