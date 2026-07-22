@@ -45,7 +45,7 @@ export default function CheckoutPage() {
     async function loadAddresses() {
       try {
         setLoading(true);
-        const res = await fetch(`${API_URL}/ecommerce/addresses`, {
+        const res = await fetch(`/api/proxy/ecommerce/addresses`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -88,7 +88,7 @@ export default function CheckoutPage() {
     setError('');
 
     try {
-      const orderRes = await fetch(`${API_URL}/ecommerce/checkout`, {
+      const orderRes = await fetch(`/api/proxy/ecommerce/checkout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -149,7 +149,7 @@ export default function CheckoutPage() {
 
     setAddingAddress(true);
     try {
-      const res = await fetch(`${API_URL}/ecommerce/addresses`, {
+      const res = await fetch(`/api/proxy/ecommerce/addresses`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -185,7 +185,7 @@ export default function CheckoutPage() {
 
   async function verifyPayment(response: any, orderId: string) {
     try {
-      const verifyRes = await fetch(`${API_URL}/ecommerce/payment/verify`, {
+      const verifyRes = await fetch(`/api/proxy/ecommerce/payment/verify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
