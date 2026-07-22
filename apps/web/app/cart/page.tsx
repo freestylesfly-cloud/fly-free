@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, Minus, Plus, ShoppingCart as CartIcon, Trash2 } from 'lucide-react';
-import { formatCurrency } from '@flyfree/utils';
+import { formatCurrency } from '../lib/utils';
 import { useCartStore } from '../stores/cartStore';
 
 export default function CartPage() {

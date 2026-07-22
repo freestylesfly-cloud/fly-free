@@ -1,7 +1,18 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "ignoreDeprecations": "5.0",
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "es2022"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
     "baseUrl": ".",
     "plugins": [
       {
@@ -12,18 +23,10 @@
       "@/*": [
         "./*",
         "./src/*"
-      ],
-      "@flyfree/ui": [
-        "../../packages/ui/src"
-      ],
-      "@flyfree/types": [
-        "../../packages/types/src"
-      ],
-      "@flyfree/utils": [
-        "../../packages/utils/src"
       ]
     },
-    "incremental": true
+    "incremental": true,
+    "skipDefaultLibCheck": true
   },
   "include": [
     "next-env.d.ts",

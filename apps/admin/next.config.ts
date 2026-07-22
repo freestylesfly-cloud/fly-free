@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  transpilePackages: ["@flyfree/ui", "@flyfree/types", "@flyfree/utils"]
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

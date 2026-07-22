@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Shirt } from "lucide-react";
-import { formatCurrency } from "@flyfree/utils";
+import { formatCurrency } from "../../lib/utils";
 import { getApiBaseUrl } from "../../lib/api";
 
 const API_BASE = getApiBaseUrl();

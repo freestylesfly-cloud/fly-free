@@ -150,6 +150,7 @@ const useAuthStore = create<AuthStore>()(
       updateProfile: async (data: { name?: string; phone?: string; image?: string }) => {
         const currentUser = get().user;
         if (!currentUser) throw new Error('Not authenticated');
+        if (!supabase) throw new Error('Supabase not initialized');
 
         set({ loading: true });
         try {

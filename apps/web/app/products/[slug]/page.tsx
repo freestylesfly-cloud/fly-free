@@ -23,7 +23,7 @@ import {
   Instagram
 } from 'lucide-react';
 import SizeGuideDrawer from '../../components/SizeGuideDrawer';
-import { formatCurrency } from '@flyfree/utils';
+import { formatCurrency } from '../../lib/utils';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';

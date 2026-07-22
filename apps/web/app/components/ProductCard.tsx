@@ -2,7 +2,7 @@
 
 import { Heart, Share2, Shirt, ShoppingCart, X } from 'lucide-react';
 import Link from 'next/link';
-import { formatCurrency } from '@flyfree/utils';
+import { formatCurrency } from '../lib/utils';
 import { useCartStore } from '../stores/cartStore';
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';

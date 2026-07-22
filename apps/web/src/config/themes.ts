@@ -1,4 +1,4 @@
-import { ThemeConfig, ThemeName } from '@flyfree/types';
+import { ThemeConfig, ThemeName } from '../types';
 
 export const THEMES: Record<ThemeName, ThemeConfig> = {
   anime: {

@@ -5,7 +5,7 @@ import type React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, Grid3x3, List, Search, Shirt, SlidersHorizontal, Star } from 'lucide-react';
-import { formatCurrency } from '@flyfree/utils';
+import { formatCurrency } from '../lib/utils';
 import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
 

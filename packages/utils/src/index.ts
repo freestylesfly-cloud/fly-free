@@ -21,3 +21,5 @@ export function calculateDiscountPercent(mrp: number, price: number) {
 
   return Math.round(((mrp - price) / mrp) * 100);
 }
+
+export { ApiClient, apiClient } from './api-client';
