@@ -9,7 +9,8 @@ export async function GET(
   request: Request,
   { params }: any
 ) {
-  const slug = Array.isArray(params.slug) ? params.slug : [params.slug];
+  const resolvedParams = await params;
+  const slug = Array.isArray(resolvedParams.slug) ? resolvedParams.slug : [resolvedParams.slug];
   const path = slug.join('/');
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
@@ -50,7 +51,8 @@ export async function POST(
   request: Request,
   { params }: any
 ) {
-  const slug = Array.isArray(params.slug) ? params.slug : [params.slug];
+  const resolvedParams = await params;
+  const slug = Array.isArray(resolvedParams.slug) ? resolvedParams.slug : [resolvedParams.slug];
   const path = slug.join('/');
   const fullUrl = `${API_BASE}/api/${path}`;
   const body = await request.text();
@@ -91,7 +93,8 @@ export async function PUT(
   request: Request,
   { params }: any
 ) {
-  const slug = Array.isArray(params.slug) ? params.slug : [params.slug];
+  const resolvedParams = await params;
+  const slug = Array.isArray(resolvedParams.slug) ? resolvedParams.slug : [resolvedParams.slug];
   const path = slug.join('/');
   const fullUrl = `${API_BASE}/api/${path}`;
   const body = await request.text();
@@ -128,7 +131,8 @@ export async function DELETE(
   request: Request,
   { params }: any
 ) {
-  const slug = Array.isArray(params.slug) ? params.slug : [params.slug];
+  const resolvedParams = await params;
+  const slug = Array.isArray(resolvedParams.slug) ? resolvedParams.slug : [resolvedParams.slug];
   const path = slug.join('/');
   const fullUrl = `${API_BASE}/api/${path}`;
 
