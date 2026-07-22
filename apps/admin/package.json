@@ -9,9 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@flyfree/types": "*",
-    "@flyfree/ui": "*",
-    "@flyfree/utils": "*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.38.4",
     "lucide-react": "^0.468.0",

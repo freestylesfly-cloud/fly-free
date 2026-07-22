@@ -9,9 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@flyfree/types": "*",
-    "@flyfree/ui": "*",
-    "@flyfree/utils": "*",
     "@tanstack/react-query": "^5.51.11",
     "framer-motion": "^11.3.24",
     "lucide-react": "^0.468.0",
