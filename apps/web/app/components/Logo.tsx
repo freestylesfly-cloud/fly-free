@@ -19,9 +19,9 @@ export function Logo({
   const [hasError, setHasError] = useState(false);
 
   const dimensions = {
-    sm: { width: 40, height: 40 },
-    md: { width: 56, height: 56 },
-    lg: { width: 80, height: 80 }
+    sm: { width: 48, height: 48 },
+    md: { width: 72, height: 72 },
+    lg: { width: 100, height: 100 }
   };
 
   const { width, height } = dimensions[size];
