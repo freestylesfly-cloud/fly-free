@@ -19,17 +19,20 @@ export async function GET(
   const fullUrl = `${API_BASE}/api/${path}${searchParams ? `?${searchParams}` : ''}`;
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    // Forward Authorization header if present
+    const auth = request.headers.get('authorization');
+    if (auth) {
+      headers['Authorization'] = auth;
+    }
+
     const response = await fetch(fullUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...Object.fromEntries(
-          Array.from(request.headers.entries()).filter(
-            ([key]) => key.toLowerCase() === 'authorization'
-          )
-        ),
-      },
+      headers,
     });
 
     const data = await response.json();
@@ -65,17 +68,19 @@ export async function POST(
   const body = await request.text();
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    const auth = request.headers.get('authorization');
+    if (auth) {
+      headers['Authorization'] = auth;
+    }
+
     const response = await fetch(fullUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...Object.fromEntries(
-          Array.from(request.headers.entries()).filter(
-            ([key]) => key.toLowerCase() === 'authorization'
-          )
-        ),
-      },
+      headers,
       body,
     });
 
@@ -112,17 +117,19 @@ export async function PUT(
   const body = await request.text();
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    const auth = request.headers.get('authorization');
+    if (auth) {
+      headers['Authorization'] = auth;
+    }
+
     const response = await fetch(fullUrl, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...Object.fromEntries(
-          Array.from(request.headers.entries()).filter(
-            ([key]) => key.toLowerCase() === 'authorization'
-          )
-        ),
-      },
+      headers,
       body,
     });
 
@@ -156,16 +163,18 @@ export async function DELETE(
   const fullUrl = `${API_BASE}/api/${path}`;
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    const auth = request.headers.get('authorization');
+    if (auth) {
+      headers['Authorization'] = auth;
+    }
+
     const response = await fetch(fullUrl, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...Object.fromEntries(
-          Array.from(request.headers.entries()).filter(
-            ([key]) => key.toLowerCase() === 'authorization'
-          )
-        ),
-      },
+      headers,
     });
 
     const data = await response.json();
