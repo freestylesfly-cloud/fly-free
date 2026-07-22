@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers } from "@nestjs/common";
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Headers } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { EcommerceService } from "./ecommerce.service";
 
@@ -108,6 +108,12 @@ export class EcommerceController {
   @Delete("addresses/:addressId")
   deleteAddress(@Param("addressId") addressId: string) {
     return this.commerceService.deleteAddress(addressId);
+  }
+
+  @ApiTags("📍 Addresses")
+  @Patch("addresses/:addressId/set-default")
+  setDefaultAddress(@Param("addressId") addressId: string, @Headers("authorization") token: string) {
+    return this.commerceService.setDefaultAddress(addressId, token);
   }
 
   // ==================== COUPONS ====================

@@ -171,6 +171,18 @@ export class EcommerceService {
     return this.prisma.address.delete({ where: { id: addressId } });
   }
 
+  async setDefaultAddress(addressId: string, token: string) {
+    const userId = this.extractUserId(token);
+    await this.prisma.address.updateMany({
+      where: { userId, isDefault: true },
+      data: { isDefault: false }
+    });
+    return this.prisma.address.update({
+      where: { id: addressId },
+      data: { isDefault: true }
+    });
+  }
+
   // ==================== COUPONS ====================
   async validateCoupon(code: string) {
     const normalized = String(code || "").trim().toUpperCase();
