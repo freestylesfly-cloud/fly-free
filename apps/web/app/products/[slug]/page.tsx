@@ -4,7 +4,6 @@ import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ChevronRight,
-  Gift,
   Heart,
   Info,
   Maximize2,
@@ -23,6 +22,7 @@ import {
   Mail,
   Instagram
 } from 'lucide-react';
+import SizeGuideDrawer from '../../components/SizeGuideDrawer';
 import { formatCurrency } from '@flyfree/utils';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -51,13 +51,6 @@ type Variant = {
   } | null;
 };
 
-type GiftOption = {
-  id: string;
-  name: string;
-  description?: string | null;
-  imageUrl?: string | null;
-  price: number;
-};
 
 type Offer = {
   code: string;
@@ -73,7 +66,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const addItem = useCartStore((state) => state.addItem);
   const [product, setProduct] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [giftOptions, setGiftOptions] = useState<GiftOption[]>([]);
+  const [hampers, setHampers] = useState<any[]>([]);
   const [sizeChart, setSizeChart] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,7 +74,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedImage, setSelectedImage] = useState<ProductImage | null>(null);
-  const [selectedGiftId, setSelectedGiftId] = useState('');
+  const [selectedHamperId, setSelectedHamperId] = useState<string | null>(null);
   const [selectedOfferCode, setSelectedOfferCode] = useState('');
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
@@ -143,21 +136,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           if (firstColor) setSelectedColor(firstColor);
         }
 
-        if (homeResponse?.ok) {
-          const homeData = await homeResponse.json();
-          const homePayload = homeData?.data || homeData;
-          setGiftOptions(homePayload?.giftOptions || []);
-          const homeSectionData = homePayload?.sections?.find?.((s: any) => s.type === 'product-recommendation');
-          if (homeSectionData?.productIds) {
-            const recResponse = await fetch(
-              `${API_URL}/catalog/products?ids=${homeSectionData.productIds.slice(0, 6).join(',')}`
-            );
-            if (recResponse.ok) {
-              const recData = await recResponse.json();
-              setRecommendations((Array.isArray(recData) ? recData : recData.data || []).filter((p: any) => p.slug !== slug).slice(0, 6));
-            }
-          }
+        if (productData?.hampers?.length > 0) {
+          setHampers(productData.hampers);
         }
+
 
         if (sizeChartResponse?.ok) {
           const sizeChartData = await sizeChartResponse.json();
@@ -177,6 +159,15 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     if (!product?.id || !token) return;
     checkWishlistStatus();
   }, [product?.id, token]);
+
+  useEffect(() => {
+    if (selectedColor && images.length > 0) {
+      const colorImages = images.filter(img => !img.color || img.color.toLowerCase() === selectedColor.toLowerCase());
+      if (colorImages.length > 0) {
+        setSelectedImage(colorImages[0]);
+      }
+    }
+  }, [selectedColor, images]);
 
   async function checkWishlistStatus() {
     if (!token) return;
@@ -205,11 +196,8 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       color: selectedColor,
       size: selectedSize,
       image: activeImage?.url || '',
-      giftOption: selectedGiftId ? {
-        id: selectedGiftId,
-        name: giftOptions.find((gift) => gift.id === selectedGiftId)?.name || 'Gift option',
-        price: Math.round((giftOptions.find((gift) => gift.id === selectedGiftId)?.price || 0) / 100)
-      } : null,
+      hamperId: selectedHamperId || undefined,
+      hamperName: selectedHamperId ? hampers.find((h) => h.id === selectedHamperId)?.name : undefined,
       offerCode: selectedOfferCode || undefined
     });
     setNotice('Added to cart successfully!');
@@ -334,10 +322,22 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           {/* Price & Rating */}
           <div className="flex items-center justify-between gap-4 border-t border-b py-3" style={{ borderColor: 'var(--border-color)' }}>
             <div>
-              <p className="text-2xl font-black">{formatCurrency(Math.round((selectedVariant?.price || product.basePrice) / 100))}</p>
+              <p className="text-2xl font-black">
+                {(() => {
+                  const basePrice = selectedVariant?.price || product.basePrice || 0;
+                  const hamperPrice = selectedHamperId ? (hampers.find((h: any) => h.id === selectedHamperId)?.price || 0) : 0;
+                  const total = basePrice + hamperPrice;
+                  return formatCurrency(Math.round(total / 100));
+                })()}
+              </p>
               {product.basePrice && selectedVariant?.price && selectedVariant.price < product.basePrice && (
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   <span className="line-through">{formatCurrency(Math.round(product.basePrice / 100))}</span>
+                </p>
+              )}
+              {selectedHamperId && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Includes {hampers.find((h: any) => h.id === selectedHamperId)?.name}
                 </p>
               )}
             </div>
@@ -462,27 +462,17 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             </div>
           </ChoiceBlock>
 
-          <ChoiceBlock title="Choose offer" subtitle="Offers are calculated from the product and admin-seeded pricing rules.">
-            <div className="grid gap-2">
-              <OptionButton active={!selectedOfferCode} onClick={() => setSelectedOfferCode('')} title="No extra offer" text="Use normal product price." />
-              {offers.map((offer) => (
-                <OptionButton key={offer.code} active={selectedOfferCode === offer.code} onClick={() => setSelectedOfferCode(offer.code)} title={offer.label} text={offer.description} icon={<Sparkles size={16} />} />
-              ))}
-            </div>
-          </ChoiceBlock>
-
-          {giftOptions.length > 0 && (
-            <ChoiceBlock title="Gift pack option" subtitle="Gift services are loaded from admin-managed database content.">
+          {hampers.length > 0 && (
+            <ChoiceBlock title="Hamper Options" subtitle="Add a hamper with your tee.">
               <div className="grid gap-2">
-                <OptionButton active={!selectedGiftId} onClick={() => setSelectedGiftId('')} title="No gift pack" text="Ship as regular order." />
-                {giftOptions.map((gift) => (
+                <OptionButton active={!selectedHamperId} onClick={() => setSelectedHamperId(null)} title="Just the Tee" text="Ship as regular order." />
+                {hampers.map((hamper: any) => (
                   <OptionButton
-                    key={gift.id}
-                    active={selectedGiftId === gift.id}
-                    onClick={() => setSelectedGiftId(gift.id)}
-                    title={`${gift.name}${gift.price ? ` + ${formatCurrency(Math.round(gift.price / 100))}` : ''}`}
-                    text={gift.description || 'Gift option'}
-                    icon={<Gift size={16} />}
+                    key={hamper.id}
+                    active={selectedHamperId === hamper.id}
+                    onClick={() => setSelectedHamperId(hamper.id)}
+                    title={`${hamper.name} + ${formatCurrency(Math.round(hamper.price / 100))}`}
+                    text={hamper.description || 'Hamper'}
                   />
                 ))}
               </div>
@@ -513,7 +503,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           )}
 
           <div className="grid gap-3 border-t pt-5 text-sm" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-            <InfoRow icon={<Truck size={18} />} title="Delivery and GST" text="Cart shows subtotal, GST, shipping, gift pack, and final total before checkout." />
+            <InfoRow icon={<Truck size={18} />} title="Delivery and GST" text="Cart shows subtotal, GST, shipping, hamper, and final total before checkout." />
             <InfoRow icon={<PackageCheck size={18} />} title="Return Policy" text="Eligible items can be returned or exchanged under the configured return policy." />
             <InfoRow icon={<Heart size={18} />} title="Wishlist" text="Save products after login. Guest cart still works before login." />
             <InfoRow icon={<Share2 size={18} />} title="Share or influencer link" text="Referral and influencer links can be tracked when opened with a valid code." />
@@ -594,17 +584,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       )}
 
       {/* Modals */}
-      {showSizeChart && (
-        <Modal title="Size chart" onClose={() => setShowSizeChart(false)}>
-          <div className="max-w-none whitespace-pre-wrap text-sm leading-7" style={{ color: 'var(--text-secondary)' }}>
-            {sizeChart ? (
-              <p>{sizeChart}</p>
-            ) : (
-              <p>Size chart is not configured yet. Add the size-chart page content from admin pages.</p>
-            )}
-          </div>
-        </Modal>
-      )}
+      <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} content={sizeChart} />
 
       {showZoom && activeImage?.url && (
         <Modal title={product.name} onClose={() => setShowZoom(false)} wide>

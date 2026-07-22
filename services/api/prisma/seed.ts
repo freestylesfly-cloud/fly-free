@@ -1,11 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-
-declare const process: { exit(code?: number): never };
+import { PrismaClient, Gender, OrderStatus, PaymentStatus, ReviewStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🌱 Starting comprehensive database seed...');
 
   // Clear existing data (order matters due to foreign keys)
   await prisma.invoice.deleteMany();
@@ -21,7 +19,8 @@ async function main() {
   await prisma.review.deleteMany();
   await prisma.wishlist.deleteMany();
   await prisma.productImage.deleteMany();
-  await prisma.inventory.deleteMany(); // Delete inventory before variants
+  await prisma.productHamper.deleteMany();
+  await prisma.inventory.deleteMany();
   await prisma.productVariant.deleteMany();
   await prisma.product.deleteMany();
   await prisma.announcement.deleteMany();
@@ -31,22 +30,14 @@ async function main() {
   await prisma.coupon.deleteMany();
   await prisma.address.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.adminUser.deleteMany(); // Delete adminUser before role
+  await prisma.adminUser.deleteMany();
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.page.deleteMany();
   await prisma.appSetting.deleteMany();
-  await prisma.customizationRequest.deleteMany();
   await prisma.websiteTheme.deleteMany();
-
-  // Delete size guides
-  try {
-    // @ts-ignore - Type checking may lag behind schema
-    await prisma.sizeGuide.deleteMany();
-  } catch (error) {
-    console.log('ℹ️  SizeGuide table not yet available');
-  }
+  await prisma.sizeGuide.deleteMany();
 
   // Create Categories
   const categories = await Promise.all([
@@ -78,7 +69,7 @@ async function main() {
   const themes = await Promise.all([
     prisma.theme.create({ data: { name: 'Anime', slug: 'anime', description: 'Bold anime-inspired drops for fans.', story: `${themeStory} Anime focuses on energetic art, expressive poses, and fandom confidence.`, primaryColor: '#ff4f8b', secondaryColor: '#111827', accentColor: '#ffd166', fontFamily: 'Poppins, Arial, sans-serif', animationStyle: 'snap-slide', priority: 1, active: true, imageUrl: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1600' } }),
     prisma.theme.create({ data: { name: 'Bihu', slug: 'bihu', description: 'Assam heritage and festival expression.', story: 'Rooted in the vibrant heritage of Northeast India, this drop celebrates Bihu, culture, rhythm, and everyday pride through wearable stories.', primaryColor: '#8b1e16', secondaryColor: '#f2c14e', accentColor: '#2f6f4e', fontFamily: 'Georgia, serif', animationStyle: 'soft-wave', priority: 2, active: true, imageUrl: 'https://images.unsplash.com/photo-1600694446265-358f7fabc2c6?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1602848597941-0d3d3a2c1241?w=1600' } }),
-    prisma.theme.create({ data: { name: 'Puja Festival', slug: 'puja-festival', description: 'Festive gifting and family-ready tees.', story: 'A celebratory drop for Puja season with warm palettes, gift-ready styling, and pieces made for family, friends, and mass orders.', primaryColor: '#b42318', secondaryColor: '#f97316', accentColor: '#facc15', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'glow', priority: 3, active: true, imageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600' } }),
+    prisma.theme.create({ data: { name: 'Puja Festival', slug: 'puja-festival', description: 'Festive celebration and family-ready tees.', story: 'A celebratory drop for Puja season with warm palettes, premium styling, and pieces made for family, friends, and celebration moments.', primaryColor: '#b42318', secondaryColor: '#f97316', accentColor: '#facc15', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'glow', priority: 3, active: true, imageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600' } }),
     prisma.theme.create({ data: { name: 'Spider-Man', slug: 'spider-man', description: 'Red-blue superhero inspired energy.', story: `${themeStory} Spider-Man is a high-motion campaign for web-slinger fans, comic style, and bold color-block graphics.`, primaryColor: '#d90429', secondaryColor: '#0057b8', accentColor: '#ffffff', fontFamily: 'Arial Black, Arial, sans-serif', animationStyle: 'web-swing', priority: 4, active: true, imageUrl: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1636487658580-04eeffec7d7d?w=1600' } }),
     prisma.theme.create({ data: { name: 'Minimal', slug: 'minimal', description: 'Clean essentials for everyday wear.', story: 'A comfort-first theme for simple, premium basics with careful fabric, fit, and no compromise in quality.', primaryColor: '#111111', secondaryColor: '#f5f5f5', accentColor: '#777777', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'fade', priority: 5, active: true } }),
     prisma.theme.create({ data: { name: 'Graphic', slug: 'graphic', description: 'Art-led graphic apparel.', story: 'A creative playground for expressive artwork, bold prints, and custom crafted visuals.', primaryColor: '#ff006e', secondaryColor: '#00d9ff', accentColor: '#8338ec', fontFamily: 'Bebas Neue, Arial, sans-serif', animationStyle: 'pop', priority: 6, active: true } }),
@@ -441,7 +432,7 @@ async function main() {
         isFeatured: productData.isFeatured,
         isTrending: productData.isTrending,
         isNewArrival: false,
-        isVisible: false,
+        isVisible: true,
         seoTitle: `${productData.name} - Fly Free`,
         seoDescription: productData.description,
       },
@@ -512,6 +503,42 @@ async function main() {
           },
         });
       }
+    }
+
+    // Create hampers for products
+    if (Math.random() > 0.4) {
+      await prisma.productHamper.create({
+        data: {
+          productId: product.id,
+          name: `${product.name} Hamper`,
+          description: `Premium hamper packaging for ${product.name}`,
+          contents: ['T-Shirt', 'Greeting Card', 'Sticker Pack', 'Premium Wrap'],
+          images: ['https://images.unsplash.com/photo-1549465220-1a8b70c9a569?w=500'],
+          price: product.price + 30000,
+          gstPercent: 5,
+          isActive: true,
+          priority: 1,
+        },
+      });
+    }
+
+    if (Math.random() > 0.6) {
+      await prisma.productHamper.create({
+        data: {
+          productId: product.id,
+          name: `${product.name} Premium Set`,
+          description: `Deluxe set with accessories for ${product.name}`,
+          contents: ['T-Shirt', 'Socks', 'Cap', 'Mug', 'Box', 'Thank You Card'],
+          images: [
+            'https://images.unsplash.com/photo-1549465220-1a8b70c9a569?w=500',
+            'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500',
+          ],
+          price: product.price + 50000,
+          gstPercent: 5,
+          isActive: true,
+          priority: 2,
+        },
+      });
     }
   }
 
@@ -989,41 +1016,6 @@ async function main() {
     }),
   ]);
 
-  // Create Custom Design samples
-  console.log('🎨 Creating custom design samples...');
-  try {
-    await (prisma as any).customDesign.createMany({
-      data: [
-        {
-          userId: users[0].id,
-          title: 'My Anime Design',
-          description: 'Custom anime character design for personal use',
-          images: ['https://via.placeholder.com/300x300/111827/ffffff?text=Anime+Design'],
-          size: 'M',
-          color: 'black',
-          placement: 'front',
-          notes: 'High quality print preferred',
-          status: 'APPROVED',
-          price: 59900
-        },
-        {
-          userId: users[1].id,
-          title: 'Custom Logo Tee',
-          description: 'Custom logo design for team',
-          images: ['https://via.placeholder.com/300x300/ff6b5b/ffffff?text=Logo+Design'],
-          size: 'L',
-          color: 'white',
-          placement: 'front',
-          notes: 'For team event',
-          status: 'PENDING',
-          price: null
-        }
-      ]
-    });
-  } catch (error) {
-    console.log('⚠️ CustomDesign seeding skipped (model may not exist yet)');
-  }
-
   const websiteThemes = await Promise.all([
     prisma.websiteTheme.create({
       data: {
@@ -1213,29 +1205,11 @@ You can contact Fly Free support for privacy questions, account help, or communi
     }),
     prisma.page.create({
       data: {
-        slug: 'size-chart',
-        title: 'Size Chart',
-        content: 'XS: 36 in chest, S: 38 in, M: 40 in, L: 42 in, XL: 44 in, XXL: 46 in. Update exact measurements from admin.',
-        metaTitle: 'T-shirt Size Chart',
-        metaDesc: 'Fly Free t-shirt size chart.',
-      },
-    }),
-    prisma.page.create({
-      data: {
         slug: 'contact-us',
         title: 'Contact Us',
         content: 'Contact Fly Free at support@flyfree.com or 9876543210 for orders, returns, custom designs, and influencer partnerships.',
         metaTitle: 'Contact Fly Free',
         metaDesc: 'Fly Free customer support and contact details.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'gifting',
-        title: 'Gifting',
-        content: 'Fly Free gifting makes birthdays, festivals, team celebrations, and corporate moments more personal. Choose curated gift-ready tees, custom message cards, and bulk gifting support.',
-        metaTitle: 'Fly Free Gifting',
-        metaDesc: 'Gift-ready t-shirts, custom cards, and bulk gifting from Fly Free.',
       },
     }),
   ]);

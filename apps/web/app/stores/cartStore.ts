@@ -10,11 +10,8 @@ export interface CartItem {
   color: string;
   image?: string;
   variantId?: string;
-  giftOption?: {
-    id: string;
-    name: string;
-    price: number;
-  } | null;
+  hamperId?: string;
+  hamperName?: string;
   offerCode?: string;
   offerLabel?: string;
 }
@@ -58,7 +55,7 @@ export const useCartStore = create<CartStore>()(
             i.size === item.size &&
             i.color === item.color &&
             i.variantId === item.variantId &&
-            i.giftOption?.id === item.giftOption?.id &&
+            i.hamperId === item.hamperId &&
             i.offerCode === item.offerCode
         );
 
@@ -101,8 +98,7 @@ export const useCartStore = create<CartStore>()(
 
       getSubtotal: () => {
         return get().items.reduce((sum, item) => {
-          const giftPrice = item.giftOption?.price || 0;
-          return sum + (item.price + giftPrice) * item.quantity;
+          return sum + item.price * item.quantity;
         }, 0);
       },
 

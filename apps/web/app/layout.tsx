@@ -31,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
           <Footer />
         </Providers>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
       </body>
     </html>
   );

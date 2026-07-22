@@ -1,13 +1,13 @@
+'use client';
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { getApiBaseUrl, readApiResponse } from '../lib/api';
-
-const API_URL = getApiBaseUrl();
+import { supabase, signInWithEmail, signUpWithEmail, signOut, getCurrentUser, getSession, resetPassword, updatePassword } from '../lib/supabase';
 
 interface User {
   id: string;
   email: string;
-  name: string;
+  name?: string;
   phone?: string;
   image?: string;
   emailVerified?: boolean;
@@ -15,17 +15,16 @@ interface User {
 
 interface AuthStore {
   user: User | null;
+  session: any;
   token: string | null;
   loading: boolean;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
-  verifyEmail: (email: string, code: string) => Promise<void>;
-  resendVerificationEmail: (email: string) => Promise<void>;
+  checkAuth: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string; image?: string }) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  checkAuth: () => Promise<void>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
 }
@@ -34,6 +33,7 @@ const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       user: null,
+      session: null,
       token: null,
       loading: false,
       hydrated: false,
@@ -41,27 +41,36 @@ const useAuthStore = create<AuthStore>()(
       login: async (email: string, password: string) => {
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/user/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
+          const { data, error } = await signInWithEmail(email, password);
 
-          const data = await readApiResponse(response);
-
-          if (!response.ok) {
-            throw new Error(data?.error || 'Login failed');
+          if (error) {
+            throw new Error(error.message || 'Login failed');
           }
 
-          set({
-            user: data.user,
-            token: data.token,
-            loading: false,
-            hydrated: true
-          });
+          if (data?.user) {
+            const user: User = {
+              id: data.user.id,
+              email: data.user.email || '',
+              name: data.user.user_metadata?.name,
+              phone: data.user.user_metadata?.phone,
+              emailVerified: data.user.email_confirmed_at ? true : false
+            };
 
-          localStorage.setItem('flyfree_user_token', data.token);
-          localStorage.setItem('flyfree_user_data', JSON.stringify(data.user));
+            const token = data.session?.access_token || null;
+
+            set({
+              user,
+              session: data.session,
+              token,
+              loading: false,
+              hydrated: true
+            });
+
+            if (token) {
+              localStorage.setItem('flyfree_auth_token', token);
+              localStorage.setItem('flyfree_user_data', JSON.stringify(user));
+            }
+          }
         } catch (error) {
           set({ loading: false, hydrated: true });
           throw error;
@@ -69,36 +78,23 @@ const useAuthStore = create<AuthStore>()(
       },
 
       logout: async () => {
-        const token = get().token;
         set({ loading: true });
-
         try {
-          if (token) {
-            await fetch(`${API_URL}/auth/user/logout`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` }
-            });
-          }
+          await signOut();
         } finally {
-          localStorage.removeItem('flyfree_user_token');
+          localStorage.removeItem('flyfree_auth_token');
           localStorage.removeItem('flyfree_user_data');
-          set({ user: null, token: null, loading: false, hydrated: true });
+          set({ user: null, session: null, token: null, loading: false, hydrated: true });
         }
       },
 
       signup: async (name: string, email: string, phone: string, password: string) => {
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/user/signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, phone, password })
-          });
+          const { data, error } = await signUpWithEmail(email, password, { name, phone });
 
-          const data = await readApiResponse(response);
-
-          if (!response.ok) {
-            throw new Error(data?.error || 'Signup failed');
+          if (error) {
+            throw new Error(error.message || 'Signup failed');
           }
 
           set({ loading: false, hydrated: true });
@@ -108,71 +104,76 @@ const useAuthStore = create<AuthStore>()(
         }
       },
 
-      verifyEmail: async (email: string, code: string) => {
-        set({ loading: true });
+      checkAuth: async () => {
         try {
-          const response = await fetch(`${API_URL}/auth/user/verify-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, code })
-          });
+          const session = await getSession();
 
-          if (!response.ok) {
-            const data = await readApiResponse(response);
-            throw new Error(data?.error || 'Verification failed');
+          if (session?.user) {
+            const user: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name,
+              phone: session.user.user_metadata?.phone,
+              emailVerified: session.user.email_confirmed_at ? true : false
+            };
+
+            const token = session.access_token || null;
+
+            set({
+              user,
+              session,
+              token,
+              loading: false,
+              hydrated: true
+            });
+
+            if (token) {
+              localStorage.setItem('flyfree_auth_token', token);
+              localStorage.setItem('flyfree_user_data', JSON.stringify(user));
+            }
+          } else {
+            const savedToken = localStorage.getItem('flyfree_auth_token');
+            if (savedToken) {
+              localStorage.removeItem('flyfree_auth_token');
+              localStorage.removeItem('flyfree_user_data');
+            }
+            set({ user: null, session: null, token: null, loading: false, hydrated: true });
           }
-
-          set({ loading: false, hydrated: true });
         } catch (error) {
-          set({ loading: false, hydrated: true });
-          throw error;
-        }
-      },
-
-      resendVerificationEmail: async (email: string) => {
-        set({ loading: true });
-        try {
-          const response = await fetch(`${API_URL}/auth/user/resend-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-          });
-
-          if (!response.ok) {
-            const data = await readApiResponse(response);
-            throw new Error(data?.error || 'Resend failed');
-          }
-
-          set({ loading: false });
-        } catch (error) {
-          set({ loading: false });
-          throw error;
+          console.error('Auth check failed:', error);
+          localStorage.removeItem('flyfree_auth_token');
+          localStorage.removeItem('flyfree_user_data');
+          set({ user: null, session: null, token: null, loading: false, hydrated: true });
         }
       },
 
       updateProfile: async (data: { name?: string; phone?: string; image?: string }) => {
-        const token = get().token;
-        if (!token) throw new Error('Not authenticated');
+        const currentUser = get().user;
+        if (!currentUser) throw new Error('Not authenticated');
 
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/user/profile`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
+          const { error } = await supabase.auth.updateUser({
+            data: {
+              name: data.name,
+              phone: data.phone,
+              image: data.image,
             },
-            body: JSON.stringify(data)
           });
 
-          const result = await readApiResponse(response);
-
-          if (!response.ok) {
-            throw new Error(result?.error || 'Update failed');
+          if (error) {
+            throw new Error(error.message);
           }
 
-          set({ user: result.user, loading: false });
-          localStorage.setItem('flyfree_user_data', JSON.stringify(result.user));
+          const updatedUser: User = {
+            ...currentUser,
+            name: data.name || currentUser.name,
+            phone: data.phone || currentUser.phone,
+            image: data.image || currentUser.image,
+          };
+
+          set({ user: updatedUser, loading: false });
+          localStorage.setItem('flyfree_user_data', JSON.stringify(updatedUser));
           return true;
         } catch (error) {
           set({ loading: false });
@@ -181,23 +182,12 @@ const useAuthStore = create<AuthStore>()(
       },
 
       changePassword: async (currentPassword: string, newPassword: string) => {
-        const token = get().token;
-        if (!token) throw new Error('Not authenticated');
-
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/user/change-password`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ currentPassword, newPassword })
-          });
+          const { error } = await updatePassword(newPassword);
 
-          if (!response.ok) {
-            const data = await readApiResponse(response);
-            throw new Error(data?.error || 'Password change failed');
+          if (error) {
+            throw new Error(error.message);
           }
 
           set({ loading: false });
@@ -205,35 +195,6 @@ const useAuthStore = create<AuthStore>()(
         } catch (error) {
           set({ loading: false });
           throw error;
-        }
-      },
-
-      checkAuth: async () => {
-        const token = localStorage.getItem('flyfree_user_token');
-        const userData = localStorage.getItem('flyfree_user_data');
-
-        if (token && userData) {
-          set({ user: JSON.parse(userData), token, hydrated: true });
-
-          try {
-            const response = await fetch(`${API_URL}/auth/user/profile`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!response.ok) {
-              throw new Error('Token invalid');
-            }
-
-            const data = await readApiResponse(response);
-            set({ user: data, token, loading: false, hydrated: true });
-            localStorage.setItem('flyfree_user_data', JSON.stringify(data));
-          } catch {
-            localStorage.removeItem('flyfree_user_token');
-            localStorage.removeItem('flyfree_user_data');
-            set({ user: null, token: null, loading: false, hydrated: true });
-          }
-        } else {
-          set({ user: null, token: null, loading: false, hydrated: true });
         }
       },
 
@@ -244,7 +205,7 @@ const useAuthStore = create<AuthStore>()(
       name: 'auth-store',
       partialize: (state) => ({
         user: state.user,
-        token: state.token
+        session: state.session
       })
     }
   )

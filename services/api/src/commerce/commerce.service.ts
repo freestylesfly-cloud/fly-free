@@ -46,8 +46,8 @@ export class CommerceService {
         }
 
         const variant = item.variantId
-          ? product.variants.find((entry) => entry.id === item.variantId)
-          : product.variants.find((entry) =>
+          ? product.variants.find((entry: any) => entry.id === item.variantId)
+          : product.variants.find((entry: any) =>
               entry.size?.toLowerCase() === String(item.size || "").toLowerCase() &&
               entry.color?.toLowerCase() === String(item.color || "").toLowerCase()
             ) || product.variants[0];
@@ -72,7 +72,7 @@ export class CommerceService {
     const tax = Math.round((subtotal - discount) * 0.18);
     const total = Math.max(subtotal - discount + shippingFee + tax, 0);
 
-    const order = await this.prisma.$transaction(async (tx) => {
+    const order = await this.prisma.$transaction(async (tx: any) => {
       const shippingAddress = await tx.address.create({
         data: {
           userId,

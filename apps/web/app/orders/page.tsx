@@ -1,180 +1,156 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { Package, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { formatCurrency } from '@flyfree/utils';
-import { useRouter } from 'next/navigation';
-import { getApiBaseUrl, readApiResponse } from '../lib/api';
+import { ChevronRight, Loader2, ShoppingBag } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
+import { getApiBaseUrl } from '../lib/api';
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  items: Array<{
-    productName: string;
-    quantity: number;
-  }>;
-}
-
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  shipped: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
+const API_URL = getApiBaseUrl();
 
 export default function OrdersPage() {
-  const router = useRouter();
-  const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const token = useAuthStore((state) => state.token);
+
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) {
-      router.push('/auth/login');
+    if (!user || !token) {
+      window.location.href = '/auth/login?next=/orders';
       return;
     }
 
-    async function fetchOrders() {
+    async function loadOrders() {
       try {
-        const API_URL = getApiBaseUrl();
-        const response = await fetch(`${API_URL}/ecommerce/orders`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+        setLoading(true);
+        const res = await fetch(`${API_URL}/ecommerce/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        const data = await readApiResponse(response);
-        if (!response.ok) throw new Error(data?.error || 'Failed to fetch orders');
-        setOrders(data.data || []);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
+        if (res.ok) {
+          const data = await res.json();
+          const ordersList = data.data || data;
+          setOrders(Array.isArray(ordersList) ? ordersList.sort((a: any, b: any) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          ) : []);
+        } else {
+          setError('Failed to load orders');
+        }
+      } catch (err) {
+        setError('Failed to load orders');
       } finally {
         setLoading(false);
       }
     }
 
-    fetchOrders();
-  }, [token, router]);
-
-  if (!token) {
-    return null; // Will redirect
-  }
+    loadOrders();
+  }, [user, token]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-ink flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={40} className="animate-spin text-coral" />
-          <p className="dark:text-white font-bold">Loading your orders...</p>
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin" />
+          <p className="text-black/60">Loading your orders...</p>
         </div>
-      </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-red-600 font-bold mb-4">{error}</p>
+          <Link href="/" className="text-primary font-bold hover:underline">
+            Go home
+          </Link>
+        </div>
+      </main>
     );
   }
 
   if (orders.length === 0) {
     return (
-      <div className="min-h-screen bg-white dark:bg-ink">
-        <div className="container mx-auto px-4 py-12">
-          <h1 className="text-4xl font-black dark:text-white mb-8">My Orders</h1>
-
-          <div className="text-center py-20 space-y-6">
-            <div className="flex justify-center">
-              <div className="p-4 bg-paper dark:bg-ink/50 rounded-full">
-                <Package size={48} className="text-ink/30 dark:text-white/30" />
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-black dark:text-white mb-2">No Orders Yet</p>
-              <p className="text-ink/60 dark:text-white/60 mb-8">
-                You haven't placed any orders. Start shopping!
-              </p>
-            </div>
-            <Link
-              href="/products"
-              className="inline-flex items-center gap-2 bg-coral text-white px-8 py-3 rounded-lg font-bold hover:bg-coral/90 transition"
-            >
-              Continue Shopping
-              <ArrowRight size={18} />
-            </Link>
-          </div>
+      <main className="min-h-screen pb-20 px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center py-20">
+          <ShoppingBag size={48} className="mx-auto mb-4 opacity-30" />
+          <h1 className="text-2xl font-black mb-4">No orders yet</h1>
+          <p className="text-black/60 mb-6">Start shopping to place your first order</p>
+          <Link href="/products" className="inline-block px-6 py-3 bg-primary text-white font-black rounded-lg hover:opacity-90">
+            Browse Products
+          </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-ink">
-      <div className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-black dark:text-white mb-2">My Orders</h1>
-          <p className="text-ink/60 dark:text-white/60">Track and manage your orders</p>
-        </div>
+    <main className="min-h-screen pb-20 px-4 py-8">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-black mb-8">Your Orders</h1>
 
-        {/* Orders List */}
         <div className="space-y-4">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/orders/${order.id}`}
-              className="bg-paper dark:bg-ink/50 rounded-lg p-6 hover:shadow-lg dark:hover:shadow-none transition border border-black/5 dark:border-white/5 hover:border-coral"
+              className="block bg-white border border-black/10 rounded-lg p-6 hover:border-primary transition"
             >
-              <div className="grid md:grid-cols-2 gap-6 items-center">
-                {/* Left */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-ink/60 dark:text-white/60">Order Number</p>
-                      <p className="font-black text-lg dark:text-white">{order.orderNumber}</p>
-                    </div>
-                    <span
-                      className={`px-4 py-2 rounded-full text-xs font-bold uppercase ${
-                        statusColors[order.status.toLowerCase()] ||
-                        'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100'
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <p className="text-sm text-black/60 mb-1">Order ID</p>
+                  <p className="font-black break-all">{order.id}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-black/60 mb-1">Status</p>
+                  <div className={`inline-block px-3 py-1 rounded-full text-xs font-black ${
+                    order.status === 'DELIVERED' ? 'bg-green-100 text-green-700' :
+                    order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-700' :
+                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {order.status}
                   </div>
+                </div>
+              </div>
 
-                  <div>
-                    <p className="text-sm text-ink/60 dark:text-white/60">Items</p>
-                    <p className="font-bold dark:text-white">
-                      {order.items.map((item) => `${item.productName} (${item.quantity})`).join(', ')}
-                    </p>
-                  </div>
-
-                  <p className="text-sm text-ink/60 dark:text-white/60">
-                    {new Date(order.createdAt).toLocaleDateString()}
+              <div className="grid grid-cols-3 gap-4 py-4 border-y border-black/10">
+                <div>
+                  <p className="text-xs text-black/60 font-bold mb-1">DATE</p>
+                  <p className="font-bold text-sm">
+                    {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
                   </p>
                 </div>
-
-                {/* Right */}
-                <div className="text-right space-y-4">
-                  <div>
-                    <p className="text-sm text-ink/60 dark:text-white/60 mb-1">Total</p>
-                    <p className="text-3xl font-black text-coral">{formatCurrency(order.total)}</p>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button className="flex items-center gap-2 text-coral font-bold hover:underline">
-                      View Details
-                      <ArrowRight size={16} />
-                    </button>
-                  </div>
+                <div>
+                  <p className="text-xs text-black/60 font-bold mb-1">ITEMS</p>
+                  <p className="font-bold text-sm">{order.items?.length || 0} item(s)</p>
                 </div>
+                <div>
+                  <p className="text-xs text-black/60 font-bold mb-1">TOTAL</p>
+                  <p className="font-black text-lg">₹{order.total?.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  {order.items && order.items.length > 0 && (
+                    <p className="text-sm text-black/60">
+                      {order.items.map((item: any) => item.name).join(', ')}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight size={20} className="text-black/30" />
               </div>
             </Link>
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,4 +1,4 @@
-import { Gift, Shirt, Sparkles, ArrowRight, Star, Instagram, Share2 } from "lucide-react";
+import { Shirt, Sparkles, ArrowRight, Star, Instagram, Share2 } from "lucide-react";
 import { getApiBaseUrl } from "./lib/api";
 import Link from "next/link";
 import { ProductCard } from "./components/ProductCard";
@@ -9,14 +9,19 @@ export const dynamic = "force-dynamic";
 
 async function getHomeData() {
   try {
-    const [home, products] = await Promise.all([
+    const [home, productsRes] = await Promise.all([
       fetch(`${API_BASE}/cms/home`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`${API_BASE}/catalog/products`, { cache: "no-store" }).then((response) => response.ok ? response.json() : [])
+      fetch(`${API_BASE}/catalog/products?limit=50`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null)
     ]);
 
+    let products = Array.isArray(productsRes) ? productsRes : productsRes?.data || [];
+
+    // Filter for visible products only
+    products = products.filter((p: any) => p.isVisible !== false);
+
     return {
-      home: home?.data || home || { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], giftOptions: [], influencers: [], reviews: [], settings: null },
-      products: Array.isArray(products) ? products : products?.data || []
+      home: home?.data || home || { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null },
+      products
     };
   } catch (error) {
     console.error("Error fetching home data:", error);
@@ -33,11 +38,36 @@ export default async function HomePage() {
   const banners = home.banners || [];
   const themes = home.themes || [];
   const websiteTheme = home.websiteTheme;
-  const categories = home.categories || [];
-  const giftOptions = home.giftOptions || [];
+  let categories = home.categories || [];
   const influencers = home.influencers || [];
   const reviews = home.reviews || [];
-  const featuredProducts = products.slice(0, 8);
+
+  // Fallback categories if none exist
+  if (categories.length === 0) {
+    categories = [
+      { id: '1', name: 'Men', slug: 'men' },
+      { id: '2', name: 'Women', slug: 'women' },
+      { id: '3', name: 'Unisex', slug: 'unisex' }
+    ];
+  }
+
+  // Fallback themes if none exist
+  if (themes.length === 0) {
+    const fallbackThemes = [
+      { id: '1', name: 'Anime', slug: 'anime', story: 'A merch theme focused on energetic art and fandom confidence', animationStyle: 'snap-slide', primaryColor: '#ff6b5b' },
+      { id: '2', name: 'Spider-Man', slug: 'spider-man', story: 'High-motion campaign for web-slinger fans with bold graphics', animationStyle: 'web-swing', primaryColor: '#ff3333' },
+      { id: '3', name: 'Minimal', slug: 'minimal', story: 'Comfort-first theme for simple, premium basics', animationStyle: 'fade', primaryColor: '#111827' },
+      { id: '4', name: 'Graphic', slug: 'graphic', story: 'Creative playground for expressive artwork', animationStyle: 'pop', primaryColor: '#4ecdc4' }
+    ];
+    themes.push(...fallbackThemes.slice(0, 4 - themes.length));
+  }
+
+  // Get trending products - prioritize isTrending, then isFeatured, then all visible
+  const trendingProducts = products
+    .filter((p: any) => p.isTrending || p.isFeatured)
+    .slice(0, 8);
+
+  const featuredProducts = trendingProducts.length >= 8 ? trendingProducts : products.slice(0, 8);
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -200,19 +230,29 @@ export default async function HomePage() {
             View All <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
-        <div className="product-grid">
-          {featuredProducts.map((product: any) => (
-            <ProductCard
-              key={product.id}
-              id={product.id}
-              name={product.name}
-              price={Math.round((product.price || 0) / 100)}
-              slug={product.slug}
-              image={product.images?.[0]?.url}
-              tag={product.theme?.name || product.category?.name || 'New'}
-            />
-          ))}
-        </div>
+        {featuredProducts && featuredProducts.length > 0 ? (
+          <div className="product-grid">
+            {featuredProducts.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={product.price || 0}
+                slug={product.slug}
+                image={product.images?.[0]?.url || null}
+                tag={product.theme?.name || product.category?.name || 'New'}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <Shirt size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg text-gray-500 mb-4">Products coming soon!</p>
+            <Link href="/products" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+              Browse All Products <ArrowRight size={18} />
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Influencers */}
@@ -277,39 +317,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Gifting Section */}
-      <section className="mx-auto max-w-7xl px-5 py-16 md:py-24">
-        <div className="rounded-3xl p-8 md:p-16" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
-          <div className="grid gap-12 md:grid-cols-[1fr_2fr] items-start">
-            <div>
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-6" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <Gift size={28} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <h2 className="text-4xl font-black leading-tight">Perfect for Gifting</h2>
-              <p className="mt-4 text-lg leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                Premium packaging, custom messages, and bulk options for corporate gifting
-              </p>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-3">
-              {giftOptions.map((item: any, idx: number) => (
-                <div
-                  key={item.id}
-                  className="card-item rounded-xl overflow-hidden"
-                  style={{ animationDelay: `${idx * 0.1}s`, backgroundColor: 'var(--bg-primary)' }}
-                >
-                  {item.imageUrl && (
-                    <div className="overflow-hidden h-32 mb-4 rounded-lg">
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                    </div>
-                  )}
-                  <h3 className="font-black text-lg">{item.name}</h3>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="mx-auto max-w-7xl px-5 py-16 md:py-24">

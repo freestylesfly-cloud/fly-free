@@ -98,7 +98,7 @@ export class InfluencerService {
     if (!influencer) return null;
 
     const totalEarnings = influencer.referrals.reduce(
-      (sum, ref) => sum + (ref.commissionAmount || 0),
+      (sum: number, ref: any) => sum + (ref.commissionAmount || 0),
       0
     );
 

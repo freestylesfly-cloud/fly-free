@@ -16,16 +16,16 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 dark:bg-ink">
+      <main className="flex min-h-screen flex-col items-center justify-center px-5" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="max-w-sm space-y-6 text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-paper dark:bg-white/5">
-            <CartIcon size={42} className="text-ink/30 dark:text-white/30" />
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <CartIcon size={42} style={{ color: 'var(--text-secondary)' }} />
           </div>
           <div>
-            <h1 className="mb-2 text-3xl font-black text-ink dark:text-white">Your cart is empty</h1>
-            <p className="text-ink/60 dark:text-white/60">Add products, choose size/color, and come back here.</p>
+            <h1 className="mb-2 text-3xl font-black" style={{ color: 'var(--text-primary)' }}>Your cart is empty</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>Add products, choose size/color, and come back here.</p>
           </div>
-          <Link href="/products" className="inline-flex items-center gap-2 rounded bg-coral px-8 py-3 font-bold text-white transition hover:bg-coral/90">
+          <Link href="/products" className="inline-flex items-center gap-2 rounded px-8 py-3 font-bold text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
             Continue shopping
             <ArrowRight size={18} />
           </Link>
@@ -35,11 +35,11 @@ export default function CartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white dark:bg-ink">
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="mx-auto max-w-7xl px-4 py-10 md:py-12">
         <div className="mb-8">
-          <h1 className="mb-2 text-4xl font-black text-ink dark:text-white">Shopping Cart</h1>
-          <p className="text-ink/60 dark:text-white/60">
+          <h1 className="mb-2 text-4xl font-black" style={{ color: 'var(--text-primary)' }}>Shopping Cart</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
             {items.length} selected item{items.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -47,48 +47,45 @@ export default function CartPage() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="space-y-4">
             {items.map((item) => {
-              const giftPrice = item.giftOption?.price || 0;
-              const linePrice = (item.price + giftPrice) * item.quantity;
+              const linePrice = item.price * item.quantity;
 
               return (
                 <article
-                  key={`${item.productId}-${item.variantId || 'variant'}-${item.size}-${item.color}-${item.giftOption?.id || 'no-gift'}-${item.offerCode || 'no-offer'}`}
-                  className="grid gap-4 rounded-lg bg-paper p-4 dark:bg-white/5 sm:grid-cols-[112px_minmax(0,1fr)_130px]"
+                  key={`${item.productId}-${item.variantId || 'variant'}-${item.size}-${item.color}-${item.hamperId || 'no-hamper'}-${item.offerCode || 'no-offer'}`}
+                  className="grid gap-4 rounded-lg p-4 sm:grid-cols-[112px_minmax(0,1fr)_130px]"
+                  style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}
                 >
-                  <div className="aspect-square overflow-hidden rounded-lg bg-white dark:bg-ink">
+                  <div className="aspect-square overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
                     {item.image ? (
                       <img src={item.image} alt={item.productName} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-ink/30 dark:text-white/30">
+                      <div className="flex h-full items-center justify-center" style={{ color: 'var(--text-secondary)' }}>
                         <CartIcon size={32} />
                       </div>
                     )}
                   </div>
 
                   <div className="min-w-0">
-                    <h2 className="truncate text-lg font-black text-ink dark:text-white">{item.productName}</h2>
-                    <p className="mt-1 text-sm font-bold text-ink/55 dark:text-white/55">
+                    <h2 className="truncate text-lg font-black" style={{ color: 'var(--text-primary)' }}>{item.productName}</h2>
+                    <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
                       {item.size} / {item.color}
                     </p>
 
-                    {(item.giftOption || item.offerLabel) && (
-                      <div className="mt-3 space-y-1 rounded border border-black/10 bg-white p-3 text-xs font-bold text-ink/60 dark:border-white/10 dark:bg-ink dark:text-white/60">
-                        {item.giftOption && (
-                          <p>
-                            Gift pack: {item.giftOption.name}
-                            {item.giftOption.price ? ` (+${formatCurrency(item.giftOption.price)})` : ''}
-                          </p>
+                    {(item.hamperName || item.offerLabel) && (
+                      <div className="mt-3 space-y-1 rounded p-3 text-xs font-bold" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', borderWidth: '1px', color: 'var(--text-secondary)' }}>
+                        {item.hamperName && (
+                          <p>Hamper: {item.hamperName}</p>
                         )}
                         {item.offerLabel && <p>Offer: {item.offerLabel}</p>}
                       </div>
                     )}
 
-                    <div className="mt-4 flex w-fit items-center rounded border border-black/10 dark:border-white/10">
-                      <button onClick={() => updateQuantity(item.productId, item.size, item.color, Math.max(1, item.quantity - 1))} className="p-2 transition hover:bg-black/5 dark:hover:bg-white/5">
+                    <div className="mt-4 flex w-fit items-center rounded" style={{ borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+                      <button onClick={() => updateQuantity(item.productId, item.size, item.color, Math.max(1, item.quantity - 1))} className="p-2 transition hover:opacity-70" style={{ backgroundColor: 'var(--bg-primary)' }}>
                         <Minus size={16} />
                       </button>
-                      <span className="min-w-10 text-center font-black text-ink dark:text-white">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.productId, item.size, item.color, item.quantity + 1)} className="p-2 transition hover:bg-black/5 dark:hover:bg-white/5">
+                      <span className="min-w-10 text-center font-black" style={{ color: 'var(--text-primary)' }}>{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.productId, item.size, item.color, item.quantity + 1)} className="p-2 transition hover:opacity-70" style={{ backgroundColor: 'var(--bg-primary)' }}>
                         <Plus size={16} />
                       </button>
                     </div>
@@ -96,11 +93,10 @@ export default function CartPage() {
 
                   <div className="flex items-end justify-between gap-4 sm:flex-col sm:items-end">
                     <div className="text-left sm:text-right">
-                      <p className="text-xl font-black text-coral">{formatCurrency(linePrice)}</p>
-                      <p className="text-xs text-ink/60 dark:text-white/60">{formatCurrency(item.price)} product</p>
-                      {giftPrice > 0 && <p className="text-xs text-ink/45 dark:text-white/45">+ {formatCurrency(giftPrice)} gift</p>}
+                      <p className="text-xl font-black" style={{ color: 'var(--color-primary)' }}>{formatCurrency(linePrice)}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(item.price)} product</p>
                     </div>
-                    <button onClick={() => removeItem(item.productId, item.size, item.color)} className="rounded p-2 text-red-500 transition hover:bg-red-500/10" title="Remove from cart">
+                    <button onClick={() => removeItem(item.productId, item.size, item.color)} className="rounded p-2 transition hover:opacity-70" style={{ color: 'var(--color-primary)' }} title="Remove from cart">
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -108,38 +104,38 @@ export default function CartPage() {
               );
             })}
 
-            <Link href="/products" className="inline-flex items-center gap-2 font-bold text-coral hover:underline">
+            <Link href="/products" className="inline-flex items-center gap-2 font-bold hover:underline transition" style={{ color: 'var(--color-primary)' }}>
               Back to shopping
             </Link>
           </section>
 
           <aside className="lg:col-span-1">
-            <div className="sticky top-20 space-y-6 rounded-lg bg-paper p-6 dark:bg-white/5">
-              <h2 className="text-2xl font-black text-ink dark:text-white">Order Summary</h2>
+            <div className="sticky top-20 space-y-6 rounded-lg p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+              <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Order Summary</h2>
 
-              <div className="space-y-3 border-b border-black/10 pb-6 dark:border-white/10">
+              <div className="space-y-3 pb-6" style={{ borderBottomColor: 'var(--border-color)', borderBottomWidth: '1px' }}>
                 <SummaryRow label="Subtotal" value={formatCurrency(getSubtotal())} />
                 <SummaryRow label="GST (18%)" value={formatCurrency(getTax())} />
                 <SummaryRow label="Shipping" value="FREE" highlight />
               </div>
 
-              <div className="flex justify-between text-2xl font-black text-ink dark:text-white">
+              <div className="flex justify-between text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
                 <span>Total</span>
-                <span className="text-coral">{formatCurrency(getTotal())}</span>
+                <span style={{ color: 'var(--color-primary)' }}>{formatCurrency(getTotal())}</span>
               </div>
 
-              <Link href="/checkout" className="flex w-full items-center justify-center gap-2 rounded bg-coral py-3 text-center font-bold text-white transition hover:bg-coral/90">
+              <Link href="/checkout" className="flex w-full items-center justify-center gap-2 rounded py-3 text-center font-bold text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
                 Proceed to checkout
                 <ArrowRight size={18} />
               </Link>
 
-              <button onClick={clearCart} className="w-full py-2 font-bold text-coral transition hover:underline">
+              <button onClick={clearCart} className="w-full py-2 font-bold transition hover:underline" style={{ color: 'var(--color-primary)' }}>
                 Clear cart
               </button>
 
-              <div className="space-y-2 border-t border-black/10 pt-5 text-xs font-bold text-ink/55 dark:border-white/10 dark:text-white/55">
+              <div className="space-y-2 pt-5 text-xs font-bold" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px', color: 'var(--text-secondary)' }}>
                 <p>Free shipping on all orders</p>
-                <p>Gift packs and product offers are included in subtotal</p>
+                <p>Hampers and product offers are included in subtotal</p>
                 <p>Checkout requires login, cart works before login</p>
               </div>
             </div>
@@ -152,9 +148,9 @@ export default function CartPage() {
 
 function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="flex justify-between text-ink/70 dark:text-white/70">
+    <div className="flex justify-between" style={{ color: 'var(--text-secondary)' }}>
       <span>{label}</span>
-      <span className={highlight ? 'font-black text-coral' : ''}>{value}</span>
+      <span className={highlight ? 'font-black' : ''} style={highlight ? { color: 'var(--color-primary)' } : {}}>{value}</span>
     </div>
   );
 }

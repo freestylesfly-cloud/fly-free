@@ -33,7 +33,7 @@ export class EmailAdminService {
             <p><strong>Order #${orderNumber}</strong></p>
             <p>Your items:</p>
             <ul>
-              ${order.items.map(item => `<li>${item.product.name} (Qty: ${item.quantity})</li>`).join('')}
+              ${order.items.map((item: any) => `<li>${item.product.name} (Qty: ${item.quantity})</li>`).join('')}
             </ul>
           </div>
 

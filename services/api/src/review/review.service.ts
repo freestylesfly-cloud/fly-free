@@ -39,7 +39,7 @@ export class ReviewService {
 
     const avgRating =
       reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+        ? (reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)
         : 0;
 
     return {

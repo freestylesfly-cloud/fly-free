@@ -232,7 +232,7 @@ export class EcommerceService {
     });
 
     return {
-      data: orders.map((order) => this.toOrderDto(order))
+      data: orders.map((order: any) => this.toOrderDto(order))
     };
   }
 

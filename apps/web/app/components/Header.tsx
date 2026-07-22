@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import type React from 'react';
-import { Heart, PackageSearch, ShoppingBag, Menu, X, Megaphone, User, Search } from 'lucide-react';
+import { Heart, PackageSearch, Package, ShoppingBag, Menu, X, Megaphone, User, Search, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
@@ -13,17 +13,26 @@ import { Logo } from './Logo';
 const API_BASE = getApiBaseUrl();
 
 export function Header() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [activeAnnouncement, setActiveAnnouncement] = useState(0);
   const [loginPrompt, setLoginPrompt] = useState('');
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const cartCount = useCartStore((state) => state.getItemCount());
   const displayedCartCount = hasMounted ? cartCount : 0;
   const pathname = usePathname();
   const announcement = announcements[activeAnnouncement % Math.max(announcements.length, 1)];
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+  const handleLogout = async () => {
+    await logout();
+    setIsProfileOpen(false);
+    router.push('/');
+  };
 
   useEffect(() => {
     setHasMounted(true);
@@ -134,9 +143,7 @@ export function Header() {
           {/* Center: Navigation Menu */}
           <nav className="flex gap-8 text-sm font-semibold flex-1 justify-center">
             <DesktopNavLink href="/products" label="Shop" active={isActive('/products')} />
-            <DesktopNavLink href="/gifting" label="Gifting" active={isActive('/gifting')} />
             <DesktopNavLink href="/about" label="About" active={isActive('/about')} />
-            <DesktopNavLink href="/custom-design" label="Custom Design" active={isActive('/custom-design')} />
             <DesktopNavLink href="/influencers" label="Influencers" active={isActive('/influencers')} />
             <DesktopNavLink href="/#reviews" label="Reviews" active={false} />
           </nav>
@@ -155,13 +162,7 @@ export function Header() {
 
             {/* Wishlist */}
             <Link
-              href={user ? '/wishlist' : '#'}
-              onClick={(event) => {
-                if (!user) {
-                  event.preventDefault();
-                  setLoginPrompt('wishlist');
-                }
-              }}
+              href={user ? '/wishlist' : '/auth/login'}
               className="p-2.5 rounded-lg border transition hover:opacity-70"
               style={{ borderColor: 'var(--border-color)' }}
               aria-label="Open wishlist"
@@ -169,15 +170,92 @@ export function Header() {
               <Heart size={18} />
             </Link>
 
-            {/* Profile */}
-            <Link
-              href={user ? '/profile' : '/auth/login'}
-              className="p-2.5 rounded-lg border transition hover:opacity-70"
-              style={{ borderColor: 'var(--border-color)' }}
-              aria-label={user ? 'Open profile' : 'Login'}
-            >
-              <User size={18} />
-            </Link>
+            {/* Profile Dropdown */}
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="p-2.5 rounded-lg border transition hover:shadow-md"
+                  style={{
+                    borderColor: isProfileOpen ? 'var(--color-primary)' : 'var(--border-color)',
+                    backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
+                  }}
+                  aria-label="Open profile menu"
+                >
+                  <User size={18} style={{ color: isProfileOpen ? 'var(--color-primary)' : 'var(--text-primary)' }} />
+                </button>
+                {isProfileOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 rounded-lg border shadow-xl overflow-hidden z-50"
+                    style={{
+                      borderColor: 'var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)'
+                    }}
+                  >
+                    <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 5%, transparent)' }}>
+                      <p className="text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>Account</p>
+                      <p className="text-sm font-bold mt-1 line-clamp-1" style={{ color: 'var(--text-primary)' }} title={user.email}>{user.email}</p>
+                    </div>
+                    <nav className="py-1">
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="px-4 py-3 text-sm font-semibold transition flex items-center gap-3"
+                        style={{ color: 'var(--text-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 8%, transparent)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <User size={16} />
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/orders"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="px-4 py-3 text-sm font-semibold transition flex items-center gap-3"
+                        style={{ color: 'var(--text-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 8%, transparent)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <Package size={16} />
+                        My Orders
+                      </Link>
+                      <Link
+                        href="/wishlist"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="px-4 py-3 text-sm font-semibold transition flex items-center gap-3"
+                        style={{ color: 'var(--text-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 8%, transparent)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <Heart size={16} />
+                        Wishlist
+                      </Link>
+                    </nav>
+                    <div className="border-t py-1" style={{ borderColor: 'var(--border-color)' }}>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-3 transition"
+                        style={{ color: 'var(--text-primary)' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, red 15%, transparent)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="px-4 py-2.5 rounded-lg text-sm font-bold text-white transition hover:shadow-lg hover:opacity-90"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+                title="Login or Register"
+              >
+                Login
+              </Link>
+            )}
 
             {/* Cart */}
             <Link
@@ -208,21 +286,13 @@ export function Header() {
           >
             <nav className="flex flex-col max-h-96 overflow-y-auto">
               <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/gifting" label="Gifting" active={isActive('/gifting')} onClick={() => setIsOpen(false)} />
               <MobileDrawerLink href="/about" label="About Us" active={isActive('/about')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/custom-design" label="Custom Design" active={isActive('/custom-design')} onClick={() => setIsOpen(false)} />
               <MobileDrawerLink href="/contact" label="Contact" active={isActive('/contact')} onClick={() => setIsOpen(false)} />
               <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} />
               <MobileDrawerLink href="/#reviews" label="Reviews" active={false} onClick={() => setIsOpen(false)} />
               <Link
-                href={user ? '/orders' : '#'}
-                onClick={(event) => {
-                  if (!user) {
-                    event.preventDefault();
-                    setLoginPrompt('orders');
-                  }
-                  setIsOpen(false);
-                }}
+                href={user ? '/orders' : '/auth/login'}
+                onClick={() => setIsOpen(false)}
                 className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
                 style={{
                   borderColor: 'var(--border-light)',
@@ -230,6 +300,17 @@ export function Header() {
                 }}
               >
                 {user ? 'My Orders' : 'Orders'}
+              </Link>
+              <Link
+                href={user ? '/wishlist' : '/auth/login'}
+                onClick={() => setIsOpen(false)}
+                className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
+                style={{
+                  borderColor: 'var(--border-light)',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                {user ? 'Saved Items' : 'Wishlist'}
               </Link>
               <Link
                 href={user ? '/profile' : '/auth/login'}
@@ -242,6 +323,22 @@ export function Header() {
               >
                 {user ? 'My Profile' : 'Login / Register'}
               </Link>
+              {user && (
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-5 py-3 font-semibold border-b transition hover:opacity-70 flex items-center gap-2"
+                  style={{
+                    borderColor: 'var(--border-light)',
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  <LogOut size={18} />
+                  Logout
+                </button>
+              )}
             </nav>
           </div>
         )}
@@ -256,16 +353,52 @@ export function Header() {
         <MobileTab href="/products" label="Shop" active={isActive('/products')} />
         <MobileTab href="/cart" label={`Cart${displayedCartCount > 0 ? ` ${displayedCartCount}` : ''}`} cartCount={displayedCartCount} active={isActive('/cart')} />
         <MobileTab
-          href={user ? '/wishlist' : '#'}
+          href={user ? '/wishlist' : '/auth/login'}
           label="Saved"
-          onClick={() => !user && setLoginPrompt('wishlist')}
           active={isActive('/wishlist')}
         />
-        <MobileTab
-          href={user ? '/profile' : '/auth/login'}
-          label={user ? 'Profile' : 'Login'}
-          active={isActive(user ? '/profile' : '/auth')}
-        />
+        <div className="relative">
+          <MobileTab
+            href="#"
+            label={user ? 'Profile' : 'Login'}
+            onClick={() => user ? setIsProfileOpen(!isProfileOpen) : router.push('/auth/login')}
+            active={isActive(user ? '/profile' : '/auth')}
+          />
+          {user && isProfileOpen && (
+            <div
+              className="absolute bottom-20 right-0 w-40 rounded-lg border shadow-lg overflow-hidden"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-secondary)'
+              }}
+            >
+              <Link
+                href="/profile"
+                onClick={() => setIsProfileOpen(false)}
+                className="block px-4 py-3 text-sm font-semibold border-b transition hover:opacity-70"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+              >
+                My Profile
+              </Link>
+              <Link
+                href="/orders"
+                onClick={() => setIsProfileOpen(false)}
+                className="block px-4 py-3 text-sm font-semibold border-b transition hover:opacity-70"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+              >
+                My Orders
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-2 transition hover:opacity-70"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* Login Prompt Modal */}

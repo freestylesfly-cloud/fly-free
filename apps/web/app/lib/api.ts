@@ -1,6 +1,14 @@
 export function getApiBaseUrl() {
-  const rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-  const baseUrl = rawUrl.replace(/\/$/, "");
+  // For browser context, use the configured API URL
+  if (typeof window !== 'undefined') {
+    const rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const baseUrl = rawUrl.replace(/\/$/, "");
+    return baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+  }
+
+  // For server-side rendering, use the actual API server
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const baseUrl = apiUrl.replace(/\/$/, "");
   return baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
 }
 

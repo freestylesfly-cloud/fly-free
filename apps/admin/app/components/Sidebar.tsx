@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Shirt, Ruler, Gift } from 'lucide-react';
+import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -14,13 +14,14 @@ const menuItems = [
       { label: 'Products', href: '/products', icon: Package },
       { label: 'Categories', href: '/categories', icon: Tags },
       { label: 'Product Themes', href: '/product-themes', icon: Sparkles },
+      { label: 'Hampers', href: '/hampers', icon: Gift },
+      { label: 'Size Guides', href: '/size-guides', icon: Ruler },
       { label: 'Orders', href: '/orders', icon: ShoppingCart },
-      { label: 'Custom Orders', href: '/custom-orders', icon: Shirt },
       { label: 'Users', href: '/users', icon: Users },
     ],
   },
   {
-    label: 'Growth',
+    label: 'Marketing',
     items: [
       { label: 'Influencers', href: '/influencers', icon: Share2 },
       { label: 'Reviews', href: '/reviews', icon: MessageSquare },
@@ -35,13 +36,6 @@ const menuItems = [
       { label: 'Pages', href: '/pages', icon: FileText },
       { label: 'Appearance', href: '/website-themes', icon: Sparkles },
       { label: 'Settings', href: '/settings', icon: Sliders },
-    ],
-  },
-  {
-    label: 'Product Setup',
-    items: [
-      { label: 'Size Guides', href: '/size-guides', icon: Ruler },
-      { label: 'Hampers', href: '/hampers', icon: Gift },
     ],
   },
 ];
@@ -99,9 +93,11 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="h-[calc(100vh-150px)] overflow-y-auto px-3 py-4">
           <div className="space-y-5">
-            {menuItems.map((group) => (
-              <div key={group.label}>
-                <p className="px-3 pb-2 text-[11px] font-black uppercase tracking-wide text-black/35">{group.label}</p>
+            {menuItems.map((group, groupIndex) => (
+              <div key={`${group.label ?? 'group'}-${groupIndex}`}>
+                {group.label ? (
+                  <p className="px-3 pb-2 text-[11px] font-black uppercase tracking-wide text-black/35">{group.label}</p>
+                ) : null}
                 <div className="space-y-1">
                   {group.items.map(({ label, href, icon: Icon }) => {
                     const isActive = href === '/' ? pathname === href : pathname.startsWith(href);

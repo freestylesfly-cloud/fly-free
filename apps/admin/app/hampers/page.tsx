@@ -5,12 +5,14 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { Edit3, Plus, Search, Trash2, X, ChevronDown, Image as ImageIcon, Package } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 
 type Hamper = {
   id: string;
   productId: string;
+  themeId?: string;
   name: string;
   description?: string;
   contents: string[];
@@ -22,10 +24,12 @@ type Hamper = {
   isActive: boolean;
   priority: number;
   product?: { name: string };
+  theme?: { name: string };
 };
 
 type HamperForm = {
   productId: string;
+  themeId: string;
   name: string;
   description: string;
   contents: string;
@@ -40,6 +44,7 @@ type HamperForm = {
 
 const emptyForm: HamperForm = {
   productId: '',
+  themeId: '',
   name: '',
   description: '',
   contents: '',
@@ -55,6 +60,7 @@ const emptyForm: HamperForm = {
 export default function HampersPage() {
   const [hampers, setHampers] = useState<Hamper[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [themes, setThemes] = useState<any[]>([]);
   const [form, setForm] = useState<HamperForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -62,28 +68,33 @@ export default function HampersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
 
   useEffect(() => {
     void loadData();
   }, []);
 
   const filtered = hampers.filter((hamper) =>
-    `${hamper.name} ${hamper.product?.name || ''}`.toLowerCase().includes(search.toLowerCase())
+    `${hamper.name} ${hamper.product?.name || ''} ${hamper.theme?.name || ''}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   async function loadData() {
     try {
       setLoading(true);
       setError('');
-      const [hampersRes, productsRes] = await Promise.all([
+      const [hampersRes, productsRes, themesRes] = await Promise.all([
         apiService.getHampers(),
-        apiService.getProducts({ limit: 100 })
+        apiService.getProducts({ limit: 100 }),
+        apiService.getProductThemes()
       ]);
       const h = hampersRes as any;
       const p = productsRes as any;
+      const t = themesRes as any;
       setHampers(Array.isArray(h) ? h : h.data || []);
       setProducts(Array.isArray(p) ? p : p.data || []);
+      setThemes(Array.isArray(t) ? t : t.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load hampers');
     } finally {
@@ -99,7 +110,8 @@ export default function HampersPage() {
 
     try {
       const payload = {
-        productId: form.productId,
+        productId: form.productId || null,
+        themeId: form.themeId || null,
         name: form.name,
         description: form.description || null,
         contents: form.contents ? form.contents.split('\n').filter(Boolean) : [],
@@ -112,8 +124,14 @@ export default function HampersPage() {
         priority: Number(form.priority || 0)
       };
 
-      if (!payload.productId) {
-        setError('Please select a product');
+      if (!payload.productId && !payload.themeId) {
+        setError('Please select either a product or a theme.');
+        setSaving(false);
+        return;
+      }
+
+      if (payload.productId && payload.themeId) {
+        setError('Please assign the hamper to either a product or a theme, not both.');
         setSaving(false);
         return;
       }
@@ -159,7 +177,8 @@ export default function HampersPage() {
 
   function editHamper(hamper: Hamper) {
     setForm({
-      productId: hamper.productId,
+      productId: hamper.productId || '',
+      themeId: hamper.themeId || '',
       name: hamper.name,
       description: hamper.description || '',
       contents: hamper.contents.join('\n'),
@@ -178,306 +197,290 @@ export default function HampersPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout title="Hampers" subtitle="Create and manage optional add-ons for products">
-        <div className="space-y-8">
-          {/* Notifications */}
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex gap-3">
-              <span className="text-red-600 font-bold">⚠️</span>
-              <div className="flex-1">
-                <p className="font-bold text-red-700">Error</p>
-                <p className="text-sm text-red-600">{error}</p>
+        <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+          <section className="space-y-4">
+            <div className="rounded border border-black/10 bg-white p-4">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-3 h-5 w-5 text-black/35" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search hampers..."
+                  className="w-full rounded border border-black/10 py-2 pl-10 pr-3"
+                />
               </div>
-              <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
-                <X size={18} />
-              </button>
             </div>
-          )}
 
-          {notice && (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4 flex gap-3">
-              <span className="text-green-600 font-bold">✓</span>
-              <div className="flex-1">
-                <p className="font-bold text-green-700">Success</p>
-                <p className="text-sm text-green-600">{notice}</p>
-              </div>
-              <button onClick={() => setNotice('')} className="text-green-400 hover:text-green-600">
-                <X size={18} />
-              </button>
-            </div>
-          )}
+            {error && <div className="rounded border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</div>}
+            {notice && <div className="rounded border border-green-200 bg-green-50 p-4 font-bold text-green-800">{notice}</div>}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* List Panel */}
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-black mb-3">Hamper List</h2>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 text-black/40" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search hampers..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-lg border border-black/10 pl-10 pr-4 py-2.5 text-sm"
-                  />
-                </div>
-              </div>
-
+            <div className="overflow-hidden rounded border border-black/10 bg-white">
+              <div className="border-b border-black/10 p-4 font-black">Hamper inventory</div>
               {loading ? (
-                <div className="text-center py-8 text-black/60">Loading hampers...</div>
-              ) : filtered.length === 0 ? (
-                <div className="text-center py-8 text-black/60">
-                  {hampers.length === 0 ? 'No hampers yet' : 'No results found'}
+                <div className="space-y-3 p-4">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="h-16 animate-pulse rounded bg-black/5" />
+                  ))}
                 </div>
+              ) : filtered.length === 0 ? (
+                <p className="p-6 text-sm font-bold text-black/50">
+                  {hampers.length === 0 ? 'No hampers found.' : 'No matching hampers.'}
+                </p>
               ) : (
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                <div className="divide-y divide-black/5">
                   {filtered.map((hamper) => (
-                    <div
+                    <article
                       key={hamper.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition ${
-                        editingId === hamper.id
-                          ? 'border-ink bg-ink/5'
-                          : 'border-black/10 hover:border-black/20 hover:bg-black/2'
+                      className={`flex flex-col gap-4 p-4 transition sm:flex-row sm:items-center sm:justify-between ${
+                        editingId === hamper.id ? 'border-l-4 border-ink bg-ink/5' : 'border-b border-black/5'
                       }`}
-                      onClick={() => editHamper(hamper)}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold truncate">{hamper.name}</p>
-                          <p className="text-xs text-black/60 truncate">
-                            {hamper.product?.name || 'Unknown'}
-                          </p>
-                          <p className="text-sm font-black text-ink mt-1">₹{hamper.price.toLocaleString()}</p>
+                      <button
+                        type="button"
+                        onClick={() => editHamper(hamper)}
+                        className="text-left flex-1"
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]">
+                              {hamper.imageUrl ? (
+                                <img src={hamper.imageUrl} alt={hamper.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <Package size={22} className="text-black/35" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h2 className="font-black text-ink truncate">{hamper.name}</h2>
+                              <p className="text-sm font-bold text-black/45 truncate">
+                                {hamper.product?.name || (hamper as any).theme?.name || 'Unassigned'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-black/60">
+                            <span className="font-bold text-ink">₹{hamper.price.toLocaleString()}</span>
+                            <span className="rounded-full border border-black/10 bg-black/5 px-2 py-1">Priority {hamper.priority}</span>
+                            <span className={`rounded-full px-2 py-1 text-xs font-black ${hamper.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                              {hamper.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteHamper(hamper.id);
-                            }}
-                            className="p-2 hover:bg-red-100 text-red-600 rounded transition"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          <span
-                            className={`text-xs px-2 py-1 rounded font-bold ${
-                              hamper.isActive
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {hamper.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
+                      </button>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editHamper(hamper)}
+                          className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-sm font-bold"
+                        >
+                          <Edit3 size={15} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteHamper(hamper.id)}
+                          className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-bold text-red-600"
+                        >
+                          <Trash2 size={15} /> Delete
+                        </button>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               )}
             </div>
+          </section>
 
-            {/* Form Panel */}
-            <div className="lg:col-span-2">
-              <div className="sticky top-0">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="font-black text-lg">
-                      {editingId ? 'Edit Hamper' : 'Create Hamper'}
-                    </h2>
-                    <p className="text-xs text-black/55 mt-1">
-                      Special gift box add-on for products
-                    </p>
-                  </div>
-                  {editingId && (
-                    <button
-                      onClick={() => {
-                        setEditingId(null);
-                        setForm(emptyForm);
-                        setShowForm(false);
-                      }}
-                      className="p-2 hover:bg-black/5 rounded"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
+          <section className="space-y-4">
+            <div className="rounded border border-black/10 bg-white p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="font-black text-lg">{editingId ? 'Edit Hamper' : 'Create Hamper'}</h2>
+                  <p className="text-sm text-black/55">Manage the add-on product experience for the storefront.</p>
                 </div>
-
-                {!showForm && !editingId && (
+                {editingId && (
                   <button
-                    onClick={() => setShowForm(true)}
-                    className="w-full mb-4 inline-flex items-center justify-center gap-2 rounded-lg bg-ink text-white px-4 py-3 font-bold hover:bg-ink/90 transition"
+                    type="button"
+                    onClick={() => {
+                      setEditingId(null);
+                      setForm(emptyForm);
+                      setShowForm(false);
+                    }}
+                    className="rounded p-2 hover:bg-black/5"
                   >
-                    <Plus size={18} /> Create New Hamper
+                    <X size={18} />
                   </button>
                 )}
+              </div>
 
-                {(showForm || editingId) && (
-                  <form onSubmit={saveHamper} className="rounded-lg border border-black/10 bg-white p-6 space-y-4">
-                    {/* Product Selection */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Assign to Product *
+              <form onSubmit={saveHamper} className="space-y-4">
+                  <div className="grid gap-3">
+                    <div className="grid gap-3">
+                      <label className="grid gap-2 text-sm font-bold">
+                        Assign to product
+                        <select
+                          value={form.productId}
+                          onChange={(e) => setForm({ ...form, productId: e.target.value })}
+                          className="rounded border border-black/10 px-3 py-2.5"
+                        >
+                          <option value="">Select a product...</option>
+                          {products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
                       </label>
-                      <select
-                        value={form.productId}
-                        onChange={(e) => setForm({ ...form, productId: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
-                        required
-                      >
-                        <option value="">Select a product...</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
+
+                      <label className="grid gap-2 text-sm font-bold">
+                        Assign to theme
+                        <select
+                          value={form.themeId}
+                          onChange={(e) => setForm({ ...form, themeId: e.target.value })}
+                          className="rounded border border-black/10 px-3 py-2.5"
+                        >
+                          <option value="">Select a theme...</option>
+                          {themes.map((theme) => (
+                            <option key={theme.id} value={theme.id}>
+                              {theme.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <p className="text-xs text-black/50">
+                        Choose either a product or a theme. Theme-level hampers apply to all products within that theme.
+                      </p>
                     </div>
 
-                    {/* Name */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Hamper Name *
-                      </label>
+                    <label className="grid gap-2 text-sm font-bold">
+                      Hamper name *
                       <input
                         type="text"
-                        placeholder="e.g., Deluxe Gift Box"
+                        placeholder="Deluxe Gift Box"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
+                        className="rounded border border-black/10 px-3 py-2.5"
                         required
                       />
-                    </div>
+                    </label>
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Description
-                      </label>
+                    <label className="grid gap-2 text-sm font-bold">
+                      Description
                       <textarea
-                        placeholder="Describe the hamper contents and special features"
+                        placeholder="Describe the hamper contents"
                         value={form.description}
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm h-20 resize-none"
+                        className="rounded border border-black/10 px-3 py-2.5 h-24 resize-none"
                       />
-                    </div>
+                    </label>
 
-                    {/* Contents */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Contents (one per line)
-                      </label>
+                    <ImageUploadField
+                      label="Cover image"
+                      value={form.imageUrl}
+                      onChange={(value) => setForm({ ...form, imageUrl: value })}
+                      bucket="product-hampers"
+                      folder={form.name ? `hampers/${form.name.replace(/\s+/g, '-').toLowerCase()}` : 'hampers'}
+                      aspect={1}
+                      alt={form.name || 'Hamper cover image'}
+                    />
+
+                    <label className="grid gap-2 text-sm font-bold">
+                      Contents (one per line)
                       <textarea
-                        placeholder="e.g. Gift wrap, Custom card, Special packaging"
+                        placeholder="Gift wrap\nCustom card\nPremium packaging"
                         value={form.contents}
                         onChange={(e) => setForm({ ...form, contents: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm h-20 resize-none"
+                        className="rounded border border-black/10 px-3 py-2.5 h-24 resize-none"
                       />
-                    </div>
+                    </label>
 
-                    {/* Pricing */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-bold mb-2">
-                          Price (₹)
-                        </label>
+                      <label className="grid gap-2 text-sm font-bold">
+                        Price (₹)
                         <input
                           type="number"
                           value={form.price}
                           onChange={(e) => setForm({ ...form, price: e.target.value })}
-                          className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
+                          className="rounded border border-black/10 px-3 py-2.5"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold mb-2">
-                          GST (%)
-                        </label>
+                      </label>
+
+                      <label className="grid gap-2 text-sm font-bold">
+                        GST (%)
                         <input
                           type="number"
                           value={form.gstPercent}
                           onChange={(e) => setForm({ ...form, gstPercent: e.target.value })}
-                          className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
+                          className="rounded border border-black/10 px-3 py-2.5"
                         />
-                      </div>
+                      </label>
                     </div>
 
-                    {/* Images */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Image URLs (one per line)
-                      </label>
+                    <label className="grid gap-2 text-sm font-bold">
+                      Image URLs (one per line)
                       <textarea
                         placeholder="https://example.com/image1.jpg"
                         value={form.images}
                         onChange={(e) => setForm({ ...form, images: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm h-16 resize-none font-mono text-xs"
+                        className="rounded border border-black/10 px-3 py-2.5 h-20 resize-none font-mono text-xs"
                       />
-                    </div>
+                    </label>
 
-                    {/* Size Note */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2">
-                        Size Note
-                      </label>
+                    <label className="grid gap-2 text-sm font-bold">
+                      Size note
                       <input
                         type="text"
-                        placeholder="e.g., Fits all sizes, dimensions: 30x20x10 cm"
+                        placeholder="Fits all sizes, dimensions: 30x20x10 cm"
                         value={form.sizeNote}
                         onChange={(e) => setForm({ ...form, sizeNote: e.target.value })}
-                        className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
+                        className="rounded border border-black/10 px-3 py-2.5"
                       />
-                    </div>
+                    </label>
 
-                    {/* Status & Priority */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-bold mb-2">
-                          Priority Order
-                        </label>
+                      <label className="grid gap-2 text-sm font-bold">
+                        Priority order
                         <input
                           type="number"
                           value={form.priority}
                           onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                          className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
+                          className="rounded border border-black/10 px-3 py-2.5"
                         />
-                      </div>
-                      <div>
-                        <label className="flex items-center gap-2 text-sm font-bold pt-6">
-                          <input
-                            type="checkbox"
-                            checked={form.isActive}
-                            onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                          />
-                          Active
-                        </label>
-                      </div>
-                    </div>
+                      </label>
 
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex-1 rounded-lg bg-ink text-white px-4 py-2.5 font-bold hover:bg-ink/90 disabled:opacity-50 transition"
-                      >
-                        {saving ? 'Saving...' : editingId ? 'Update Hamper' : 'Create Hamper'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForm(false);
-                          setEditingId(null);
-                          setForm(emptyForm);
-                        }}
-                        className="flex-1 rounded-lg border border-black/10 px-4 py-2.5 font-bold hover:bg-black/5 transition"
-                      >
-                        Cancel
-                      </button>
+                      <label className="flex items-center gap-2 text-sm font-bold">
+                        <input
+                          type="checkbox"
+                          checked={form.isActive}
+                          onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                        />
+                        Active
+                      </label>
                     </div>
-                  </form>
-                )}
-              </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 rounded bg-ink px-4 py-3 text-sm font-black text-white hover:bg-ink/90 disabled:opacity-50 transition"
+                    >
+                      {saving ? 'Saving...' : editingId ? 'Update hamper' : 'Create hamper'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForm(false);
+                        setEditingId(null);
+                        setForm(emptyForm);
+                      }}
+                      className="flex-1 rounded border border-black/10 px-4 py-3 text-sm font-bold hover:bg-black/5 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
             </div>
-          </div>
+          </section>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

@@ -1,294 +1,266 @@
-'use client';
+﻿'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Download, Loader2, CheckCircle2, Clock, Truck, Package as PackageIcon } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { formatCurrency } from '@flyfree/utils';
-import { useRouter } from 'next/navigation';
-import { getApiBaseUrl, readApiResponse } from '../../lib/api';
+import { ArrowLeft, Loader2, Package, MapPin, CreditCard } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { getApiBaseUrl } from '../../lib/api';
 
-interface OrderDetail {
-  id: string;
-  orderNumber: string;
-  status: string;
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  total: number;
-  createdAt: string;
-  shippingAddress: {
-    name: string;
-    phone: string;
-    street: string;
-    city: string;
-    state: string;
-    pincode: string;
-  };
-  items: Array<{
-    productSlug?: string;
-    productImage?: string | null;
-    productName: string;
-    name?: string;
-    sku?: string;
-    price: number;
-    quantity: number;
-    size?: string;
-    color?: string;
-  }>;
-}
+const API_URL = getApiBaseUrl();
 
-const statusSteps = [
-  { key: 'pending', label: 'Order Placed', icon: Clock },
-  { key: 'confirmed', label: 'Confirmed', icon: CheckCircle2 },
-  { key: 'shipped', label: 'Shipped', icon: Truck },
-  { key: 'delivered', label: 'Delivered', icon: PackageIcon },
-];
-
-export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const router = useRouter();
+export default function OrderDetailPage() {
+  const params = useParams();
+  const orderId = params.id as string;
   const token = useAuthStore((state) => state.token);
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) {
-      router.push('/auth/login');
+    if (!orderId || !token) {
+      setError('Missing order information');
+      setLoading(false);
       return;
     }
 
-    async function fetchOrder() {
+    async function loadOrder() {
       try {
-        const API_URL = getApiBaseUrl();
-        const response = await fetch(`${API_URL}/ecommerce/orders/${id}/track`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        const data = await readApiResponse(response);
-        if (!response.ok || data?.error) throw new Error(data?.error || 'Failed to fetch order');
-        setOrder(data.data);
-      } catch (error) {
-        console.error('Error fetching order:', error);
+        if (res.ok) {
+          const data = await res.json();
+          setOrder(data.data || data);
+        } else {
+          setError('Order not found');
+        }
+      } catch (err) {
+        setError('Failed to load order');
       } finally {
         setLoading(false);
       }
     }
 
-    fetchOrder();
-  }, [token, id, router]);
-
-  const downloadInvoice = async () => {
-    if (!order) return;
-    try {
-      const API_URL = getApiBaseUrl();
-      const response = await fetch(`${API_URL}/ecommerce/orders/${order.id}/invoice`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to download invoice');
-
-      const invoice = await readApiResponse(response);
-      const blob = new Blob([JSON.stringify(invoice, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${order.orderNumber}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('Failed to download invoice');
-    }
-  };
-
-  if (!token) {
-    return null; // Will redirect
-  }
+    loadOrder();
+  }, [orderId, token]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-ink flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={40} className="animate-spin text-coral" />
-          <p className="dark:text-white font-bold">Loading order details...</p>
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin" />
+          <p className="text-black/60">Loading order details...</p>
         </div>
-      </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-red-600 font-bold mb-4">{error}</p>
+          <Link href="/orders" className="text-primary font-bold hover:underline">
+            Back to orders
+          </Link>
+        </div>
+      </main>
     );
   }
 
   if (!order) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-ink">
-        <div className="container mx-auto px-4 py-12">
-          <p className="text-2xl font-black dark:text-white">Order not found</p>
-          <Link href="/orders" className="text-coral hover:underline mt-4 block">
-            Back to Orders
-          </Link>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  const currentStatusIndex = statusSteps.findIndex((s) => s.key === order.status.toLowerCase());
+  const statusColors: any = {
+    'PLACED': 'bg-yellow-100 text-yellow-700',
+    'CONFIRMED': 'bg-blue-100 text-blue-700',
+    'PACKED': 'bg-purple-100 text-purple-700',
+    'SHIPPED': 'bg-blue-100 text-blue-700',
+    'DELIVERED': 'bg-green-100 text-green-700',
+    'CANCELLED': 'bg-red-100 text-red-700',
+    'REFUNDED': 'bg-gray-100 text-gray-700'
+  };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-ink">
-      <div className="container mx-auto px-4 py-12">
-        {/* Back Button */}
-        <Link
-          href="/orders"
-          className="inline-flex items-center gap-2 text-coral hover:underline font-bold mb-8"
-        >
-          <ArrowLeft size={18} />
+    <main className="min-h-screen pb-20 px-4 py-8">
+      <div className="max-w-3xl mx-auto">
+        <Link href="/orders" className="flex items-center gap-2 text-primary font-bold mb-6 hover:opacity-70">
+          <ArrowLeft size={20} />
           Back to Orders
         </Link>
 
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-black dark:text-white mb-2">Order #{order.orderNumber}</h1>
-          <p className="text-ink/60 dark:text-white/60">
-            Placed on {new Date(order.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Status Timeline */}
-            <section className="bg-paper dark:bg-ink/50 rounded-lg p-6">
-              <h2 className="text-xl font-black dark:text-white mb-8">Order Status</h2>
-              <div className="space-y-6">
-                {statusSteps.map((step, index) => {
-                  const Icon = step.icon;
-                  const isCompleted = index <= currentStatusIndex;
-                  const isCurrent = index === currentStatusIndex;
-
-                  return (
-                    <div key={step.key} className="flex gap-4">
-                      <div className="flex flex-col items-center gap-2">
-                        <div
-                          className={`p-3 rounded-full transition ${
-                            isCompleted
-                              ? 'bg-coral text-white'
-                              : 'bg-white/10 dark:bg-ink/30 text-ink/60 dark:text-white/60'
-                          }`}
-                        >
-                          <Icon size={20} />
-                        </div>
-                        {index < statusSteps.length - 1 && (
-                          <div
-                            className={`w-0.5 h-12 ${
-                              isCompleted ? 'bg-coral' : 'bg-white/10 dark:bg-ink/30'
-                            }`}
-                          ></div>
-                        )}
-                      </div>
-                      <div className="pt-1">
-                        <p
-                          className={`font-bold ${
-                            isCurrent ? 'text-coral' : isCompleted ? 'dark:text-white' : 'text-ink/60 dark:text-white/60'
-                          }`}
-                        >
-                          {step.label}
-                        </p>
-                        {isCurrent && <p className="text-sm text-coral">In Progress</p>}
-                      </div>
-                    </div>
-                  );
+        <div className="bg-white border border-black/10 rounded-lg p-8 mb-6">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div>
+              <p className="text-black/60 text-sm font-bold mb-2">ORDER NUMBER</p>
+              <p className="text-xl font-black break-all">{order.id}</p>
+            </div>
+            <div>
+              <p className="text-black/60 text-sm font-bold mb-2">ORDER DATE</p>
+              <p className="text-xl font-black">
+                {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
+              </p>
+            </div>
+            <div>
+              <p className="text-black/60 text-sm font-bold mb-2">STATUS</p>
+              <div className={`inline-block px-3 py-1 rounded-full text-sm font-black ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>
+                {order.status}
               </div>
-            </section>
+            </div>
+          </div>
 
-            {/* Order Items */}
-            <section className="bg-paper dark:bg-ink/50 rounded-lg p-6 space-y-4">
-              <h2 className="text-xl font-black dark:text-white">Order Items</h2>
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="border-t border-black/10 pt-6 mb-6">
+              <h3 className="font-black mb-4">Order Timeline</h3>
               <div className="space-y-4">
-                {order.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center py-4 border-b border-black/10 dark:border-white/10 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.productImage && <img src={item.productImage} alt={item.productName} className="h-16 w-14 rounded object-cover" />}
-                      <div>
-                        {item.productSlug ? (
-                          <Link href={`/products/${item.productSlug}`} className="font-bold dark:text-white hover:text-coral">{item.productName}</Link>
-                        ) : (
-                          <p className="font-bold dark:text-white">{item.productName}</p>
-                        )}
-                        <p className="text-sm text-ink/60 dark:text-white/60">
-                          {item.sku ? `${item.sku} • ` : ''}{item.size || 'Saved size'} • {item.color || 'Saved color'} • Qty: {item.quantity}
-                        </p>
-                      </div>
+                {order.statusHistory.map((history: any, idx: number) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-3 h-3 bg-primary rounded-full mt-1.5"></div>
+                      {idx < order.statusHistory.length - 1 && (
+                        <div className="w-0.5 h-12 bg-black/10 my-2"></div>
+                      )}
                     </div>
-                    <p className="text-coral font-bold">{formatCurrency(item.price * item.quantity)}</p>
+                    <div className="pb-4">
+                      <p className="font-bold">
+                        {history.fromStatus} → {history.toStatus}
+                      </p>
+                      <p className="text-sm text-black/60">
+                        {new Date(history.createdAt).toLocaleDateString('en-IN', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                      {history.note && <p className="text-sm text-black/70 mt-1">{history.note}</p>}
+                    </div>
                   </div>
                 ))}
               </div>
-            </section>
+            </div>
+          )}
+        </div>
 
-            {/* Shipping Address */}
-            <section className="bg-paper dark:bg-ink/50 rounded-lg p-6 space-y-4">
-              <h2 className="text-xl font-black dark:text-white">Shipping Address</h2>
-              <div className="text-ink/70 dark:text-white/70 space-y-1">
-                <p className="font-bold dark:text-white">{order.shippingAddress.name}</p>
-                <p>{order.shippingAddress.street}</p>
-                <p>
-                  {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.pincode}
-                </p>
-                <p className="pt-2">Phone: {order.shippingAddress.phone}</p>
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white border border-black/10 rounded-lg p-6">
+            <h3 className="text-lg font-black mb-4 flex items-center gap-2">
+              <MapPin size={20} />
+              Shipping Address
+            </h3>
+            {order.shippingAddress ? (
+              <div className="text-sm text-black/70 space-y-1">
+                <p className="font-bold">{order.shippingAddress.fullName}</p>
+                <p>{order.shippingAddress.line1}</p>
+                {order.shippingAddress.line2 && <p>{order.shippingAddress.line2}</p>}
+                <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
+                <p className="font-bold mt-3">{order.shippingAddress.phone}</p>
               </div>
-            </section>
+            ) : (
+              <p className="text-black/60">Address not available</p>
+            )}
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            {/* Order Summary */}
-            <div className="bg-paper dark:bg-ink/50 rounded-lg p-6 sticky top-20 space-y-6">
-              <h2 className="text-xl font-black dark:text-white">Order Summary</h2>
+          <div className="bg-white border border-black/10 rounded-lg p-6">
+            <h3 className="text-lg font-black mb-4 flex items-center gap-2">
+              <CreditCard size={20} />
+              Payment Information
+            </h3>
+            {order.payment ? (
+              <div className="text-sm text-black/70 space-y-2">
+                <div className="flex justify-between">
+                  <span>Provider:</span>
+                  <span className="font-bold">{order.payment.provider}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Status:</span>
+                  <span className={`font-bold ${order.payment.status === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
+                    {order.payment.status}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Amount:</span>
+                  <span className="font-bold">₹{order.payment.amount?.toLocaleString()}</span>
+                </div>
+                {order.payment.paidAt && (
+                  <div className="flex justify-between">
+                    <span>Paid on:</span>
+                    <span className="font-bold">
+                      {new Date(order.payment.paidAt).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-black/60">Payment not processed</p>
+            )}
+          </div>
+        </div>
 
-              <div className="space-y-3 pb-6 border-b border-black/10 dark:border-white/10">
-                <div className="flex justify-between text-ink/70 dark:text-white/70">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
+        <div className="bg-white border border-black/10 rounded-lg p-6 mb-6">
+          <h3 className="text-lg font-black mb-4 flex items-center gap-2">
+            <Package size={20} />
+            Order Items
+          </h3>
+          <div className="space-y-4">
+            {order.items?.map((item: any, idx: number) => (
+              <div key={idx} className="border-b border-black/10 pb-4 last:border-0">
+                <div className="flex justify-between items-start gap-4 mb-2">
+                  <div className="flex-1">
+                    <p className="font-bold">{item.name}</p>
+                    <p className="text-sm text-black/60">SKU: {item.sku}</p>
+                    <p className="text-sm text-black/60">Quantity: {item.quantity}</p>
+                  </div>
+                  <p className="font-bold">₹{item.price?.toLocaleString()}</p>
                 </div>
-                <div className="flex justify-between text-ink/70 dark:text-white/70">
-                  <span>GST (18%)</span>
-                  <span>{formatCurrency(order.tax)}</span>
-                </div>
-                <div className="flex justify-between text-ink/70 dark:text-white/70">
-                  <span>Shipping</span>
-                  <span className="text-coral font-bold">{order.shipping === 0 ? 'FREE' : formatCurrency(order.shipping)}</span>
+                <div className="text-right text-sm font-bold text-black/60">
+                  Subtotal: ₹{(item.price * item.quantity).toLocaleString()}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
 
-              <div className="flex justify-between text-2xl font-black dark:text-white">
-                <span>Total</span>
-                <span className="text-coral">{formatCurrency(order.total)}</span>
+        <div className="bg-white border border-black/10 rounded-lg p-6">
+          <h3 className="text-lg font-black mb-4">Price Breakdown</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between text-black/60">
+              <span>Subtotal</span>
+              <span>₹{order.subtotal?.toLocaleString()}</span>
+            </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-black/60">
+                <span>Discount</span>
+                <span className="text-green-600">-₹{order.discount?.toLocaleString()}</span>
               </div>
-
-              <button
-                onClick={downloadInvoice}
-                className="w-full bg-coral text-white py-3 rounded-lg font-bold hover:bg-coral/90 transition flex items-center justify-center gap-2"
-              >
-                <Download size={18} />
-                Download Invoice
-              </button>
-
-              <div className="pt-6 border-t border-black/10 dark:border-white/10 space-y-3 text-xs text-ink/60 dark:text-white/60">
-                <p>✓ 30-day returns available</p>
-                <p>✓ Secure transaction</p>
-                <p>✓ Customer support available</p>
-              </div>
+            )}
+            <div className="flex justify-between text-black/60">
+              <span>GST (18%)</span>
+              <span>₹{order.tax?.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-black/60">
+              <span>Shipping</span>
+              <span>{order.shippingFee === 0 ? 'FREE' : `₹${order.shippingFee?.toLocaleString()}`}</span>
+            </div>
+            <div className="flex justify-between text-xl font-black pt-3 border-t border-black/10">
+              <span>Total Amount</span>
+              <span>₹{order.total?.toLocaleString()}</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

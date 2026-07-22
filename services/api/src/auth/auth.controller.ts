@@ -21,9 +21,13 @@ export class AuthController {
   }
 
   @Post("user/verify-email")
-  async verifyEmail(@Body() body: { email: string; code: string }) {
+  async verifyEmail(@Body() body: { email: string; code?: string; otp?: string }) {
     try {
-      return await this.authService.verifyEmail(body.email, body.code);
+      const verificationCode = body.code || body.otp;
+      if (!verificationCode) {
+        throw new Error("Verification code is required");
+      }
+      return await this.authService.verifyEmail(body.email, verificationCode);
     } catch (error: any) {
       throw new HttpException(
         { error: error?.message || "Verification failed" },
@@ -34,6 +38,18 @@ export class AuthController {
 
   @Post("user/resend-email")
   async resendVerificationEmail(@Body() body: { email: string }) {
+    try {
+      return await this.authService.resendVerificationEmail(body.email);
+    } catch (error: any) {
+      throw new HttpException(
+        { error: error?.message || "Resend failed" },
+        error?.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  @Post("user/resend-otp")
+  async resendOtp(@Body() body: { email: string }) {
     try {
       return await this.authService.resendVerificationEmail(body.email);
     } catch (error: any) {

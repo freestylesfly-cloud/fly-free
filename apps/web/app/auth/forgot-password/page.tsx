@@ -1,55 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
-import { useAuthStore } from '@/app/stores/authStore';
+import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { resetPassword } from '@/app/lib/supabase';
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { login, checkAuth, user } = useAuthStore();
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  // Redirect if already logged in
-  useEffect(() => {
-    checkAuth().then(() => {
-      if (user) {
-        router.push('/');
-      }
-    });
-  }, [user, router, checkAuth]);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError('Email and password are required');
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email');
       return;
     }
 
     setLoading(true);
 
     try {
-      await login(email, password);
-      router.push('/');
+      const { data, error: resetError } = await resetPassword(email);
+
+      if (resetError) {
+        throw new Error(resetError.message);
+      }
+
+      setSuccess(true);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Login failed';
-      console.error('Login error:', errorMsg);
-      setError(errorMsg);
+      setError(err instanceof Error ? err.message : 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
   };
 
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="flex justify-center">
+            <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} className="animate-bounce" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black">Check your email</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              We've sent a password reset link to <strong>{email}</strong>
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Click the link in the email to reset your password. Link expires in 24 hours.
+            </p>
+          </div>
+          <Link
+            href="/auth/login"
+            className="inline-flex items-center gap-2 font-bold hover:underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            <ArrowLeft size={18} />
+            Back to login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <div className="w-full max-w-sm space-y-8">
-        {/* Header with Logo */}
+        {/* Header */}
         <div className="text-center space-y-4">
           <Link href="/" className="inline-block">
             <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)' }}>
@@ -57,12 +83,11 @@ export default function LoginPage() {
             </div>
           </Link>
           <h1 className="text-3xl font-black">Fly Free</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Welcome back to Fly Free</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Reset your password</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Error Alert */}
           {error && (
             <div className="rounded-lg border p-4 flex gap-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, red 10%, transparent)' }}>
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
@@ -91,32 +116,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Password Field */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Password</label>
-              <Link href="/auth/forgot-password" className="text-xs hover:underline" style={{ color: 'var(--color-primary)' }}>
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  borderWidth: '1px'
-                }}
-              />
-            </div>
-          </div>
-
           {/* Submit Button */}
           <button
             type="submit"
@@ -127,20 +126,20 @@ export default function LoginPage() {
             {loading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                Logging in...
+                Sending reset link...
               </>
             ) : (
-              'Login'
+              'Send Reset Link'
             )}
           </button>
         </form>
 
         {/* Links */}
-        <div className="text-center space-y-3">
+        <div className="text-center">
           <p style={{ color: 'var(--text-secondary)' }}>
-            Don't have an account?{' '}
-            <Link href="/auth/signup" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
-              Sign up here
+            Remember your password?{' '}
+            <Link href="/auth/login" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
+              Login here
             </Link>
           </p>
         </div>

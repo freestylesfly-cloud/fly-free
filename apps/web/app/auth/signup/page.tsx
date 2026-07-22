@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { getApiBaseUrl, readApiResponse } from '../../lib/api';
-
-const API_BASE = getApiBaseUrl();
+import { signUpWithEmail } from '../../lib/supabase';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -102,21 +100,17 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/auth/user/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await signUpWithEmail(
+        formData.email.trim(),
+        formData.password,
+        {
           name: formData.name.trim(),
-          email: formData.email.trim(),
           phone: formData.phone.trim(),
-          password: formData.password
-        })
-      });
+        }
+      );
 
-      const data = await readApiResponse(response);
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Signup failed');
+      if (error) {
+        throw new Error(error.message);
       }
 
       setSuccess(true);
@@ -132,14 +126,14 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10 px-5">
+      <div className="min-h-screen flex items-center justify-center px-5" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         <div className="w-full max-w-sm text-center space-y-6">
           <div className="flex justify-center">
-            <CheckCircle size={64} className="text-coral animate-bounce" />
+            <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} className="animate-bounce" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white">Almost there!</h1>
-            <p className="text-white/70">We've sent a verification code to your email. Redirecting...</p>
+            <h1 className="text-2xl font-black">Almost there!</h1>
+            <p style={{ color: 'var(--text-secondary)' }}>We've sent a verification link to your email. Redirecting...</p>
           </div>
         </div>
       </div>
@@ -147,66 +141,78 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10 px-5 py-10">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <div className="w-full max-w-sm space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-coral to-mint flex items-center justify-center">
-              <span className="text-2xl font-black text-white">FF</span>
+        {/* Header with Logo */}
+        <div className="text-center space-y-4">
+          <Link href="/" className="inline-block">
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)' }}>
+              <span className="text-3xl font-black" style={{ color: 'var(--color-primary)' }}>FF</span>
             </div>
-          </div>
-          <h1 className="text-3xl font-black text-white">Fly Free</h1>
-          <p className="text-white/60">Create your account</p>
+          </Link>
+          <h1 className="text-3xl font-black">Fly Free</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Create your account</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Error Alert */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex gap-3">
-              <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="rounded-lg border p-4 flex gap-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, red 10%, transparent)' }}>
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{error}</p>
             </div>
           )}
 
           {/* Name Field */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-white">Full Name</label>
+            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Full Name</label>
             <div className="relative">
-              <User size={18} className="absolute left-3 top-3 text-white/40" />
+              <User size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-1 focus:ring-coral"
+                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  borderWidth: '1px'
+                }}
               />
             </div>
           </div>
 
           {/* Email Field */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-white">Email Address</label>
+            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Email Address</label>
             <div className="relative">
-              <Mail size={18} className="absolute left-3 top-3 text-white/40" />
+              <Mail size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="john@example.com"
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-1 focus:ring-coral"
+                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  borderWidth: '1px'
+                }}
               />
             </div>
           </div>
 
           {/* Phone Field */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-white">Phone (10 digits)</label>
+            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Phone (10 digits)</label>
             <div className="relative">
-              <Phone size={18} className="absolute left-3 top-3 text-white/40" />
+              <Phone size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="tel"
                 name="phone"
@@ -214,42 +220,60 @@ export default function SignupPage() {
                 onChange={handleChange}
                 placeholder="9876543210"
                 maxLength={10}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-1 focus:ring-coral"
+                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  borderWidth: '1px'
+                }}
               />
             </div>
           </div>
 
           {/* Password Field */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-white">Password</label>
+            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Password</label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3 text-white/40" />
+              <Lock size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter strong password"
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-1 focus:ring-coral"
+                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  borderWidth: '1px'
+                }}
               />
             </div>
-            <p className="text-xs text-white/50">
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
               Min 8 chars, 1 uppercase, 1 lowercase, 1 number
             </p>
           </div>
 
           {/* Confirm Password */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-white">Confirm Password</label>
+            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Confirm Password</label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3 text-white/40" />
+              <Lock size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
               <input
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Confirm password"
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-coral focus:ring-1 focus:ring-coral"
+                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  borderWidth: '1px'
+                }}
               />
             </div>
           </div>
@@ -258,7 +282,8 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-coral to-mint text-white font-bold py-3 rounded-lg hover:shadow-lg hover:shadow-coral/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
+            className="w-full text-white font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {loading ? (
               <>
@@ -273,19 +298,19 @@ export default function SignupPage() {
 
         {/* Links */}
         <div className="text-center space-y-3">
-          <p className="text-white/60">
+          <p style={{ color: 'var(--text-secondary)' }}>
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-coral font-bold hover:underline">
+            <Link href="/auth/login" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
               Login here
             </Link>
           </p>
-          <p className="text-xs text-white/40">
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             By signing up, you agree to our{' '}
-            <Link href="/terms" className="font-bold text-coral hover:underline">
+            <Link href="/terms" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="font-bold text-coral hover:underline">
+            <Link href="/privacy" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
               Privacy Policy
             </Link>
           </p>

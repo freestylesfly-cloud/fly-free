@@ -8,7 +8,6 @@ import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { EmailModule } from "./email/email.module";
 import { LoggerModule } from "./logger/logger.module";
-import { CustomDesignModule } from "./custom-design/custom-design.module";
 import { WebsiteThemeModule } from "./theme/website-theme.module";
 
 @Module({
@@ -22,7 +21,6 @@ import { WebsiteThemeModule } from "./theme/website-theme.module";
     AuthModule,
     EmailModule,
     LoggerModule,
-    CustomDesignModule,
     WebsiteThemeModule
   ]
 })

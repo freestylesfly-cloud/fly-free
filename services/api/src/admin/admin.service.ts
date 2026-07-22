@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
+import type { PrismaClient } from "@prisma/client";
 
 @Injectable()
 export class AdminService {
@@ -136,10 +137,10 @@ export class AdminService {
   }
 
   async updateProduct(id: string, data: any) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       if (Array.isArray(data.variants)) {
         const existingVariants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
-        await tx.inventory.deleteMany({ where: { variantId: { in: existingVariants.map((variant) => variant.id) } } });
+        await tx.inventory.deleteMany({ where: { variantId: { in: existingVariants.map((variant: any) => variant.id) } } });
         await tx.productVariant.deleteMany({ where: { productId: id } });
       }
 
@@ -203,9 +204,9 @@ export class AdminService {
   }
 
   async deleteProduct(id: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const variants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
-      await tx.inventory.deleteMany({ where: { variantId: { in: variants.map((variant) => variant.id) } } });
+      await tx.inventory.deleteMany({ where: { variantId: { in: variants.map((variant: any) => variant.id) } } });
       await tx.productVariant.deleteMany({ where: { productId: id } });
       await tx.productImage.deleteMany({ where: { productId: id } });
       await tx.productHamper.deleteMany({ where: { productId: id } });
@@ -314,7 +315,7 @@ export class AdminService {
       throw new Error("Order not found");
     }
 
-    const order = await this.prisma.$transaction(async (tx) => {
+    const order = await this.prisma.$transaction(async (tx: any) => {
       const updated = await tx.order.update({
         where: { id },
         data: { status: normalizedStatus as any },
@@ -394,7 +395,7 @@ export class AdminService {
       `Paid At: ${payment?.paidAt ? new Date(payment.paidAt).toLocaleString("en-IN") : "Not paid yet"}`,
       "",
       "Items:",
-      ...order.items.map((item) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
+      ...order.items.map((item: any) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
       "",
       `Subtotal: Rs ${this.formatMoney(order.subtotal)}`,
       `Discount: Rs ${this.formatMoney(order.discount)}`,
@@ -512,7 +513,7 @@ export class AdminService {
     ]);
 
     const usersWithOrders = await Promise.all(
-      users.map(async (u) => ({
+      users.map(async (u: any) => ({
         ...u,
         totalOrders: await this.prisma.order.count({ where: { userId: u.id } }),
         totalSpent: (await this.prisma.order.aggregate({ where: { userId: u.id }, _sum: { total: true } }))._sum.total || 0,
@@ -612,7 +613,7 @@ export class AdminService {
     ]);
 
     return {
-      data: reviews.map((review) => ({
+      data: reviews.map((review: any) => ({
         ...review,
         content: review.body
       })),
@@ -1082,7 +1083,7 @@ export class AdminService {
     ]);
 
     const generated = [
-      ...orders.map((order) => ({
+      ...orders.map((order: any) => ({
         id: `order-${order.id}`,
         type: order.referrals.length ? "INFLUENCER_ORDER" : "NEW_ORDER",
         entityType: "Order",
@@ -1092,7 +1093,7 @@ export class AdminService {
         status: "GENERATED",
         createdAt: order.createdAt
       })),
-      ...users.map((user) => ({
+      ...users.map((user: any) => ({
         id: `user-${user.id}`,
         type: "NEW_USER",
         entityType: "User",
@@ -1102,7 +1103,7 @@ export class AdminService {
         status: "GENERATED",
         createdAt: user.createdAt
       })),
-      ...lowStock.map((item) => ({
+      ...lowStock.map((item: any) => ({
         id: `stock-${item.id}`,
         type: "LOW_STOCK",
         entityType: "ProductVariant",
@@ -1245,7 +1246,7 @@ export class AdminService {
         totalReviews,
         averageRating: Number((averageRating._avg.rating || 0).toFixed(1))
       },
-      recentOrders: recentOrders.map((order, index) => ({
+      recentOrders: recentOrders.map((order: any, index: number) => ({
         id: order.id,
         orderNumber: `ORD-${String(index + 1).padStart(3, "0")}`,
         customer: order.user?.name || order.user?.email || "Customer",
@@ -1255,7 +1256,7 @@ export class AdminService {
         createdAt: order.createdAt
       })),
       charts: {
-        orderStatus: orderStatusCounts.map((item) => ({
+        orderStatus: orderStatusCounts.map((item: any) => ({
           label: item.status,
           value: item._count.id
         }))
@@ -1355,7 +1356,7 @@ export class AdminService {
   async createHamper(data: any) {
     return await this.prisma.productHamper.create({
       data: {
-        productId: data.productId,
+        productId: data.productId || null,
         name: data.name,
         description: data.description || null,
         contents: data.contents || [],
@@ -1372,20 +1373,23 @@ export class AdminService {
   }
 
   async updateHamper(id: string, data: any) {
+    const updateData: any = {};
+
+    if (data.productId !== undefined) updateData.productId = data.productId;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.contents !== undefined) updateData.contents = data.contents;
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+    if (data.images !== undefined) updateData.images = data.images;
+    if (data.sizeNote !== undefined) updateData.sizeNote = data.sizeNote;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.gstPercent !== undefined) updateData.gstPercent = data.gstPercent;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.priority !== undefined) updateData.priority = data.priority;
+
     return await this.prisma.productHamper.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        contents: data.contents,
-        imageUrl: data.imageUrl,
-        images: data.images,
-        sizeNote: data.sizeNote,
-        price: data.price,
-        gstPercent: data.gstPercent,
-        isActive: data.isActive,
-        priority: data.priority
-      },
+      data: updateData,
       include: { product: true }
     });
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, LogOut, Loader2, Eye, EyeOff, Package, Heart, MapPin, Lock, Palette } from 'lucide-react';
+import { ArrowLeft, LogOut, Loader2, Eye, EyeOff, Package, Heart, MapPin, Lock, User as UserIcon, Trash2, Plus, Check } from 'lucide-react';
 import Link from 'next/link';
 import { getApiBaseUrl } from '../lib/api';
 
@@ -17,7 +17,7 @@ export default function ProfilePage() {
   const updateProfile = useAuthStore((state) => state.updateProfile);
   const changePassword = useAuthStore((state) => state.changePassword);
 
-  const [tab, setTab] = useState<'profile' | 'orders' | 'wishlist' | 'addresses' | 'security' | 'custom-orders'>('profile');
+  const [tab, setTab] = useState<'profile' | 'orders' | 'wishlist' | 'addresses' | 'security'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
@@ -26,7 +26,18 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [wishlist, setWishlist] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
-  const [customDesigns, setCustomDesigns] = useState<any[]>([]);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressForm, setAddressForm] = useState({
+    fullName: '',
+    phone: '',
+    line1: '',
+    line2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    isDefault: false,
+  });
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -50,7 +61,6 @@ export default function ProfilePage() {
     if (tab === 'orders') fetchOrders();
     if (tab === 'wishlist') fetchWishlist();
     if (tab === 'addresses') fetchAddresses();
-    if (tab === 'custom-orders') fetchCustomDesigns();
   }, [tab]);
 
   const fetchOrders = async () => {
@@ -92,20 +102,6 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Error fetching addresses:', error);
-    }
-  };
-
-  const fetchCustomDesigns = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/ecommerce/custom-designs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCustomDesigns(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Error fetching custom designs:', error);
     }
   };
 
@@ -186,6 +182,97 @@ export default function ProfilePage() {
     router.push('/');
   };
 
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setAddressForm({
+      ...addressForm,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+    });
+  };
+
+  const handleAddAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/ecommerce/addresses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(addressForm)
+      });
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Address added successfully' });
+        setIsAddingAddress(false);
+        setAddressForm({
+          fullName: '',
+          phone: '',
+          line1: '',
+          line2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          isDefault: false,
+        });
+        fetchAddresses();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to add address' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error adding address' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    if (!confirm('Are you sure you want to delete this address?')) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/ecommerce/addresses/${addressId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Address deleted successfully' });
+        fetchAddresses();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to delete address' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error deleting address' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetDefault = async (addressId: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/ecommerce/addresses/${addressId}/set-default`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Default address updated' });
+        fetchAddresses();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to set default address' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error updating default address' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!token) {
     return null;
   }
@@ -221,11 +308,10 @@ export default function ProfilePage() {
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-8 border-b" style={{ borderColor: 'var(--border-color)' }}>
           {[
-            { id: 'profile', label: 'Profile', icon: <User size={16} /> },
+            { id: 'profile', label: 'Profile', icon: <UserIcon size={16} /> },
             { id: 'orders', label: 'Orders', icon: <Package size={16} /> },
             { id: 'wishlist', label: 'Wishlist', icon: <Heart size={16} /> },
             { id: 'addresses', label: 'Addresses', icon: <MapPin size={16} /> },
-            { id: 'custom-orders', label: 'Custom Orders', icon: <Palette size={16} /> },
             { id: 'security', label: 'Security', icon: <Lock size={16} /> },
           ].map((t) => (
             <button
@@ -419,101 +505,199 @@ export default function ProfilePage() {
         {/* Addresses Tab */}
         {tab === 'addresses' && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-black mb-6" style={{ color: 'var(--text-primary)' }}>Delivery Addresses</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Delivery Addresses</h2>
+              {!isAddingAddress && (
+                <button
+                  onClick={() => setIsAddingAddress(true)}
+                  className="px-4 py-2 rounded-lg text-white font-bold flex items-center gap-2 transition hover:opacity-90"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  <Plus size={18} />
+                  Add Address
+                </button>
+              )}
+            </div>
+
+            {/* Add Address Form */}
+            {isAddingAddress && (
+              <form onSubmit={handleAddAddress} className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                <h3 className="font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Add New Address</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    name="fullName"
+                    placeholder="Full Name"
+                    value={addressForm.fullName}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Phone Number"
+                    value={addressForm.phone}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="text"
+                    name="line1"
+                    placeholder="Address Line 1"
+                    value={addressForm.line1}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 md:col-span-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="text"
+                    name="line2"
+                    placeholder="Address Line 2 (Optional)"
+                    value={addressForm.line2}
+                    onChange={handleAddressChange}
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 md:col-span-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="text"
+                    name="city"
+                    placeholder="City"
+                    value={addressForm.city}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="text"
+                    name="state"
+                    placeholder="State"
+                    value={addressForm.state}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <input
+                    type="text"
+                    name="postalCode"
+                    placeholder="Postal Code"
+                    value={addressForm.postalCode}
+                    onChange={handleAddressChange}
+                    required
+                    className="px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <label className="flex items-center gap-2 mt-4">
+                  <input
+                    type="checkbox"
+                    name="isDefault"
+                    checked={addressForm.isDefault}
+                    onChange={handleAddressChange}
+                    className="w-4 h-4"
+                  />
+                  <span style={{ color: 'var(--text-primary)' }} className="font-semibold">Set as default address</span>
+                </label>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 px-4 py-3 rounded-lg text-white font-bold transition hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Address'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingAddress(false);
+                      setAddressForm({
+                        fullName: '',
+                        phone: '',
+                        line1: '',
+                        line2: '',
+                        city: '',
+                        state: '',
+                        postalCode: '',
+                        isDefault: false,
+                      });
+                    }}
+                    className="flex-1 px-4 py-3 rounded-lg font-bold transition border"
+                    style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Address List */}
             {addresses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {addresses.map((addr) => (
                   <div
                     key={addr.id}
-                    className="p-4 rounded-lg border"
-                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+                    className="p-4 rounded-lg border relative"
+                    style={{ borderColor: addr.isDefault ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', borderWidth: addr.isDefault ? '2px' : '1px' }}
                   >
-                    <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{addr.name}</h3>
-                    <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-1">{addr.phone}</p>
-                    <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-1">{addr.street}</p>
-                    <p style={{ color: 'var(--text-muted)' }} className="text-sm">{addr.city}, {addr.state} {addr.pincode}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <MapPin size={48} className="mx-auto mb-4 opacity-50" style={{ color: 'var(--text-muted)' }} />
-                <p style={{ color: 'var(--text-muted)' }} className="mb-4">No addresses saved yet</p>
-                <Link href="/checkout" className="inline-block px-6 py-3 rounded-lg text-white font-bold" style={{ backgroundColor: 'var(--color-primary)' }}>
-                  Add Address During Checkout
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Custom Orders Tab */}
-        {tab === 'custom-orders' && (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-black mb-6" style={{ color: 'var(--text-primary)' }}>Custom Design Orders</h2>
-            {customDesigns.length > 0 ? (
-              <div className="grid gap-6">
-                {customDesigns.map((design) => (
-                  <div
-                    key={design.id}
-                    className="rounded-lg border p-6"
-                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
-                  >
-                    <div className="grid md:grid-cols-[200px_1fr] gap-6">
-                      {design.images && design.images.length > 0 && (
-                        <img src={design.images[0]} alt="Design" className="w-full h-auto rounded-lg object-cover" />
-                      )}
-                      <div className="flex flex-col justify-between">
-                        <div>
-                          <h3 className="text-xl font-black mb-2" style={{ color: 'var(--text-primary)' }}>{design.title}</h3>
-                          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{design.description}</p>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Size:</span>
-                              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{design.size}</p>
-                            </div>
-                            <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Color:</span>
-                              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{design.color}</p>
-                            </div>
-                            <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Placement:</span>
-                              <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{design.placement}</p>
-                            </div>
-                            <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Status:</span>
-                              <p className="font-bold" style={{ color: design.status === 'APPROVED' ? 'var(--accent-primary)' : design.status === 'REJECTED' ? 'var(--text-secondary)' : 'var(--color-primary)' }}>
-                                {design.status || 'PENDING'}
-                              </p>
-                            </div>
-                          </div>
-                          {design.price && (
-                            <p className="mt-4 text-lg font-black" style={{ color: 'var(--color-primary)' }}>
-                              ₹{design.price}
-                            </p>
-                          )}
-                        </div>
-                        <Link
-                          href={`/custom-design?edit=${design.id}`}
-                          className="mt-4 px-6 py-2 rounded-lg text-white font-bold text-center transition hover:opacity-90"
-                          style={{ backgroundColor: 'var(--color-primary)' }}
-                        >
-                          View Details
-                        </Link>
+                    {addr.isDefault && (
+                      <div className="absolute top-4 right-4 px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-bold flex items-center gap-1">
+                        <Check size={12} />
+                        Default
                       </div>
+                    )}
+                    <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{addr.fullName}</h3>
+                    <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-1">{addr.phone}</p>
+                    <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-1">{addr.line1}</p>
+                    {addr.line2 && <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-1">{addr.line2}</p>}
+                    <p style={{ color: 'var(--text-muted)' }} className="text-sm mb-4">{addr.city}, {addr.state} {addr.postalCode}</p>
+                    <div className="flex gap-2">
+                      {!addr.isDefault && (
+                        <button
+                          onClick={() => handleSetDefault(addr.id)}
+                          className="flex-1 px-3 py-2 rounded text-sm font-semibold border transition hover:opacity-70"
+                          style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                        >
+                          Set Default
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteAddress(addr.id)}
+                        className="px-3 py-2 rounded text-sm font-semibold border transition hover:opacity-70 text-red-500"
+                        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : !isAddingAddress ? (
               <div className="text-center py-12">
-                <Palette size={48} className="mx-auto mb-4 opacity-50" style={{ color: 'var(--text-muted)' }} />
-                <p style={{ color: 'var(--text-muted)' }} className="mb-4">No custom design orders yet</p>
-                <Link href="/custom-design" className="inline-block px-6 py-3 rounded-lg text-white font-bold" style={{ backgroundColor: 'var(--color-primary)' }}>
-                  Create a Custom Design
-                </Link>
+                <MapPin size={48} className="mx-auto mb-4 opacity-50" style={{ color: 'var(--text-muted)' }} />
+                <p style={{ color: 'var(--text-muted)' }} className="mb-4">No addresses saved yet</p>
+                <button
+                  onClick={() => setIsAddingAddress(true)}
+                  className="inline-block px-6 py-3 rounded-lg text-white font-bold"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  Add Your First Address
+                </button>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

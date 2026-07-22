@@ -36,7 +36,6 @@ export function Footer() {
             <h3 className="font-black">Company</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/about" style={linkStyle}>About us</Link></li>
-              <li><Link href="/gifting" style={linkStyle}>Gifting</Link></li>
               <li><Link href="/influencers" style={linkStyle}>Influencers</Link></li>
               <li><Link href="/contact" style={linkStyle}>Contact us</Link></li>
               <li><Link href="/terms" style={linkStyle}>Terms</Link></li>
