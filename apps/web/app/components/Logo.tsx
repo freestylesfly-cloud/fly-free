@@ -18,9 +18,9 @@ export function Logo({
   const [loaded, setLoaded] = useState(false);
 
   const dimensions = {
-    sm: { width: 32, height: 32 },
-    md: { width: 48, height: 48 },
-    lg: { width: 64, height: 64 }
+    sm: { width: 40, height: 40 },
+    md: { width: 56, height: 56 },
+    lg: { width: 80, height: 80 }
   };
 
   const { width, height } = dimensions[size];
@@ -51,23 +51,38 @@ export function Logo({
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <img
-        src={logoSrc}
-        alt="Logo"
-        width={width}
-        height={height}
-        onError={() => {
-          console.warn('Logo image failed to load, falling back to local logo.');
-          setLogoSrc('/logo.png');
-        }}
-        style={{
-          width,
-          height,
-          objectFit: 'contain'
-        }}
-      />
+      {logoSrc.startsWith('/') || !logoSrc ? (
+        // Fallback: Show text-based logo when no image available
+        <div
+          className="flex items-center justify-center rounded-lg font-black text-white"
+          style={{
+            width,
+            height,
+            backgroundColor: 'var(--color-primary)',
+            fontSize: size === 'sm' ? '14px' : size === 'md' ? '20px' : '28px'
+          }}
+        >
+          FF
+        </div>
+      ) : (
+        <img
+          src={logoSrc}
+          alt="Logo"
+          width={width}
+          height={height}
+          onError={() => {
+            console.warn('Logo image failed to load, falling back to text logo.');
+            setLogoSrc('');
+          }}
+          style={{
+            width,
+            height,
+            objectFit: 'contain'
+          }}
+        />
+      )}
       {showText && size !== 'sm' && (
-        <span className="font-black text-lg" style={{ color: 'var(--color-primary)' }}>
+        <span className="font-black text-xl" style={{ color: 'var(--color-primary)' }}>
           Fly Free
         </span>
       )}

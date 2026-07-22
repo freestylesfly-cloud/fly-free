@@ -22,7 +22,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-black">Shop</h3>
+            <h3 className="font-black text-lg">Shop</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/products" style={linkStyle}>All products</Link></li>
               <li><Link href="/search" style={linkStyle}>Search</Link></li>
@@ -33,7 +33,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-black">Company</h3>
+            <h3 className="font-black text-lg">Company</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/about" style={linkStyle}>About us</Link></li>
               <li><Link href="/influencers" style={linkStyle}>Influencers</Link></li>
@@ -44,7 +44,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-black">Support</h3>
+            <h3 className="font-black text-lg">Support</h3>
             <ul className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <li className="flex gap-2"><Mail size={16} /> <a href="mailto:support@flyfree.com">support@flyfree.com</a></li>
               <li className="flex gap-2"><Phone size={16} /> <a href="tel:+919876543210">+91 98765 43210</a></li>
