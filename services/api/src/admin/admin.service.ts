@@ -773,7 +773,7 @@ export class AdminService {
     const normalized = this.normalizeWebsiteThemeData(data);
 
     if (normalized.isActive) {
-      return this.prisma.$transaction(async (tx) => {
+      return this.prisma.$transaction(async (tx: any) => {
         await tx.websiteTheme.updateMany({ where: { isActive: true }, data: { isActive: false } });
         return tx.websiteTheme.create({ data: normalized });
       });
@@ -786,7 +786,7 @@ export class AdminService {
     const normalized = this.normalizeWebsiteThemeData(data, true);
 
     if (normalized.isActive) {
-      return this.prisma.$transaction(async (tx) => {
+      return this.prisma.$transaction(async (tx: any) => {
         await tx.websiteTheme.updateMany({ where: { id: { not: id }, isActive: true }, data: { isActive: false } });
         return tx.websiteTheme.update({ where: { id }, data: { ...normalized, isActive: true } });
       });
