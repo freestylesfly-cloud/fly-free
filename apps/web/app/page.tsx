@@ -9,24 +9,34 @@ export const dynamic = "force-dynamic";
 
 async function getHomeData() {
   try {
+    const defaultHome = { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null };
+
     const [home, productsRes] = await Promise.all([
-      fetch(`${API_BASE}/cms/home`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null),
-      fetch(`${API_BASE}/catalog/products?limit=50`, { cache: "no-store" }).then((response) => response.ok ? response.json() : null)
+      fetch(`${API_BASE}/cms/home`, { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch((error) => {
+          console.error("Failed to fetch home data:", error);
+          return null;
+        }),
+      fetch(`${API_BASE}/catalog/products?limit=50`, { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch((error) => {
+          console.error("Failed to fetch products:", error);
+          return null;
+        })
     ]);
 
     let products = Array.isArray(productsRes) ? productsRes : productsRes?.data || [];
-
-    // Filter for visible products only
     products = products.filter((p: any) => p.isVisible !== false);
 
     return {
-      home: home?.data || home || { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null },
+      home: home?.data || home || defaultHome,
       products
     };
   } catch (error) {
     console.error("Error fetching home data:", error);
     return {
-      home: { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], giftOptions: [], influencers: [], reviews: [], settings: null },
+      home: { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null },
       products: []
     };
   }

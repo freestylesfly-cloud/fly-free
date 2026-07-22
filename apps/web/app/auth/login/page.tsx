@@ -14,13 +14,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect if already logged in
+  // Redirect if already logged in (non-blocking)
   useEffect(() => {
-    checkAuth().then(() => {
-      if (user) {
-        router.push('/');
-      }
-    });
+    if (user) {
+      router.push('/');
+    } else {
+      // Check auth in background without blocking UI
+      checkAuth().catch((err) => console.error('Auth check failed:', err));
+    }
   }, [user, router, checkAuth]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
