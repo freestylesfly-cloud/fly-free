@@ -21,4 +21,9 @@ export class CommerceController {
   verifyCheckout(@Body() body: any, @Headers("authorization") token: string) {
     return this.commerceService.verifyCheckout(body, token);
   }
+
+  @Post("payment/retry")
+  retryPayment(@Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.retryPayment(body, token);
+  }
 }

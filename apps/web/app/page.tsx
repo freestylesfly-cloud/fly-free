@@ -14,14 +14,12 @@ async function getHomeData() {
     const [home, productsRes] = await Promise.all([
       fetch(`${API_BASE}/cms/home`, { cache: "no-store" })
         .then((response) => response.ok ? response.json() : null)
-        .catch((error) => {
-          console.error("Failed to fetch home data:", error);
+        .catch(() => {
           return null;
         }),
       fetch(`${API_BASE}/catalog/products?limit=50`, { cache: "no-store" })
         .then((response) => response.ok ? response.json() : null)
-        .catch((error) => {
-          console.error("Failed to fetch products:", error);
+        .catch(() => {
           return null;
         })
     ]);
@@ -33,8 +31,7 @@ async function getHomeData() {
       home: home?.data || home || defaultHome,
       products
     };
-  } catch (error) {
-    console.error("Error fetching home data:", error);
+  } catch {
     return {
       home: { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null },
       products: []
@@ -247,7 +244,7 @@ export default async function HomePage() {
                 key={product.id}
                 id={product.id}
                 name={product.name}
-                price={product.price || 0}
+                price={Math.round((product.price || 0) / 100)}
                 slug={product.slug}
                 image={product.images?.[0]?.url || null}
                 tag={product.theme?.name || product.category?.name || 'New'}

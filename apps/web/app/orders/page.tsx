@@ -4,9 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Loader2, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { getApiBaseUrl } from '../lib/api';
-
-const API_URL = getApiBaseUrl();
 
 export default function OrdersPage() {
   const user = useAuthStore((state) => state.user);
@@ -25,9 +22,7 @@ export default function OrdersPage() {
     async function loadOrders() {
       try {
         setLoading(true);
-        const url = typeof window !== 'undefined'
-          ? `/api/proxy/ecommerce/orders`
-          : `${API_URL}/ecommerce/orders`;
+        const url = `/api/ecommerce/orders`;
 
         const res = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }

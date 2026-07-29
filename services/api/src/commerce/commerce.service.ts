@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
+import * as crypto from "crypto";
+import * as fs from "fs";
 import * as jwt from "jsonwebtoken";
+import * as path from "path";
 
 @Injectable()
 export class CommerceService {
@@ -13,7 +16,7 @@ export class CommerceService {
   async getOrder(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { items: true, payment: true, shippingAddress: true }
+      include: { items: true, payment: true }
     });
 
     if (!order) {
@@ -60,7 +63,7 @@ export class CommerceService {
           product,
           variant,
           quantity: Math.max(Number(item.quantity || 1), 1),
-          price: variant.price || product.price
+          price: this.catalogPriceToRupees(variant.price || product.price)
         };
       })
     );
@@ -73,23 +76,17 @@ export class CommerceService {
     const total = Math.max(subtotal - discount + shippingFee + tax, 0);
 
     const order = await this.prisma.$transaction(async (tx: any) => {
-      const shippingAddress = await tx.address.create({
-        data: {
-          userId,
-          fullName: address.name,
-          phone: address.phone,
-          line1: address.street,
-          city: address.city,
-          state: address.state,
-          postalCode: address.pincode,
-          country: "India"
-        }
-      });
-
       const created = await tx.order.create({
         data: {
-          userId,
-          shippingAddressId: shippingAddress.id,
+          user: { connect: { id: userId } },
+          shippingName: address.name,
+          shippingPhone: address.phone,
+          shippingLine1: address.street,
+          shippingLine2: address.line2 || null,
+          shippingCity: address.city,
+          shippingState: address.state,
+          shippingPostalCode: address.pincode,
+          shippingCountry: address.country || "India",
           subtotal,
           discount,
           shippingFee,
@@ -121,7 +118,7 @@ export class CommerceService {
             }
           }
         },
-        include: { payment: true, items: true, shippingAddress: true }
+        include: { payment: true, items: true }
       });
 
       if (coupon?.influencer) {
@@ -151,11 +148,25 @@ export class CommerceService {
       return created;
     });
 
+    const razorpayOrder = await this.createRazorpayOrder(order.id, total);
+
+    await this.prisma.payment.update({
+      where: { orderId: order.id },
+      data: {
+        rawPayload: {
+          checkoutSource: "web",
+          couponCode: coupon?.code || null,
+          razorpayOrderId: razorpayOrder.id
+        }
+      }
+    });
+
     return {
       success: true,
       data: {
         ...order,
-        razorpayOrderId: `order_${order.id}`,
+        orderId: order.id,
+        razorpayOrderId: razorpayOrder.id,
         amount: total,
         currency: "INR"
       }
@@ -163,9 +174,42 @@ export class CommerceService {
   }
 
   async verifyCheckout(body: any, token?: string) {
-    this.extractUserId(token);
+    const userId = this.extractUserId(token);
     if (!body.orderId) {
       throw new BadRequestException("orderId is required");
+    }
+
+    if (!body.razorpayOrderId || !body.razorpayPaymentId || !body.razorpaySignature) {
+      throw new BadRequestException("Complete Razorpay payment details are required");
+    }
+
+    const orderToVerify = await this.prisma.order.findFirst({
+      where: { id: body.orderId, userId },
+      include: { payment: true }
+    });
+
+    if (!orderToVerify) {
+      throw new NotFoundException("Order not found");
+    }
+
+    const rawPayload = orderToVerify.payment?.rawPayload as { razorpayOrderId?: string } | null;
+    if (!rawPayload?.razorpayOrderId || rawPayload.razorpayOrderId !== body.razorpayOrderId) {
+      throw new BadRequestException("Razorpay order does not match this checkout");
+    }
+
+    if (!this.isValidRazorpaySignature(body.razorpayOrderId, body.razorpayPaymentId, body.razorpaySignature)) {
+      await this.prisma.payment.update({
+        where: { orderId: body.orderId },
+        data: {
+          status: "FAILED",
+          rawPayload: {
+            ...rawPayload,
+            verificationAttempt: body,
+            verificationError: "Invalid Razorpay signature"
+          }
+        }
+      });
+      throw new BadRequestException("Payment verification failed");
     }
 
     const order = await this.prisma.order.update({
@@ -177,7 +221,10 @@ export class CommerceService {
             status: "PAID",
             providerPaymentId: body.razorpayPaymentId || body.paymentId || null,
             paidAt: new Date(),
-            rawPayload: body
+            rawPayload: {
+              ...rawPayload,
+              verification: body
+            }
           }
         },
         statusHistory: {
@@ -189,10 +236,55 @@ export class CommerceService {
           }
         }
       },
-      include: { payment: true, items: true, shippingAddress: true }
+      include: { payment: true, items: true }
     });
 
     return { success: true, data: order };
+  }
+
+  async retryPayment(body: any, token?: string) {
+    const userId = this.extractUserId(token);
+    if (!body.orderId) {
+      throw new BadRequestException("orderId is required");
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: { id: body.orderId, userId },
+      include: { payment: true }
+    });
+
+    if (!order) {
+      throw new NotFoundException("Order not found");
+    }
+
+    if (order.payment?.status === "PAID") {
+      throw new BadRequestException("This order is already paid");
+    }
+
+    const rawPayload = (order.payment?.rawPayload || {}) as Record<string, unknown>;
+    const razorpayOrder = await this.createRazorpayOrder(order.id, order.total);
+
+    await this.prisma.payment.update({
+      where: { orderId: order.id },
+      data: {
+        status: "PENDING",
+        rawPayload: {
+          ...rawPayload,
+          retryRazorpayOrderId: razorpayOrder.id,
+          razorpayOrderId: razorpayOrder.id
+        }
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        orderId: order.id,
+        razorpayOrderId: razorpayOrder.id,
+        amount: order.total,
+        currency: "INR"
+      }
+    };
   }
 
   private async resolveCoupon(code: string, subtotal: number) {
@@ -224,6 +316,104 @@ export class CommerceService {
     }
 
     return null;
+  }
+
+  private async createRazorpayOrder(orderId: string, amount: number) {
+    const { keyId, keySecret } = this.getRazorpayCredentials();
+
+    if (!keyId || !keySecret) {
+      throw new BadRequestException("Razorpay is not configured on the API server");
+    }
+
+    const response = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        receipt: `ff_${orderId}`,
+        notes: {
+          orderId
+        }
+      })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.id) {
+      throw new BadRequestException(payload?.error?.description || "Failed to create Razorpay order");
+    }
+
+    return payload;
+  }
+
+  private isValidRazorpaySignature(razorpayOrderId: string, razorpayPaymentId: string, razorpaySignature: string) {
+    const { keySecret } = this.getRazorpayCredentials();
+    if (!keySecret) {
+      throw new BadRequestException("Razorpay is not configured on the API server");
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+
+    if (expectedSignature.length !== razorpaySignature.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(razorpaySignature));
+  }
+
+  private getRazorpayCredentials() {
+    const configured = {
+      keyId: this.cleanConfigValue(this.config.get<string>("RAZORPAY_KEY_ID")),
+      keySecret: this.cleanConfigValue(this.config.get<string>("RAZORPAY_KEY_SECRET"))
+    };
+
+    if (this.isUsableRazorpayCredential(configured.keyId) && this.isUsableRazorpayCredential(configured.keySecret)) {
+      return configured;
+    }
+
+    return {
+      keyId: this.readLocalEnvValue("RAZORPAY_KEY_ID") || configured.keyId,
+      keySecret: this.readLocalEnvValue("RAZORPAY_KEY_SECRET") || configured.keySecret
+    };
+  }
+
+  private readLocalEnvValue(name: string) {
+    const envPaths = [
+      path.resolve(process.cwd(), ".env.local"),
+      path.resolve(process.cwd(), "services/api/.env.local")
+    ];
+
+    for (const envPath of envPaths) {
+      if (!fs.existsSync(envPath)) continue;
+
+      const line = fs
+        .readFileSync(envPath, "utf8")
+        .split(/\r?\n/)
+        .find((entry) => entry.trim().startsWith(`${name}=`));
+
+      const value = this.cleanConfigValue(line?.split("=").slice(1).join("="));
+      if (this.isUsableRazorpayCredential(value)) return value;
+    }
+
+    return undefined;
+  }
+
+  private cleanConfigValue(value?: string) {
+    return value?.trim().replace(/^["']|["']$/g, "");
+  }
+
+  private isUsableRazorpayCredential(value?: string) {
+    return Boolean(value && value !== "..." && !value.includes("..."));
+  }
+
+  private catalogPriceToRupees(price: number) {
+    return Math.round(Number(price || 0) / 100);
   }
 
   private extractUserId(token?: string): string {

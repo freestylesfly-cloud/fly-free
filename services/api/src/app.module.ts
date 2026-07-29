@@ -12,7 +12,10 @@ import { WebsiteThemeModule } from "./theme/website-theme.module";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [".env.local", ".env", "services/api/.env.local", "services/api/.env"]
+    }),
     PrismaModule,
     CatalogModule,
     CommerceModule,

@@ -26,15 +26,15 @@ export default function OrderFailedContent() {
 
     async function loadOrder() {
       try {
-        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}`, {
+        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}/track`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
           setOrder(data.data || data);
         }
-      } catch (err) {
-        console.error('Failed to load order');
+      } catch {
+        setOrder(null);
       } finally {
         setLoading(false);
       }
@@ -48,7 +48,7 @@ export default function OrderFailedContent() {
 
     setRetrying(true);
     try {
-      const verifyRes = await fetch(`${API_URL}/ecommerce/payment/retry`, {
+      const retryRes = await fetch(`${API_URL}/commerce/payment/retry`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -59,14 +59,14 @@ export default function OrderFailedContent() {
         })
       });
 
-      if (verifyRes.ok) {
-        const data = await verifyRes.json();
+      if (retryRes.ok) {
+        const data = await retryRes.json();
         const newOrderData = data.data || data;
 
         if (typeof window !== 'undefined' && (window as any).Razorpay) {
           const razorpay = new (window as any).Razorpay({
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: newOrderData.amount,
+            amount: Math.round(newOrderData.amount * 100),
             currency: 'INR',
             name: 'Fly Free',
             order_id: newOrderData.razorpayOrderId,
@@ -75,7 +75,23 @@ export default function OrderFailedContent() {
               contact: order.user?.phone || ''
             },
             handler: async (response: any) => {
-              window.location.href = `/order-success?orderId=${order.id}`;
+              const verifyRes = await fetch(`${API_URL}/commerce/checkout/verify`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  orderId: order.id,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature
+                })
+              });
+
+              window.location.href = verifyRes.ok
+                ? `/order-success?orderId=${order.id}`
+                : `/order-failed?orderId=${order.id}`;
             }
           });
           razorpay.open();

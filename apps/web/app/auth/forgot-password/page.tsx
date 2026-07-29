@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Loader2, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { resetPassword } from '@/app/lib/supabase';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AuthDrawerShell } from '../components/AuthDrawerShell';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -15,24 +15,28 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!email) {
+    if (!email.trim()) {
       setError('Email is required');
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email');
       return;
     }
 
     setLoading(true);
-
     try {
-      const { data, error: resetError } = await resetPassword(email);
+      const res = await fetch('/api/auth/user/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
 
-      if (resetError) {
-        throw new Error(resetError.message);
+      if (!res.ok) {
+        const err = await res.json();
+        const message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+        throw new Error(message || err.error || 'Failed to send reset email');
       }
 
       setSuccess(true);
@@ -43,107 +47,49 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-        <div className="w-full max-w-sm text-center space-y-6">
-          <div className="flex justify-center">
-            <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} className="animate-bounce" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black">Check your email</h1>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              We've sent a password reset link to <strong>{email}</strong>
-            </p>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Click the link in the email to reset your password. Link expires in 24 hours.
-            </p>
-          </div>
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center gap-2 font-bold hover:underline"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            <ArrowLeft size={18} />
+  return (
+    <AuthDrawerShell title="Reset">
+      {success ? (
+        <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
+          <CheckCircle size={64} className="mb-5 text-primary" />
+          <h1 className="text-2xl font-black">Check your email</h1>
+          <p className="mt-3 leading-7 text-black/60">We sent password reset instructions to {email}.</p>
+          <Link href="/auth/login" className="mt-8 text-base text-primary underline underline-offset-2">
             Back to login
           </Link>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <div className="w-full max-w-sm space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <Link href="/" className="inline-block">
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)' }}>
-              <span className="text-3xl font-black" style={{ color: 'var(--color-primary)' }}>FF</span>
-            </div>
-          </Link>
-          <h1 className="text-3xl font-black">Fly Free</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Reset your password</p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-9">
           {error && (
-            <div className="rounded-lg border p-4 flex gap-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, red 10%, transparent)' }}>
-              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
-              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{error}</p>
+            <div className="flex gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <p>{error}</p>
             </div>
           )}
 
-          {/* Email Field */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Email Address</label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="john@example.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  borderWidth: '1px'
-                }}
-              />
-            </div>
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email *"
+            autoComplete="email"
+            className="h-[52px] w-full border border-black/30 px-4 text-base outline-none transition focus:border-black"
+          />
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}
+            className="flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-base font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Sending reset link...
-              </>
-            ) : (
-              'Send Reset Link'
-            )}
+            {loading && <Loader2 size={18} className="animate-spin" />}
+            {loading ? 'Sending...' : 'Send Reset Link'}
           </button>
-        </form>
 
-        {/* Links */}
-        <div className="text-center">
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Remember your password?{' '}
-            <Link href="/auth/login" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
-              Login here
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+          <Link href="/auth/login" className="inline-block text-base text-black/55 underline underline-offset-2 hover:text-black">
+            Remember your password? Login here
+          </Link>
+        </form>
+      )}
+    </AuthDrawerShell>
   );
 }

@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { proxyApiClient } from '@/app/lib/api-proxy';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -32,10 +31,11 @@ export function Logo({
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 800);
 
-    proxyApiClient.get('/cms/settings/logo')
+    fetch('/api/cms/settings/logo', { signal: controller.signal })
+      .then(res => res.json())
       .then((data: any) => {
         if (data?.logoUrl && data.logoUrl.trim()) {
-          setLogoSrc(data.logoUrl);
+          setLogoSrc(data.logoUrl === '/brand/flyfree-logo.png' ? '/logo.png' : data.logoUrl);
           setHasError(false);
         } else {
           setHasError(true);
@@ -49,7 +49,10 @@ export function Logo({
         clearTimeout(timeoutId);
       });
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [hasError]);
 
   return (

@@ -100,14 +100,14 @@ export class EcommerceController {
 
   @ApiTags("📍 Addresses")
   @Put("addresses/:addressId")
-  updateAddress(@Param("addressId") addressId: string, @Body() body: any) {
-    return this.commerceService.updateAddress(addressId, body);
+  updateAddress(@Param("addressId") addressId: string, @Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.updateAddress(addressId, body, token);
   }
 
   @ApiTags("📍 Addresses")
   @Delete("addresses/:addressId")
-  deleteAddress(@Param("addressId") addressId: string) {
-    return this.commerceService.deleteAddress(addressId);
+  deleteAddress(@Param("addressId") addressId: string, @Headers("authorization") token: string) {
+    return this.commerceService.deleteAddress(addressId, token);
   }
 
   @ApiTags("📍 Addresses")
@@ -119,8 +119,9 @@ export class EcommerceController {
   // ==================== COUPONS ====================
   @ApiTags("🎟️ Coupons")
   @Get("coupons/:code")
-  validateCoupon(@Param("code") code: string) {
-    return this.commerceService.validateCoupon(code);
+  validateCoupon(@Param("code") code: string, @Query("productIds") productIds?: string) {
+    const productIdList = productIds ? productIds.split(",") : [];
+    return this.commerceService.validateCoupon(code, productIdList);
   }
 
   @Get("coupons")

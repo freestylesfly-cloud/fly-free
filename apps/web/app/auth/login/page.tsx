@@ -1,151 +1,111 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/app/stores/authStore';
+import { AuthDrawerShell } from '../components/AuthDrawerShell';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, checkAuth, user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const nextPath = searchParams.get('next') || searchParams.get('redirect') || '/';
 
-  // Redirect if already logged in (non-blocking)
   useEffect(() => {
     if (user) {
-      router.push('/');
+      router.push(nextPath);
     } else {
-      // Check auth in background without blocking UI
-      checkAuth().catch((err) => console.error('Auth check failed:', err));
+      checkAuth().catch(() => {});
     }
-  }, [user, router, checkAuth]);
+  }, [user, router, checkAuth, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError('Email and password are required');
       return;
     }
 
     setLoading(true);
-
     try {
-      await login(email, password);
-      router.push('/');
+      await login(email.trim(), password);
+      router.push(nextPath);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Login failed';
-      console.error('Login error:', errorMsg);
-      setError(errorMsg);
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <div className="w-full max-w-sm space-y-8">
-        {/* Header with Logo */}
-        <div className="text-center space-y-4">
-          <Link href="/" className="inline-block">
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)' }}>
-              <span className="text-3xl font-black" style={{ color: 'var(--color-primary)' }}>FF</span>
-            </div>
-          </Link>
-          <h1 className="text-3xl font-black">Fly Free</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Welcome back to Fly Free</p>
+    <AuthDrawerShell title="Login">
+      <form onSubmit={handleSubmit} className="space-y-9">
+        {error && (
+          <div className="flex gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        <div className="space-y-9">
+          <label className="block">
+            <span className="sr-only">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email *"
+              autoComplete="email"
+              className="h-[52px] w-full border border-black/30 px-4 text-base outline-none transition focus:border-black"
+            />
+          </label>
+
+          <label className="block">
+            <span className="sr-only">Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password *"
+              autoComplete="current-password"
+              className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
+            />
+          </label>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Error Alert */}
-          {error && (
-            <div className="rounded-lg border p-4 flex gap-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, red 10%, transparent)' }}>
-              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }} />
-              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{error}</p>
-            </div>
-          )}
+        <Link href="/auth/forgot-password" className="-mt-6 inline-block text-base text-black/55 underline underline-offset-2 hover:text-black">
+          Forgot your password?
+        </Link>
 
-          {/* Email Field */}
-          <div className="space-y-2">
-            <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Email Address</label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="john@example.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  borderWidth: '1px'
-                }}
-              />
-            </div>
-          </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-base font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading && <Loader2 size={18} className="animate-spin" />}
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
 
-          {/* Password Field */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Password</label>
-              <Link href="/auth/forgot-password" className="text-xs hover:underline" style={{ color: 'var(--color-primary)' }}>
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3" style={{ color: 'var(--text-secondary)' }} />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full pl-10 pr-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  borderWidth: '1px'
-                }}
-              />
-            </div>
-          </div>
+        <Link href={`/auth/signup?next=${encodeURIComponent(nextPath)}`} className="inline-block text-base text-primary underline underline-offset-2 hover:opacity-80">
+          New customer? Create your account
+        </Link>
+      </form>
+    </AuthDrawerShell>
+  );
+}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full text-white font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Logging in...
-              </>
-            ) : (
-              'Login'
-            )}
-          </button>
-        </form>
-
-        {/* Links */}
-        <div className="text-center space-y-3">
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Don't have an account?{' '}
-            <Link href="/auth/signup" className="font-bold hover:underline" style={{ color: 'var(--color-primary)' }}>
-              Sign up here
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthDrawerShell title="Login"><div className="h-10" /></AuthDrawerShell>}>
+      <LoginContent />
+    </Suspense>
   );
 }

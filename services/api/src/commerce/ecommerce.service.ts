@@ -160,14 +160,49 @@ export class EcommerceService {
     });
   }
 
-  async updateAddress(addressId: string, data: any) {
+  async updateAddress(addressId: string, data: any, token: string) {
+    const userId = this.extractUserId(token);
+
+    // Verify address belongs to user
+    const address = await this.prisma.address.findFirst({
+      where: { id: addressId, userId }
+    });
+
+    if (!address) {
+      throw new UnauthorizedException("Address not found or does not belong to you");
+    }
+
+    const updateData: any = {};
+
+    // Only allow updating these fields
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.line1 !== undefined) updateData.line1 = data.line1;
+    if (data.line2 !== undefined) updateData.line2 = data.line2;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.state !== undefined) updateData.state = data.state;
+    if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
+    if (data.country !== undefined) updateData.country = data.country;
+    if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+
     return this.prisma.address.update({
       where: { id: addressId },
-      data
+      data: updateData
     });
   }
 
-  async deleteAddress(addressId: string) {
+  async deleteAddress(addressId: string, token: string) {
+    const userId = this.extractUserId(token);
+
+    // Verify address belongs to user
+    const address = await this.prisma.address.findFirst({
+      where: { id: addressId, userId }
+    });
+
+    if (!address) {
+      throw new UnauthorizedException("Address not found or does not belong to you");
+    }
+
     return this.prisma.address.delete({ where: { id: addressId } });
   }
 
@@ -184,12 +219,30 @@ export class EcommerceService {
   }
 
   // ==================== COUPONS ====================
-  async validateCoupon(code: string) {
+  async validateCoupon(code: string, cartProductIds?: string[]) {
     const normalized = String(code || "").trim().toUpperCase();
     const coupon = await this.prisma.coupon.findUnique({ where: { code: normalized } });
-    const influencer = await this.prisma.influencer.findUnique({ where: { code: normalized } }).catch(() => null);
+    const influencer = await this.prisma.influencer.findUnique({
+      where: { code: normalized },
+      include: { products: true }
+    }).catch(() => null);
 
+    // Influencer coupon validation
     if (!coupon && influencer?.isActive) {
+      // If cart products provided, check if any are eligible
+      if (cartProductIds && cartProductIds.length > 0) {
+        const eligibleProducts = influencer.products.map(p => p.id);
+        const hasEligibleProducts = cartProductIds.some(pid => eligibleProducts.includes(pid));
+
+        if (!hasEligibleProducts) {
+          return {
+            valid: false,
+            message: `This code is only valid for specific products by ${influencer.name}. None of your cart items are eligible.`,
+            type: "INFLUENCER"
+          };
+        }
+      }
+
       return {
         valid: true,
         code: influencer.code,
@@ -201,7 +254,8 @@ export class EcommerceService {
           name: influencer.name,
           socialHandle: influencer.socialHandle,
           imageUrl: influencer.imageUrl
-        }
+        },
+        eligibleProductIds: influencer.products.map(p => p.id)
       };
     }
 
@@ -239,7 +293,7 @@ export class EcommerceService {
 
     const orders = await this.prisma.order.findMany({
       where,
-      include: { items: { include: { product: { include: { images: true } } } }, shippingAddress: true, payment: true },
+      include: { items: { include: { product: { include: { images: true } } } }, payment: true },
       orderBy: { createdAt: "desc" }
     });
 
@@ -254,7 +308,6 @@ export class EcommerceService {
       where: { id: orderId, ...(userId ? { userId } : {}) },
       include: {
         items: { include: { product: { include: { images: true } } } },
-        shippingAddress: true,
         payment: true,
         invoice: true,
         statusHistory: { orderBy: { createdAt: "asc" } },
@@ -270,26 +323,33 @@ export class EcommerceService {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: { include: { product: true } },
-        user: true,
-        shippingAddress: true
+        items: { include: { product: true } }
       }
     });
 
     if (!order) return { error: "Order not found" };
 
     // Generate invoice data
+    const o = order as any;
     return {
-      invoiceNumber: `INV-${order.id}`,
-      orderDate: order.createdAt,
-      customer: order.user,
-      shippingAddress: order.shippingAddress,
-      items: order.items,
-      subtotal: order.subtotal,
-      discount: order.discount,
-      shippingFee: order.shippingFee,
-      tax: order.tax,
-      total: order.total
+      invoiceNumber: `INV-${o.id}`,
+      orderDate: o.createdAt,
+      shippingAddress: {
+        name: o.shippingName,
+        phone: o.shippingPhone,
+        line1: o.shippingLine1,
+        line2: o.shippingLine2,
+        city: o.shippingCity,
+        state: o.shippingState,
+        postalCode: o.shippingPostalCode,
+        country: o.shippingCountry
+      },
+      items: o.items,
+      subtotal: o.subtotal,
+      discount: o.discount,
+      shippingFee: o.shippingFee,
+      tax: o.tax,
+      total: o.total
     };
   }
 
@@ -309,42 +369,58 @@ export class EcommerceService {
     }
   }
 
-  private toOrderDto(order: any) {
+  private toOrderDto(order: any): any {
+    const o = order as any;
+    const storesPaise = (o.items || []).some((item: any) => Number(item.price || 0) >= 10000);
+    const money = (value: any) => {
+      const amount = Number(value || 0);
+      return storesPaise ? Math.round(amount / 100) : amount;
+    };
+
     return {
-      id: order.id,
-      orderNumber: order.invoice?.invoiceNumber || order.id,
-      status: order.status,
-      subtotal: order.subtotal,
-      discount: order.discount,
-      tax: order.tax,
-      shipping: order.shippingFee,
-      shippingFee: order.shippingFee,
-      total: order.total,
-      paymentStatus: order.payment?.status || "PENDING",
-      createdAt: order.createdAt,
-      shippingAddress: order.shippingAddress ? {
-        name: order.shippingAddress.fullName,
-        fullName: order.shippingAddress.fullName,
-        phone: order.shippingAddress.phone,
-        street: order.shippingAddress.line1,
-        line1: order.shippingAddress.line1,
-        line2: order.shippingAddress.line2,
-        city: order.shippingAddress.city,
-        state: order.shippingAddress.state,
-        pincode: order.shippingAddress.postalCode,
-        postalCode: order.shippingAddress.postalCode,
-        country: order.shippingAddress.country
+      id: o.id,
+      orderNumber: o.invoice?.invoiceNumber || o.id,
+      status: o.status,
+      subtotal: money(o.subtotal),
+      discount: money(o.discount),
+      tax: money(o.tax),
+      shipping: money(o.shippingFee),
+      shippingFee: money(o.shippingFee),
+      total: money(o.total),
+      paymentStatus: o.payment?.status || "PENDING",
+      payment: o.payment ? {
+        id: o.payment.id,
+        provider: o.payment.provider,
+        providerPaymentId: o.payment.providerPaymentId,
+        status: o.payment.status,
+        amount: money(o.payment.amount),
+        paidAt: o.payment.paidAt,
+        createdAt: o.payment.createdAt
       } : null,
-      statusHistory: order.statusHistory || [],
-      influencer: order.referrals?.[0]?.influencer || null,
-      items: (order.items || []).map((item: any) => ({
+      createdAt: o.createdAt,
+      shippingAddress: {
+        name: (o as any).shippingName,
+        fullName: (o as any).shippingName,
+        phone: (o as any).shippingPhone,
+        street: (o as any).shippingLine1,
+        line1: (o as any).shippingLine1,
+        line2: (o as any).shippingLine2,
+        city: (o as any).shippingCity,
+        state: (o as any).shippingState,
+        pincode: (o as any).shippingPostalCode,
+        postalCode: (o as any).shippingPostalCode,
+        country: (o as any).shippingCountry
+      },
+      statusHistory: o.statusHistory || [],
+      influencer: o.referrals?.[0]?.influencer || null,
+      items: (o.items || []).map((item: any) => ({
         id: item.id,
         productId: item.productId,
         variantId: item.variantId,
         productName: item.name,
         name: item.name,
         sku: item.sku,
-        price: item.price,
+        price: money(item.price),
         quantity: item.quantity,
         productSlug: item.product?.slug,
         productImage: item.product?.images?.[0]?.url || null,
@@ -352,8 +428,8 @@ export class EcommerceService {
           id: item.product.id,
           name: item.product.name,
           slug: item.product.slug,
-          price: item.product.price,
-          mrp: item.product.mrp,
+          price: Math.round(Number(item.product.price || 0) / 100),
+          mrp: Math.round(Number(item.product.mrp || 0) / 100),
           images: item.product.images || []
         } : null
       }))

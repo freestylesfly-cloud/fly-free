@@ -27,7 +27,7 @@ export default function OrderDetailPage() {
 
     async function loadOrder() {
       try {
-        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}`, {
+        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}/track`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

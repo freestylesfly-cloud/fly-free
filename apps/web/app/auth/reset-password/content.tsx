@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Loader2, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { updatePassword, getSession } from '@/app/lib/supabase';
 
 export default function ResetPasswordContent() {
   const router = useRouter();
@@ -21,9 +20,9 @@ export default function ResetPasswordContent() {
   }, []);
 
   const checkSession = async () => {
-    const session = await getSession();
-    if (!session) {
-      setError('Session expired. Please request a new password reset link.');
+    const token = searchParams.get('token');
+    if (!token) {
+      setError('Invalid or expired password reset link.');
       return;
     }
     setIsValidSession(true);
@@ -74,10 +73,16 @@ export default function ResetPasswordContent() {
     setLoading(true);
 
     try {
-      const { data, error: updateError } = await updatePassword(password);
+      const token = searchParams.get('token');
+      const res = await fetch('/api/auth/user/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: password })
+      });
 
-      if (updateError) {
-        throw new Error(updateError.message);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to reset password');
       }
 
       setSuccess(true);

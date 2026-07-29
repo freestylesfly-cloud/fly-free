@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,8 +6,13 @@ export const metadata: Metadata = {
   description: "Commerce operations dashboard for Fly Free.",
   icons: {
     icon: "/logo.png"
-  },
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5"
+  }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

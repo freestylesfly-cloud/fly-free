@@ -72,12 +72,7 @@ export const useThemeStore = create<ThemeState>()(
       fetchActiveTheme: async () => {
         set({ adminThemeLoading: true });
         try {
-          // Use proxy route on client-side, direct API on server-side
-          const url = typeof window !== 'undefined'
-            ? '/api/proxy/cms/home'
-            : `${getApiBaseUrl()}/cms/home`;
-
-          const response = await fetch(url);
+          const response = await fetch('/api/cms/home');
           if (response.ok) {
             const home = await response.json();
             const websiteTheme = home?.websiteTheme;

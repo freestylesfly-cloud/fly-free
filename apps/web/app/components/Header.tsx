@@ -177,7 +177,7 @@ export function Header() {
 
             {/* Wishlist */}
             <Link
-              href={user ? '/wishlist' : '/auth/login'}
+              href={user ? '/profile/wishlist' : '/auth/login'}
               className="p-2.5 rounded-lg border transition hover:opacity-70"
               style={{ borderColor: 'var(--border-color)' }}
               aria-label="Open wishlist"
@@ -224,7 +224,7 @@ export function Header() {
                         My Profile
                       </Link>
                       <Link
-                        href="/orders"
+                        href="/profile/orders"
                         onClick={() => setIsProfileOpen(false)}
                         className="px-4 py-3 text-sm font-semibold transition flex items-center gap-3"
                         style={{ color: 'var(--text-primary)' }}
@@ -235,7 +235,7 @@ export function Header() {
                         My Orders
                       </Link>
                       <Link
-                        href="/wishlist"
+                        href="/profile/wishlist"
                         onClick={() => setIsProfileOpen(false)}
                         className="px-4 py-3 text-sm font-semibold transition flex items-center gap-3"
                         style={{ color: 'var(--text-primary)' }}
@@ -306,7 +306,7 @@ export function Header() {
               <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} />
               <MobileDrawerLink href="/#reviews" label="Reviews" active={false} onClick={() => setIsOpen(false)} />
               <Link
-                href={user ? '/orders' : '/auth/login'}
+                href={user ? '/profile/orders' : '/auth/login'}
                 onClick={() => setIsOpen(false)}
                 className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
                 style={{
@@ -317,7 +317,7 @@ export function Header() {
                 {user ? 'My Orders' : 'Orders'}
               </Link>
               <Link
-                href={user ? '/wishlist' : '/auth/login'}
+                href={user ? '/profile/wishlist' : '/auth/login'}
                 onClick={() => setIsOpen(false)}
                 className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
                 style={{
@@ -368,9 +368,9 @@ export function Header() {
         <MobileTab href="/products" label="Shop" active={isActive('/products')} />
         <MobileTab href="/cart" label={`Cart${displayedCartCount > 0 ? ` ${displayedCartCount}` : ''}`} cartCount={displayedCartCount} active={isActive('/cart')} />
         <MobileTab
-          href={user ? '/wishlist' : '/auth/login'}
+          href={user ? '/profile/wishlist' : '/auth/login'}
           label="Saved"
-          active={isActive('/wishlist')}
+          active={isActive('/profile/wishlist') || isActive('/wishlist')}
         />
         <div className="relative">
           <MobileTab
@@ -396,7 +396,7 @@ export function Header() {
                 My Profile
               </Link>
               <Link
-                href="/orders"
+                href="/profile/orders"
                 onClick={() => setIsProfileOpen(false)}
                 className="block px-4 py-3 text-sm font-semibold border-b transition hover:opacity-70"
                 style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
@@ -477,6 +477,7 @@ function MobileTab({
       case '/cart':
         return <ShoppingBag size={20} />;
       case '/wishlist':
+      case '/profile/wishlist':
         return <Heart size={20} />;
       default:
         return <User size={20} />;

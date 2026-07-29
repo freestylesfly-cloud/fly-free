@@ -77,8 +77,7 @@ function ProductsBrowser() {
         const filtersData = await filtersResponse.json();
         setProducts(Array.isArray(productsData) ? productsData : productsData?.data || []);
         setFilters(filtersData || { categories: [], themes: [], collections: [] });
-      } catch (error) {
-        console.error('Error fetching products:', error);
+      } catch {
         setProducts([]);
       } finally {
         setLoading(false);

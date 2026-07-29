@@ -267,7 +267,6 @@ export class AdminService {
         take: limit,
         include: {
           user: true,
-          shippingAddress: true,
           payment: true,
           invoice: true,
           referrals: { include: { influencer: true } },
@@ -291,7 +290,6 @@ export class AdminService {
       where: { id },
       include: {
         user: true,
-        shippingAddress: true,
         payment: true,
         invoice: true,
         referrals: { include: { influencer: true } },
@@ -373,8 +371,6 @@ export class AdminService {
 
     const invoice = await this.ensureInvoice(order.id);
     const settings = await this.getSettingsValue();
-    const payment = order.payment;
-    const referral = order.referrals?.[0];
     const lines = [
       `${settings.appName || "Fly Free"} Invoice`,
       `Invoice: ${invoice.invoiceNumber}`,
@@ -383,16 +379,16 @@ export class AdminService {
       `Business: ${settings.businessName || settings.appName || "Fly Free"}`,
       `GSTIN: ${settings.gstNumber || "Not configured"}`,
       "",
-      `Bill To: ${order.user?.name || order.user?.email || "Customer"}`,
-      `Email: ${order.user?.email || ""}`,
-      `Phone: ${order.user?.phone || ""}`,
-      `Address: ${order.shippingAddress?.line1 || ""}, ${order.shippingAddress?.city || ""}, ${order.shippingAddress?.state || ""} ${order.shippingAddress?.postalCode || ""}`,
+      `Bill To: Customer`,
+      `Email: `,
+      `Phone: `,
+      `Address: ${order.shippingLine1 || ""}, ${order.shippingCity || ""}, ${order.shippingState || ""} ${order.shippingPostalCode || ""}`,
       "",
       "Payment:",
-      `Provider: ${payment?.provider || "RAZORPAY"}`,
-      `Status: ${payment?.status || "PENDING"}`,
-      `Payment ID: ${payment?.providerPaymentId || "Pending"}`,
-      `Paid At: ${payment?.paidAt ? new Date(payment.paidAt).toLocaleString("en-IN") : "Not paid yet"}`,
+      `Provider: RAZORPAY`,
+      `Status: PENDING`,
+      `Payment ID: Pending`,
+      `Paid At: Not paid yet`,
       "",
       "Items:",
       ...order.items.map((item: any) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
@@ -402,7 +398,7 @@ export class AdminService {
       `Shipping: Rs ${this.formatMoney(order.shippingFee)}`,
       `GST/Tax: Rs ${this.formatMoney(order.tax)}`,
       `Total: Rs ${this.formatMoney(order.total)}`,
-      referral ? `Influencer: ${referral.influencer?.name || referral.code} (${referral.code})` : "",
+      "",
       "",
       `${settings.businessName || settings.appName || "Fly Free"}`,
       `${settings.businessAddress || settings.address || ""}`,
@@ -535,7 +531,6 @@ export class AdminService {
           include: {
             items: { include: { product: true } },
             payment: true,
-            shippingAddress: true,
             referrals: { include: { influencer: true } }
           },
           orderBy: { createdAt: "desc" }
@@ -991,7 +986,7 @@ export class AdminService {
   async listInfluencers() {
     const data = await this.prisma.influencer.findMany({
       include: {
-        product: { select: { id: true, name: true, slug: true, sku: true } },
+        products: { select: { id: true, name: true, slug: true, sku: true, price: true } },
         referrals: { include: { order: true }, orderBy: { createdAt: "desc" } }
       },
       orderBy: { createdAt: "desc" }
@@ -1000,19 +995,20 @@ export class AdminService {
   }
 
   async getInfluencer(id: string) {
-    return this.prisma.influencer.findUnique({
+    const influencer = await this.prisma.influencer.findUnique({
       where: { id },
       include: {
-        product: true,
+        products: true,
         referrals: { include: { order: { include: { user: true, payment: true } } }, orderBy: { createdAt: "desc" } }
       }
     });
+    return influencer ? { ...influencer, product: influencer.products[0] || null } : null;
   }
 
   async createInfluencer(data: any) {
     const code = (data.code || `${this.slugify(data.name).replace(/-/g, "").slice(0, 8)}${Math.floor(Math.random() * 900 + 100)}`).toUpperCase();
     const linkKey = data.linkKey || this.randomKey();
-    return this.prisma.influencer.create({
+    const influencer = await this.prisma.influencer.create({
       data: {
         name: data.name,
         email: data.email,
@@ -1026,14 +1022,15 @@ export class AdminService {
         followers: data.followers ? Number(data.followers) : undefined,
         buyerDiscountPercent: Number(data.buyerDiscountPercent || 10),
         commissionRate: Number(data.commissionRate || 5),
-        productId: data.productId || undefined
+        products: data.productId ? { connect: { id: data.productId } } : undefined
       },
-      include: { product: true, referrals: true }
+      include: { products: true, referrals: true }
     });
+    return { ...influencer, product: influencer.products[0] || null };
   }
 
   async updateInfluencer(id: string, data: any) {
-    return this.prisma.influencer.update({
+    const influencer = await this.prisma.influencer.update({
       where: { id },
       data: {
         name: data.name,
@@ -1049,10 +1046,11 @@ export class AdminService {
         buyerDiscountPercent: data.buyerDiscountPercent === undefined ? undefined : Number(data.buyerDiscountPercent),
         commissionRate: data.commissionRate === undefined ? undefined : Number(data.commissionRate),
         isActive: data.isActive,
-        productId: data.productId || null
+        products: { set: data.productId ? [{ id: data.productId }] : [] }
       },
-      include: { product: true, referrals: true }
+      include: { products: true, referrals: true }
     });
+    return { ...influencer, product: influencer.products[0] || null };
   }
 
   async deleteInfluencer(id: string) {
@@ -1066,6 +1064,32 @@ export class AdminService {
       throw new Error("Influencer not found");
     }
     return this.emailService.sendInfluencerCode(influencer.email, influencer.name, influencer.code, influencer.buyerDiscountPercent);
+  }
+
+  async assignInfluencerProducts(id: string, productIds: string[]) {
+    // First, remove all existing products
+    await this.prisma.influencer.update({
+      where: { id },
+      data: { products: { set: [] } }
+    });
+
+    // Then, assign new products
+    return this.prisma.influencer.update({
+      where: { id },
+      data: {
+        products: {
+          connect: productIds.map(pid => ({ id: pid }))
+        }
+      },
+      include: { products: { select: { id: true, name: true, price: true } } }
+    });
+  }
+
+  async getInfluencerWithProducts(id: string) {
+    return this.prisma.influencer.findUnique({
+      where: { id },
+      include: { products: { select: { id: true, name: true, price: true, images: { take: 1 } } } }
+    });
   }
 
   // ==================== NOTIFICATIONS ====================

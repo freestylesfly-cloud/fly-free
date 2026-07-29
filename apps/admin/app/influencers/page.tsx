@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useMemo, useState } from 'react';
-import { Mail, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react';
+import { Mail, Plus, RefreshCw, Save, Search, Trash2, ChevronDown } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
@@ -26,7 +26,7 @@ type Influencer = {
   totalEarnings: number;
   totalReferrals: number;
   isActive: boolean;
-  product?: { id: string; name: string } | null;
+  products?: Array<{ id: string; name: string }>;
   referrals?: Array<{ id: string; conversions: number; clicks: number; order?: { total: number; status: string } | null }>;
 };
 
@@ -40,9 +40,9 @@ const emptyForm = {
   xUrl: '',
   socialHandle: '',
   followers: '',
-  buyerDiscountPercent: '20',
+  buyerDiscountPercent: '10',
   commissionRate: '8',
-  productId: '',
+  productIds: [] as string[],
 };
 
 export default function InfluencersPage() {
@@ -50,11 +50,19 @@ export default function InfluencersPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+
+  // Product management states
+  const [expandedInfluencerId, setExpandedInfluencerId] = useState<string | null>(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
   const { data, loading, error, refetch } = useFetch<any>(() => apiService.getInfluencers(), { skip: false });
-  const { data: productData } = useFetch<any>(() => apiService.getProducts({ page: 1, limit: 100 }), { skip: false });
+  const { data: productData } = useFetch<any>(() => apiService.getProducts({ page: 1, limit: 500 }), { skip: false });
 
   const influencers = (data?.data || []) as Influencer[];
-  const products = productData?.data || [];
+  const allProducts = productData?.data || [];
+
   const filtered = useMemo(() => {
     const value = query.toLowerCase();
     return influencers.filter((item) =>
@@ -62,32 +70,69 @@ export default function InfluencersPage() {
     );
   }, [influencers, query]);
 
+  // Filter products for current editing influencer
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+  }, [allProducts, productSearch]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (productPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, productPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage('');
     const payload = {
-      ...form,
+      name: form.name,
+      email: form.email,
+      code: form.code,
+      imageUrl: form.imageUrl || undefined,
+      instagramUrl: form.instagramUrl || undefined,
+      facebookUrl: form.facebookUrl || undefined,
+      xUrl: form.xUrl || undefined,
+      socialHandle: form.socialHandle || undefined,
       followers: form.followers ? Number(form.followers) : undefined,
-      buyerDiscountPercent: Number(form.buyerDiscountPercent || 0),
+      buyerDiscountPercent: Number(form.buyerDiscountPercent || 10),
       commissionRate: Number(form.commissionRate || 0),
-      productId: form.productId || undefined,
     };
 
-    if (editingId) {
-      await apiService.updateInfluencer(editingId, payload);
-      setMessage('Influencer updated.');
-    } else {
-      await apiService.createInfluencer(payload);
-      setMessage('Influencer created.');
-    }
+    try {
+      if (editingId) {
+        await apiService.updateInfluencer(editingId, payload);
 
-    setForm(emptyForm);
-    setEditingId(null);
-    refetch();
+        // Update products if any selected
+        if (form.productIds.length > 0) {
+          await fetch(`/api/admin/influencers/${editingId}/products`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productIds: form.productIds })
+          });
+        }
+
+        setMessage('✓ Influencer updated.');
+      } else {
+        await apiService.createInfluencer(payload);
+        setMessage('✓ Influencer created.');
+      }
+
+      setForm(emptyForm);
+      setEditingId(null);
+      setExpandedInfluencerId(null);
+      setProductSearch('');
+      setProductPage(1);
+      refetch();
+    } catch (err) {
+      setMessage('✕ Error saving');
+      console.error(err);
+    }
   }
 
   function edit(item: Influencer) {
     setEditingId(item.id);
+    setExpandedInfluencerId(item.id);
     setForm({
       name: item.name,
       email: item.email,
@@ -100,7 +145,7 @@ export default function InfluencersPage() {
       followers: item.followers ? String(item.followers) : '',
       buyerDiscountPercent: String(item.buyerDiscountPercent),
       commissionRate: String(item.commissionRate),
-      productId: item.product?.id || '',
+      productIds: item.products?.map(p => p.id) || [],
     });
   }
 
@@ -126,9 +171,9 @@ export default function InfluencersPage() {
                 <thead className="bg-black/5 text-left">
                   <tr>
                     <th className="p-3">Influencer</th>
-                    <th className="p-3">Code and link</th>
+                    <th className="p-3">Code</th>
                     <th className="p-3">Offer</th>
-                    <th className="p-3">Product</th>
+                    <th className="p-3">Products</th>
                     <th className="p-3">Performance</th>
                     <th className="p-3">Actions</th>
                   </tr>
@@ -136,46 +181,55 @@ export default function InfluencersPage() {
                 <tbody>
                   {loading ? (
                     <tr><td className="p-4" colSpan={6}>Loading influencers...</td></tr>
-                  ) : filtered.map((item) => {
-                    const link = `${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}?promo=${item.code}`;
-                    return (
-                      <tr key={item.id} className="border-t border-black/10 align-top">
-                        <td className="p-3">
-                          <div className="font-bold text-ink">{item.name}</div>
-                          <div className="text-black/60">{item.email}</div>
-                          <div className="text-black/50">{item.socialHandle}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-black text-coral">{item.code}</div>
-                          <div className="max-w-xs break-all text-xs text-black/60">{link}</div>
-                        </td>
-                        <td className="p-3">
-                          <div>{item.buyerDiscountPercent}% buyer discount</div>
-                          <div className="text-black/60">{item.commissionRate}% commission</div>
-                        </td>
-                        <td className="p-3">{item.product?.name || 'All products'}</td>
-                        <td className="p-3">
-                          <div>Rs {item.totalEarnings.toLocaleString('en-IN')}</div>
-                          <div className="text-black/60">{item.totalReferrals} referrals</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <button onClick={() => edit(item)} className="rounded border border-black/10 px-3 py-2 font-bold">Edit</button>
-                            <button onClick={async () => { await apiService.sendInfluencerCode(item.id); setMessage(`Code sent to ${item.email}`); }} className="rounded bg-coral px-3 py-2 font-bold text-white"><Mail size={16} /></button>
-                            <button onClick={async () => { await apiService.deleteInfluencer(item.id); refetch(); }} className="rounded border border-red-200 px-3 py-2 text-red-700"><Trash2 size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  ) : filtered.map((item) => (
+                    <tr key={item.id} className="border-t border-black/10 align-top">
+                      <td className="p-3">
+                        <div className="font-bold text-ink">{item.name}</div>
+                        <div className="text-black/60">{item.email}</div>
+                        <div className="text-black/50">{item.socialHandle}</div>
+                      </td>
+                      <td className="p-3">
+                        <div className="font-black text-coral">{item.code}</div>
+                      </td>
+                      <td className="p-3">
+                        <div>{item.buyerDiscountPercent}% buyer</div>
+                        <div className="text-black/60">{item.commissionRate}% commission</div>
+                      </td>
+                      <td className="p-3">
+                        <div className="text-sm">
+                          {item.products?.length ? (
+                            <div>
+                              <p className="font-bold">{item.products.length} products</p>
+                              <p className="text-black/60 text-xs mt-1">{item.products.slice(0, 2).map(p => p.name).join(', ')}{item.products.length > 2 ? '...' : ''}</p>
+                            </div>
+                          ) : (
+                            <p className="text-black/60">No products</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div>Rs {item.totalEarnings.toLocaleString('en-IN')}</div>
+                        <div className="text-black/60">{item.totalReferrals} referrals</div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <button onClick={() => edit(item)} className="rounded border border-black/10 px-3 py-2 font-bold text-sm">Edit</button>
+                          <button onClick={async () => { await apiService.sendInfluencerCode(item.id); setMessage(`Code sent to ${item.email}`); }} className="rounded bg-coral px-3 py-2 font-bold text-white text-sm"><Mail size={16} /></button>
+                          <button onClick={async () => { await apiService.deleteInfluencer(item.id); refetch(); }} className="rounded border border-red-200 px-3 py-2 text-red-700 text-sm"><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </section>
 
-          <form onSubmit={submit} className="space-y-4 rounded border border-black/10 bg-white p-5">
+          {/* Edit Form Sidebar */}
+          <form onSubmit={submit} className="space-y-4 rounded border border-black/10 bg-white p-5 max-h-[90vh] overflow-y-auto">
             <h2 className="flex items-center gap-2 text-lg font-black"><Plus size={18} /> {editingId ? 'Edit influencer' : 'Add influencer'}</h2>
-            {message && <div className="rounded bg-green-50 p-3 text-sm font-bold text-green-700">{message}</div>}
+            {message && <div className={`rounded p-3 text-sm font-bold ${message.includes('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{message}</div>}
+
             <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
             <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
             <Field label="Code" value={form.code} onChange={(value) => setForm({ ...form, code: value.toUpperCase() })} placeholder="Auto if blank" />
@@ -183,17 +237,128 @@ export default function InfluencersPage() {
             <Field label="Instagram URL" value={form.instagramUrl} onChange={(value) => setForm({ ...form, instagramUrl: value })} />
             <Field label="Facebook URL" value={form.facebookUrl} onChange={(value) => setForm({ ...form, facebookUrl: value })} />
             <Field label="X URL" value={form.xUrl} onChange={(value) => setForm({ ...form, xUrl: value })} />
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Buyer discount %" type="number" value={form.buyerDiscountPercent} onChange={(value) => setForm({ ...form, buyerDiscountPercent: value })} />
               <Field label="Commission %" type="number" value={form.commissionRate} onChange={(value) => setForm({ ...form, commissionRate: value })} />
             </div>
-            <select value={form.productId} onChange={(event) => setForm({ ...form, productId: event.target.value })} className="w-full rounded border border-black/10 px-3 py-2">
-              <option value="">All products</option>
-              {products.map((product: any) => <option key={product.id} value={product.id}>{product.name}</option>)}
-            </select>
+
+            {/* Products Section */}
+            {editingId && (
+              <div className="border-t pt-4">
+                <h3 className="font-bold mb-3">Eligible Products for Discount</h3>
+
+                {/* Search */}
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="w-full rounded border border-black/10 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Items per page */}
+                <div className="mb-3 flex items-center gap-2">
+                  <label className="text-sm font-bold">Show:</label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setProductPage(1);
+                    }}
+                    className="rounded border border-black/10 px-3 py-1 text-sm"
+                  >
+                    <option value={5}>5 items</option>
+                    <option value={10}>10 items</option>
+                    <option value={20}>20 items</option>
+                    <option value={50}>50 items</option>
+                  </select>
+                </div>
+
+                {/* Product List with Checkboxes */}
+                <div className="space-y-2 max-h-60 overflow-y-auto border border-black/10 rounded p-3 bg-black/2">
+                  {paginatedProducts.length === 0 ? (
+                    <p className="text-sm text-black/60">No products found</p>
+                  ) : (
+                    paginatedProducts.map((product) => (
+                      <label key={product.id} className="flex items-center gap-3 p-2 hover:bg-black/5 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.productIds.includes(product.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setForm({ ...form, productIds: [...form.productIds, product.id] });
+                            } else {
+                              setForm({ ...form, productIds: form.productIds.filter(id => id !== product.id) });
+                            }
+                          }}
+                          className="w-4 h-4 rounded"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-bold">{product.name}</p>
+                          <p className="text-xs text-black/60">Rs {product.price}</p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-3 flex items-center justify-between text-sm">
+                    <p className="text-black/60">Page {productPage} of {totalPages}</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setProductPage(Math.max(1, productPage - 1))}
+                        disabled={productPage === 1}
+                        className="px-2 py-1 rounded border border-black/10 disabled:opacity-50"
+                      >
+                        ← Prev
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProductPage(Math.min(totalPages, productPage + 1))}
+                        disabled={productPage === totalPages}
+                        className="px-2 py-1 rounded border border-black/10 disabled:opacity-50"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected count */}
+                <p className="text-xs text-black/60 mt-3 font-bold">
+                  {form.productIds.length} product{form.productIds.length !== 1 ? 's' : ''} selected
+                </p>
+              </div>
+            )}
+
             <button className="inline-flex w-full items-center justify-center gap-2 rounded bg-ink px-4 py-3 font-bold text-white">
               <Save size={18} /> Save influencer
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(null);
+                  setExpandedInfluencerId(null);
+                  setForm(emptyForm);
+                  setProductSearch('');
+                  setProductPage(1);
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded border border-black/10 px-4 py-3 font-bold"
+              >
+                Cancel
+              </button>
+            )}
           </form>
         </div>
       </DashboardLayout>

@@ -294,6 +294,16 @@ export class AdminController {
     return this.adminService.sendInfluencerCode(id);
   }
 
+  @Put("influencers/:id/products")
+  assignInfluencerProducts(@Param("id") id: string, @Body() data: { productIds: string[] }) {
+    return this.adminService.assignInfluencerProducts(id, data.productIds);
+  }
+
+  @Get("influencers/:id/products")
+  getInfluencerProducts(@Param("id") id: string) {
+    return this.adminService.getInfluencerWithProducts(id);
+  }
+
   // ==================== NOTIFICATIONS ====================
   @Get("notifications")
   listNotifications() {

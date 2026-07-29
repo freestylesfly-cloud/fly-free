@@ -163,7 +163,7 @@ model Product {
   reviews         Review[]
   orderItems      OrderItem[]
   wishlistItems   Wishlist[]
-  influencers     Influencer[]
+  influencers     Influencer[]     @relation("InfluencerProducts")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -237,7 +237,6 @@ model Address {
   country    String  @default("India")
   isDefault  Boolean @default(false)
   user       User    @relation(fields: [userId], references: [id])
-  orders     Order[]
 }
 
 model Cart {
@@ -270,7 +269,14 @@ model Wishlist {
 model Order {
   id                  String               @id @default(cuid())
   userId              String
-  shippingAddressId   String
+  shippingName        String?
+  shippingPhone       String?
+  shippingLine1       String?
+  shippingLine2       String?
+  shippingCity        String?
+  shippingState       String?
+  shippingPostalCode  String?
+  shippingCountry     String               @default("India")
   status              OrderStatus          @default(PLACED)
   subtotal            Int
   discount            Int                  @default(0)
@@ -278,7 +284,6 @@ model Order {
   tax                 Int                  @default(0)
   total               Int
   user                User                 @relation(fields: [userId], references: [id])
-  shippingAddress     Address              @relation(fields: [shippingAddressId], references: [id])
   items               OrderItem[]
   payment             Payment?
   referrals           Referral[]
@@ -442,8 +447,7 @@ model Influencer {
   isActive             Boolean    @default(true)
   socialHandle         String?
   followers            Int?
-  productId            String?
-  product              Product?   @relation(fields: [productId], references: [id])
+  products             Product[]  @relation("InfluencerProducts")
   referrals            Referral[]
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
