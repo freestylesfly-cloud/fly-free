@@ -106,13 +106,11 @@ function LoginContent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-12 rounded-lg font-black text-white transition flex items-center justify-center gap-2 uppercase tracking-wide"
+          className="w-full h-12 rounded-lg font-black text-white transition flex items-center justify-center gap-2 uppercase tracking-wide hover:opacity-90 disabled:opacity-60"
           style={{
-            backgroundColor: loading ? 'var(--color-primary)' : 'var(--color-primary)',
-            opacity: loading ? 0.7 : 1,
+            backgroundColor: 'var(--color-primary)',
             cursor: loading ? 'not-allowed' : 'pointer',
           }}
-          onHover={(e) => !loading && (e.currentTarget.style.opacity = '0.9')}
         >
           {loading && <Loader2 size={18} className="animate-spin" />}
           <span>{loading ? 'Signing In...' : 'Sign In'}</span>
@@ -127,14 +125,12 @@ function LoginContent() {
 
         <Link
           href={`/auth/signup?next=${encodeURIComponent(nextPath)}`}
-          className="w-full h-12 rounded-lg font-bold transition flex items-center justify-center uppercase tracking-wide border-2"
+          className="w-full h-12 rounded-lg font-bold transition flex items-center justify-center uppercase tracking-wide border-2 hover:bg-opacity-10"
           style={{
             borderColor: 'var(--color-primary)',
             color: 'var(--color-primary)',
             backgroundColor: 'transparent',
           }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)' + '15'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
           Create Account
         </Link>
