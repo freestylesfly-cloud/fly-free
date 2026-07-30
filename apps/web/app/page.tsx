@@ -1,13 +1,14 @@
-import { Shirt, ArrowRight, Star, Instagram, Share2 } from "lucide-react";
-import { getApiBaseUrl } from "./lib/api";
-import Link from "next/link";
-import { ProductCard } from "./components/ProductCard";
-import { HorizontalSlider } from "./components/HorizontalSlider";
-import { HeroCarousel, type HeroSlide } from "./components/HeroCarousel";
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, ChevronLeft, ChevronRight, Instagram, Share2, Shirt, Star } from 'lucide-react';
+import { ProductCard } from './components/ProductCard';
+import { HeroCarousel, type HeroSlide } from './components/HeroCarousel';
+import { HorizontalSlider } from './components/HorizontalSlider';
+import { getApiBaseUrl } from './lib/api';
 
 const API_BASE = getApiBaseUrl();
-
-export const dynamic = "force-dynamic";
 
 async function getHomeData() {
   try {
@@ -196,7 +197,8 @@ export default async function HomePage() {
                   name={product.name}
                   price={Math.round((product.price || 0) / 100)}
                   slug={product.slug}
-                  image={product.images?.[0]?.url || null}
+                  image={product.images?.[0]?.url || undefined}
+                  hoverImage={product.images?.[1]?.url || undefined}
                   tag={product.theme?.name || product.category?.name || 'New'}
                 />
               </div>

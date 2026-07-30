@@ -13,11 +13,12 @@ interface ProductCardProps {
   name: string;
   price: number;
   image?: string;
+  hoverImage?: string;
   tag?: string;
   slug: string;
 }
 
-export function ProductCard({ id, name, price, image, tag, slug }: ProductCardProps) {
+export function ProductCard({ id, name, price, image, hoverImage, tag, slug }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -91,20 +92,26 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
 
   return (
     <article
-      className="group relative transition-all"
+      className="group relative overflow-hidden rounded-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
       style={{
         backgroundColor: 'var(--bg-secondary)',
-        border: '2px solid var(--border-color)'
+        border: '1px solid var(--border-color)'
       }}
     >
-      {/* Image */}
       <Link href={`/products/${slug}`}>
-        <div className="grayscale-hover relative flex aspect-[4/5] items-center justify-center overflow-hidden cursor-pointer" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+        <div className="relative flex aspect-[4/5] cursor-pointer items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
           {image ? (
-            <img src={image} alt={name} className="w-full h-full object-cover" />
+            <>
+              <img src={image} alt={name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-0" />
+              {hoverImage && hoverImage !== image && (
+                <img src={hoverImage} alt={`${name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+              )}
+            </>
           ) : (
             <Shirt size={54} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
           )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-0 transition group-hover:opacity-100" />
+          {tag && <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-wide text-ink shadow-sm">{tag}</span>}
         </div>
       </Link>
       <div className="absolute right-3 top-3 flex gap-2">
@@ -112,8 +119,8 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
           type="button"
           onClick={handleWishlist}
           disabled={wishlistLoading}
-          className="inline-flex h-9 w-9 items-center justify-center transition disabled:opacity-50"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--border-color)', color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition hover:-translate-y-0.5 disabled:opacity-50"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
@@ -122,8 +129,8 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex h-9 w-9 items-center justify-center transition"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--border-color)', color: 'var(--text-primary)' }}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition hover:-translate-y-0.5"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
           aria-label="Share product"
           title={shareText}
         >
@@ -131,27 +138,22 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
         </button>
       </div>
 
-      <div className="p-4" style={{ borderTop: '2px solid var(--border-color)' }}>
-        {/* Tag */}
-        {tag && <span className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--accent-primary)' }}>{tag}</span>}
-
-        {/* Name */}
+      <div className="p-4">
         <Link href={`/products/${slug}`}>
           <h3
-            className="mt-1 min-h-12 text-lg font-black leading-tight transition cursor-pointer line-clamp-2 hover:opacity-80"
+            className="min-h-11 cursor-pointer text-base font-black leading-tight transition line-clamp-2 hover:opacity-80 md:text-lg"
             style={{ color: 'var(--text-primary)' }}
           >
             {name}
           </h3>
         </Link>
 
-        {/* Footer */}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <span className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>{formatCurrency(price)}</span>
           <button
             onClick={handleAddToCart}
             disabled={isAdding}
-            className="flex-1 px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 rounded px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
               backgroundColor: 'var(--color-primary)',
               color: 'white'
@@ -163,7 +165,7 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
         </div>
       </div>
       {showLoginPrompt && (
-        <div className="absolute inset-x-3 bottom-3 p-3 shadow-xl" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--border-color)' }}>
+        <div className="absolute inset-x-3 bottom-3 rounded-lg p-3 shadow-xl" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
           <button type="button" onClick={() => setShowLoginPrompt(false)} className="absolute right-2 top-2" aria-label="Close login prompt">
             <X size={14} />
           </button>

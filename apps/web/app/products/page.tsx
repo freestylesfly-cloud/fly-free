@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Grid3x3, List, Search, Shirt, SlidersHorizontal, Star } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, Grid3x3, List, Search, Shirt, SlidersHorizontal, Star, X } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
@@ -16,6 +16,12 @@ type FilterData = {
   themes: any[];
   collections: any[];
 };
+
+const genderOptions = [
+  { slug: 'MEN', name: 'Men' },
+  { slug: 'WOMEN', name: 'Women' },
+  { slug: 'UNISEX', name: 'Unisex' },
+];
 
 export default function ProductsPage() {
   return (
@@ -40,6 +46,7 @@ function ProductsBrowser() {
   const [sort, setSort] = useState('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     setCategory(searchParams.get('category') || '');
@@ -70,7 +77,7 @@ function ProductsBrowser() {
 
         const [productsResponse, filtersResponse] = await Promise.all([
           fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }),
-          fetch(`${API_URL}/catalog/filters`, { cache: 'no-store' })
+          fetch(`${API_URL}/catalog/filters`, { cache: 'no-store' }),
         ]);
 
         const productsData = await productsResponse.json();
@@ -84,7 +91,7 @@ function ProductsBrowser() {
       }
     };
 
-    const timer = window.setTimeout(fetchData, 250);
+    const timer = window.setTimeout(fetchData, 220);
     return () => window.clearTimeout(timer);
   }, [category, theme, collection, query, gender, minPrice, maxPrice, rating, sort]);
 
@@ -92,6 +99,20 @@ function ProductsBrowser() {
     () => [category, theme, collection, query, gender, minPrice, maxPrice, rating].filter(Boolean).length,
     [category, theme, collection, query, gender, minPrice, maxPrice, rating]
   );
+
+  const activeLabels = useMemo(() => {
+    const labelFor = (items: any[], slug: string) => items.find((item) => item.slug === slug)?.name || slug;
+    return [
+      category && labelFor(filters.categories, category),
+      theme && labelFor(filters.themes, theme),
+      collection && labelFor(filters.collections, collection),
+      gender && labelFor(genderOptions, gender),
+      query && `"${query}"`,
+      minPrice && `From ${formatCurrency(Number(minPrice))}`,
+      maxPrice && `To ${formatCurrency(Number(maxPrice))}`,
+      rating && `${rating}+ stars`,
+    ].filter(Boolean) as string[];
+  }, [category, collection, filters, gender, maxPrice, minPrice, query, rating, theme]);
 
   function clearFilters() {
     setCategory('');
@@ -105,102 +126,93 @@ function ProductsBrowser() {
     setSort('newest');
   }
 
+  const filterPanel = (
+    <FilterPanel
+      filters={filters}
+      category={category}
+      setCategory={setCategory}
+      gender={gender}
+      setGender={setGender}
+      theme={theme}
+      setTheme={setTheme}
+      collection={collection}
+      setCollection={setCollection}
+      minPrice={minPrice}
+      setMinPrice={setMinPrice}
+      maxPrice={maxPrice}
+      setMaxPrice={setMaxPrice}
+      rating={rating}
+      setRating={setRating}
+      clearFilters={clearFilters}
+      activeCount={activeCount}
+    />
+  );
+
   return (
-    <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <section className="border-b" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))' }}>
-        <div className="mx-auto max-w-7xl px-5 py-10 text-white md:py-14">
-          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+    <main className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <section className="border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-7">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <p className="text-sm font-black uppercase tracking-wide text-white/75">Fly Free Shop</p>
-              <h1 className="mt-2 text-4xl font-black md:text-6xl">Search and Filter Products</h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">
-                Find products by category, type, shop theme, collection, price, rating, or name.
+              <div className="flex items-center gap-2 text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>
+                <Link href="/" className="hover:underline">Home</Link>
+                <span>/</span>
+                <span>Shop</span>
+              </div>
+              <h1 className="mt-3 text-2xl font-black md:text-4xl">T-shirts for every mood</h1>
+              <p className="mt-2 text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
+                {loading ? 'Finding fresh drops...' : `${products.length} product${products.length === 1 ? '' : 's'} found`}
               </p>
             </div>
-            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-black backdrop-blur">
-              {loading ? 'Loading products' : `${products.length} result${products.length === 1 ? '' : 's'}`}
+            <div className="hidden items-center gap-2 lg:flex">
+              <SortSelect sort={sort} setSort={setSort} />
+              <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
+              <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
             </div>
           </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+            <SearchBox value={query} onChange={setQuery} />
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded border px-4 py-3 text-sm font-black lg:hidden"
+              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
+            >
+              <SlidersHorizontal size={17} /> Filters {activeCount > 0 && <span className="rounded-full px-2 py-0.5 text-xs text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{activeCount}</span>}
+            </button>
+          </div>
+
+          {activeLabels.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeLabels.map((label) => (
+                <span key={label} className="rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>{label}</span>
+              ))}
+              <button type="button" onClick={clearFilters} className="rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>Clear</button>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-5 py-8 lg:grid-cols-[290px_1fr] lg:py-10">
-        <aside className="h-fit rounded-2xl border p-4 lg:sticky lg:top-28" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 font-black">
-              <SlidersHorizontal size={18} /> Filters
-            </div>
-            {activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{activeCount}</span>}
-          </div>
-
-          <div className="space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Search</span>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, tag, theme..." className="w-full rounded border py-2 pl-9 pr-3 text-sm" style={fieldStyle} />
-              </div>
-            </label>
-
-            <Select label="Category" value={category} onChange={setCategory} options={filters.categories} empty="All categories" />
-            <Select label="Product type" value={gender} onChange={setGender} options={[{ slug: 'MEN', name: 'Men' }, { slug: 'WOMEN', name: 'Women' }, { slug: 'UNISEX', name: 'Unisex' }]} empty="All types" />
-            <Select label="Shop theme" value={theme} onChange={setTheme} options={filters.themes} empty="All shop themes" />
-            <Select label="Collection" value={collection} onChange={setCollection} options={filters.collections} empty="All collections" />
-
-            <div>
-              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Price</span>
-              <div className="grid grid-cols-2 gap-2">
-                <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} type="number" min="0" placeholder="Min" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
-                <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
-              </div>
-            </div>
-
-            <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Rating</span>
-              <select value={rating} onChange={(event) => setRating(event.target.value)} className="w-full rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
-                <option value="">All ratings</option>
-                <option value="4">4 stars and up</option>
-                <option value="3">3 stars and up</option>
-                <option value="2">2 stars and up</option>
-              </select>
-            </label>
-
-            <button onClick={clearFilters} className="w-full rounded border px-4 py-2 text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>
-              Clear all
-            </button>
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            {filterPanel}
           </div>
         </aside>
 
         <section className="min-w-0 space-y-5">
-          <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-xl font-black">Products</h2>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {loading ? 'Loading...' : `Showing ${products.length} item${products.length === 1 ? '' : 's'}`}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <select value={sort} onChange={(event) => setSort(event.target.value)} className="rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
-                  <option value="newest">Newest first</option>
-                  <option value="popular">Popular</option>
-                  <option value="price-asc">Price low to high</option>
-                  <option value="price-desc">Price high to low</option>
-                  <option value="name-asc">Name A-Z</option>
-                  <option value="name-desc">Name Z-A</option>
-                </select>
-                <div className="grid grid-cols-2 gap-2">
-                  <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
-                  <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
-                </div>
-              </div>
-            </div>
+          <div className="hidden rounded-lg border p-3 lg:flex lg:items-center lg:justify-between" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
+              {loading ? 'Loading...' : `Showing ${products.length} item${products.length === 1 ? '' : 's'}`}
+            </p>
+            <p className="text-xs font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>Hover cards to switch product view</p>
           </div>
 
           {loading ? (
             <ProductLoadingGrid viewMode={viewMode} />
           ) : products.length > 0 ? (
-            <div className={viewMode === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
+            <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4' : 'space-y-4'}>
               {products.map((product) => (
                 viewMode === 'grid' ? (
                   <ProductCard
@@ -210,6 +222,7 @@ function ProductsBrowser() {
                     price={Math.round((product.price || 0) / 100)}
                     slug={product.slug}
                     image={product.images?.[0]?.url}
+                    hoverImage={product.images?.[1]?.url}
                     tag={product.theme?.name || product.category?.name || 'New'}
                   />
                 ) : (
@@ -218,50 +231,214 @@ function ProductsBrowser() {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border px-5 py-16 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="rounded-lg border px-5 py-16 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <Shirt className="mx-auto mb-4" size={46} style={{ color: 'var(--text-tertiary)' }} />
               <h3 className="text-2xl font-black">No products found</h3>
               <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Try removing a filter or searching another word.</p>
-              <button onClick={clearFilters} className="mt-6 rounded px-5 py-3 font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+              <button type="button" onClick={clearFilters} className="mt-6 rounded px-5 py-3 font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
                 Reset filters
               </button>
             </div>
           )}
         </section>
       </section>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t bg-white lg:hidden" style={{ borderColor: 'var(--border-color)' }}>
+        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-14 items-center justify-center gap-2 text-sm font-black">
+          <SlidersHorizontal size={18} /> Filters
+        </button>
+        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-14 items-center justify-center gap-2 border-l text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>
+          <List size={18} /> Sort by
+        </button>
+      </div>
+
+      {filterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button type="button" aria-label="Close filters" className="absolute inset-0 bg-black/50" onClick={() => setFilterOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl" style={{ color: 'var(--text-primary)' }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4" style={{ borderColor: 'var(--border-color)' }}>
+              <div>
+                <h2 className="text-lg font-black">Filter products</h2>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{activeCount} active filters</p>
+              </div>
+              <button type="button" onClick={() => setFilterOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full border" style={{ borderColor: 'var(--border-color)' }} aria-label="Close filters">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-5 p-4">
+              <SortSelect sort={sort} setSort={setSort} full />
+              <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+              {filterPanel}
+            </div>
+            <div className="sticky bottom-0 grid grid-cols-[1fr_1.5fr] gap-3 border-t bg-white p-4" style={{ borderColor: 'var(--border-color)' }}>
+              <button type="button" onClick={clearFilters} className="rounded border px-4 py-3 text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>Clear</button>
+              <button type="button" onClick={() => setFilterOpen(false)} className="rounded px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>Show products</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  );
+}
+
+function FilterPanel(props: {
+  filters: FilterData;
+  category: string;
+  setCategory: (value: string) => void;
+  gender: string;
+  setGender: (value: string) => void;
+  theme: string;
+  setTheme: (value: string) => void;
+  collection: string;
+  setCollection: (value: string) => void;
+  minPrice: string;
+  setMinPrice: (value: string) => void;
+  maxPrice: string;
+  setMaxPrice: (value: string) => void;
+  rating: string;
+  setRating: (value: string) => void;
+  clearFilters: () => void;
+  activeCount: number;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="hidden items-center justify-between lg:flex">
+        <div className="flex items-center gap-2 font-black"><SlidersHorizontal size={18} /> Filters</div>
+        {props.activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{props.activeCount}</span>}
+      </div>
+
+      <FilterGroup label="Size">
+        {['S', 'M', 'L', 'XL', 'XXL'].map((size) => <CheckRow key={size} label={size} active={false} onClick={() => {}} />)}
+      </FilterGroup>
+
+      <FilterGroup label="Category">
+        <RadioRows value={props.category} onChange={props.setCategory} options={props.filters.categories} emptyLabel="All categories" />
+      </FilterGroup>
+
+      <FilterGroup label="Product type">
+        <RadioRows value={props.gender} onChange={props.setGender} options={genderOptions} emptyLabel="All types" />
+      </FilterGroup>
+
+      <FilterGroup label="Shop theme">
+        <RadioRows value={props.theme} onChange={props.setTheme} options={props.filters.themes} emptyLabel="All themes" />
+      </FilterGroup>
+
+      <FilterGroup label="Collection">
+        <RadioRows value={props.collection} onChange={props.setCollection} options={props.filters.collections} emptyLabel="All collections" />
+      </FilterGroup>
+
+      <FilterGroup label="Price">
+        <div className="grid grid-cols-2 gap-2">
+          <input value={props.minPrice} onChange={(event) => props.setMinPrice(event.target.value)} type="number" min="0" placeholder="Min" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
+          <input value={props.maxPrice} onChange={(event) => props.setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
+        </div>
+      </FilterGroup>
+
+      <FilterGroup label="Rating">
+        {[
+          { slug: '', name: 'All ratings' },
+          { slug: '4', name: '4 stars and up' },
+          { slug: '3', name: '3 stars and up' },
+          { slug: '2', name: '2 stars and up' },
+        ].map((item) => <CheckRow key={item.name} label={item.name} active={props.rating === item.slug} onClick={() => props.setRating(item.slug)} />)}
+      </FilterGroup>
+
+      <button type="button" onClick={props.clearFilters} className="hidden w-full rounded border px-4 py-3 text-sm font-black lg:block" style={{ borderColor: 'var(--border-color)' }}>
+        Clear all filters
+      </button>
+    </div>
+  );
+}
+
+function SearchBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="relative block">
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search tees, drops, themes"
+        className="h-12 w-full rounded border py-3 pl-12 pr-4 text-base font-bold outline-none transition focus:ring-2"
+        style={fieldStyle}
+      />
+    </label>
+  );
+}
+
+function SortSelect({ sort, setSort, full }: { sort: string; setSort: (value: string) => void; full?: boolean }) {
+  return (
+    <label className={full ? 'grid gap-2 text-sm font-black' : 'block'}>
+      {full && <span>Sort by</span>}
+      <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-10 rounded border px-3 text-sm font-bold" style={{ ...fieldStyle, width: full ? '100%' : undefined }}>
+        <option value="newest">Newest first</option>
+        <option value="popular">Popular</option>
+        <option value="price-asc">Price low to high</option>
+        <option value="price-desc">Price high to low</option>
+        <option value="name-asc">Name A-Z</option>
+        <option value="name-desc">Name Z-A</option>
+      </select>
+    </label>
+  );
+}
+
+function ViewToggle({ viewMode, setViewMode }: { viewMode: 'grid' | 'list'; setViewMode: (value: 'grid' | 'list') => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
+      <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
+    </div>
+  );
+}
+
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="border-b pb-4 last:border-b-0" style={{ borderColor: 'var(--border-color)' }}>
+      <button type="button" onClick={() => setOpen(!open)} className="mb-3 flex w-full items-center justify-between text-left text-sm font-black uppercase">
+        {label}
+        <ChevronDown className={open ? 'rotate-180 transition' : 'transition'} size={16} />
+      </button>
+      {open && <div className="space-y-2">{children}</div>}
+    </section>
+  );
+}
+
+function RadioRows({ value, onChange, options, emptyLabel }: { value: string; onChange: (value: string) => void; options: any[]; emptyLabel: string }) {
+  return (
+    <>
+      <CheckRow label={emptyLabel} active={!value} onClick={() => onChange('')} />
+      {options.map((item) => <CheckRow key={item.id || item.slug} label={item.name} active={value === item.slug} onClick={() => onChange(item.slug)} />)}
+    </>
+  );
+}
+
+function CheckRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-3 rounded px-2 py-1.5 text-left text-sm font-bold hover:bg-black/5">
+      <span>{label}</span>
+      <span className="flex h-4 w-4 items-center justify-center rounded border" style={{ borderColor: active ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: active ? 'var(--color-primary)' : 'transparent' }}>
+        {active && <Check size={12} color="white" />}
+      </span>
+    </button>
   );
 }
 
 const fieldStyle = {
   borderColor: 'var(--border-color)',
   backgroundColor: 'var(--bg-primary)',
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
-
-function Select({ label, value, onChange, options, empty }: { label: string; value: string; onChange: (value: string) => void; options: any[]; empty: string }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded border px-3 py-2 text-sm font-bold" style={fieldStyle}>
-        <option value="">{empty}</option>
-        {options.map((item) => (
-          <option key={item.id || item.slug} value={item.slug}>{item.name}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 function IconButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: React.ReactNode; onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="inline-flex h-10 min-w-10 items-center justify-center rounded border px-3"
       style={{
         borderColor: active ? 'var(--color-primary)' : 'var(--border-color)',
         backgroundColor: active ? 'var(--color-primary)' : 'var(--bg-primary)',
-        color: active ? 'white' : 'var(--text-primary)'
+        color: active ? 'white' : 'var(--text-primary)',
       }}
       aria-label={label}
       title={label}
@@ -273,10 +450,10 @@ function IconButton({ active, label, icon, onClick }: { active: boolean; label: 
 
 function ProductLoadingGrid({ viewMode }: { viewMode: 'grid' | 'list' }) {
   return (
-    <div className={viewMode === 'grid' ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'}>
-      {[1, 2, 3, 4, 5, 6].map((item) => (
-        <div key={item} className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <div className="aspect-[4/5] animate-pulse rounded-xl bg-black/10" />
+    <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4' : 'space-y-4'}>
+      {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+        <div key={item} className="rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="aspect-[4/5] animate-pulse rounded bg-black/10" />
           <div className="mt-4 h-4 w-2/3 animate-pulse rounded bg-black/10" />
           <div className="mt-3 h-4 w-1/3 animate-pulse rounded bg-black/10" />
         </div>
@@ -292,12 +469,15 @@ function ProductListRow({ product }: { product: any }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="grid gap-4 rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[150px_1fr_auto]"
+      className="grid gap-4 rounded-lg border p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[150px_1fr_auto]"
       style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
     >
-      <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-xl" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+      <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
         {product.images?.[0]?.url ? (
-          <img src={product.images[0].url} alt={product.name} className="h-full w-full object-cover" />
+          <>
+            <img src={product.images[0].url} alt={product.name} className="h-full w-full object-cover" />
+            {product.images?.[1]?.url && <img src={product.images[1].url} alt={`${product.name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition hover:opacity-100" />}
+          </>
         ) : (
           <Shirt size={42} style={{ color: 'var(--text-tertiary)' }} />
         )}
@@ -319,7 +499,7 @@ function ProductListRow({ product }: { product: any }) {
           <p className="text-xl font-black">{formatCurrency(price)}</p>
           {mrp > price && <p className="text-sm line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(mrp)}</p>}
         </div>
-        <span className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+        <span className="inline-flex items-center gap-2 rounded px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
           View <ArrowRight size={16} />
         </span>
       </div>
@@ -332,10 +512,10 @@ function ProductsSkeleton() {
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <section className="mx-auto max-w-7xl px-5 py-16">
         <div className="mb-8 h-12 w-64 animate-pulse rounded bg-black/10" />
-        <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
-          <div className="h-96 animate-pulse rounded-2xl bg-black/10" />
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {[1, 2, 3].map((item) => <div key={item} className="aspect-[4/5] animate-pulse rounded-2xl bg-black/10" />)}
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+          <div className="h-96 animate-pulse rounded-lg bg-black/10" />
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-4">
+            {[1, 2, 3, 4].map((item) => <div key={item} className="aspect-[4/5] animate-pulse rounded-lg bg-black/10" />)}
           </div>
         </div>
       </section>
