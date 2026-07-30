@@ -19,14 +19,12 @@ export function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [activeAnnouncement, setActiveAnnouncement] = useState(0);
   const [loginPrompt, setLoginPrompt] = useState('');
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const cartCount = useCartStore((state) => state.getItemCount());
   const displayedCartCount = hasMounted ? cartCount : 0;
   const pathname = usePathname();
-  const announcement = announcements[activeAnnouncement % Math.max(announcements.length, 1)];
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   const handleLogout = async () => {
@@ -60,37 +58,32 @@ export function Header() {
       .catch(() => setAnnouncements([]));
   }, []);
 
-  useEffect(() => {
-    if (announcements.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setActiveAnnouncement((current) => (current + 1) % announcements.length);
-    }, 4500);
-    return () => window.clearInterval(timer);
-  }, [announcements.length]);
-
   return (
     <>
-      {/* Announcement Banner */}
-      {announcement && (
-        <Link
-          href={announcement.href || '#'}
-          className="block px-4 py-2 text-center text-sm font-bold text-white transition"
-          style={{
-            background: announcement.websiteTheme
-              ? `linear-gradient(90deg, ${announcement.websiteTheme.primaryColor}, ${announcement.websiteTheme.secondaryColor})`
-              : announcement.theme
-              ? `linear-gradient(90deg, ${announcement.theme.primaryColor}, ${announcement.theme.secondaryColor})`
-              : `linear-gradient(90deg, var(--color-primary), var(--color-secondary))`,
-            fontFamily: announcement.websiteTheme?.fontFamily || announcement.theme?.fontFamily || 'var(--font-family, inherit)'
-          }}
+      {/* Announcement marquee */}
+      {announcements.length > 0 && (
+        <div
+          className="overflow-hidden whitespace-nowrap"
+          style={{ backgroundColor: 'var(--text-primary)', borderBottom: '2px solid var(--border-color)', padding: '10px 0' }}
         >
-          <span className="inline-flex items-center gap-2 justify-center">
-            <Megaphone size={15} />
-            <span>{announcement.title}</span>
-            <span className="hidden opacity-80 sm:inline">- {announcement.message}</span>
-            {announcement.ctaLabel && <span className="underline underline-offset-4">{announcement.ctaLabel}</span>}
-          </span>
-        </Link>
+          <div className="mo-marquee-track">
+            {[0, 1].map((rep) => (
+              <span key={rep} className="inline-flex items-center">
+                {announcements.map((item, idx) => (
+                  <Link
+                    key={`${rep}-${item.id ?? idx}`}
+                    href={item.href || '#'}
+                    className="inline-flex items-center gap-2 px-6 text-sm font-bold uppercase tracking-wide text-white hover:opacity-80"
+                  >
+                    <Megaphone size={14} />
+                    <span>{item.title}</span>
+                    {item.ctaLabel && <span className="underline underline-offset-4">{item.ctaLabel}</span>}
+                  </Link>
+                ))}
+              </span>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Main Header */}
@@ -99,7 +92,7 @@ export function Header() {
         style={{
           borderColor: 'var(--border-color)',
           backgroundColor: 'var(--bg-secondary)',
-          borderBottomWidth: '1px'
+          borderBottomWidth: '2px'
         }}
       >
         {/* Mobile Header - Logo Centered */}
@@ -107,7 +100,7 @@ export function Header() {
           {/* Left: Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 rounded-lg transition hover:opacity-70"
+            className="p-2 transition hover:opacity-70"
             aria-label="Toggle menu"
           >
             {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -122,7 +115,7 @@ export function Header() {
           <div className="flex items-center gap-1">
             <Link
               href="/products"
-              className="p-2 rounded-lg transition hover:opacity-70"
+              className="p-2 transition hover:opacity-70"
               title="Search"
               aria-label="Search products"
             >
@@ -130,7 +123,7 @@ export function Header() {
             </Link>
             <Link
               href="/cart"
-              className="relative p-2 rounded-lg transition hover:opacity-70"
+              className="relative p-2 transition hover:opacity-70"
               title="Cart"
               aria-label="Shopping cart"
             >
@@ -168,7 +161,7 @@ export function Header() {
             {/* Search */}
             <Link
               href="/products"
-              className="p-2.5 rounded-lg border transition hover:opacity-70"
+              className="p-2.5 border-2 transition hover:opacity-70"
               style={{ borderColor: 'var(--border-color)' }}
               title="Search products"
             >
@@ -178,7 +171,7 @@ export function Header() {
             {/* Wishlist */}
             <Link
               href={user ? '/profile/wishlist' : '/auth/login'}
-              className="p-2.5 rounded-lg border transition hover:opacity-70"
+              className="p-2.5 border-2 transition hover:opacity-70"
               style={{ borderColor: 'var(--border-color)' }}
               aria-label="Open wishlist"
             >
@@ -190,7 +183,7 @@ export function Header() {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="p-2.5 rounded-lg border transition hover:shadow-md"
+                  className="p-2.5 border-2 transition hover:shadow-md"
                   style={{
                     borderColor: isProfileOpen ? 'var(--color-primary)' : 'var(--border-color)',
                     backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
@@ -201,7 +194,7 @@ export function Header() {
                 </button>
                 {isProfileOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 rounded-lg border shadow-xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-56 border-2 shadow-xl overflow-hidden z-50"
                     style={{
                       borderColor: 'var(--border-color)',
                       backgroundColor: 'var(--bg-secondary)'
@@ -264,7 +257,7 @@ export function Header() {
             ) : (
               <Link
                 href="/auth/login"
-                className="px-4 py-2.5 rounded-lg text-sm font-bold text-white transition hover:shadow-lg hover:opacity-90"
+                className="px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition hover:opacity-90"
                 style={{ backgroundColor: 'var(--color-primary)' }}
                 title="Login or Register"
               >
@@ -275,7 +268,7 @@ export function Header() {
             {/* Cart */}
             <Link
               href="/cart"
-              className="relative p-2.5 rounded-lg transition text-white"
+              className="relative p-2.5 transition text-white"
               style={{ backgroundColor: 'var(--color-primary)' }}
               aria-label="Open cart"
             >
@@ -293,9 +286,9 @@ export function Header() {
         {/* Mobile Menu Dropdown */}
         {isOpen && (
           <div
-            className="md:hidden border-t transition-all"
+            className="md:hidden transition-all"
             style={{
-              borderColor: 'var(--border-color)',
+              borderTop: '2px solid var(--border-color)',
               backgroundColor: 'var(--bg-primary)'
             }}
           >
@@ -381,7 +374,7 @@ export function Header() {
           />
           {user && isProfileOpen && (
             <div
-              className="absolute bottom-20 right-0 w-40 rounded-lg border shadow-lg overflow-hidden"
+              className="absolute bottom-20 right-0 w-40 border-2 shadow-lg overflow-hidden"
               style={{
                 borderColor: 'var(--border-color)',
                 backgroundColor: 'var(--bg-secondary)'
@@ -420,7 +413,7 @@ export function Header() {
       {loginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
           <div
-            className="w-full max-w-sm rounded-lg border p-6 shadow-2xl"
+            className="w-full max-w-sm border-2 p-6 shadow-2xl"
             style={{
               borderColor: 'var(--border-color)',
               backgroundColor: 'var(--bg-secondary)'
@@ -435,14 +428,14 @@ export function Header() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 onClick={() => setLoginPrompt('')}
-                className="rounded-lg px-4 py-2 font-bold border transition hover:opacity-70"
+                className="px-4 py-2 font-bold border-2 transition hover:opacity-70"
                 style={{ borderColor: 'var(--border-color)' }}
               >
                 Later
               </button>
               <Link
                 href="/auth/login"
-                className="rounded-lg px-4 py-2 text-center font-black text-white transition hover:opacity-90"
+                className="px-4 py-2 text-center font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 Login
@@ -494,7 +487,7 @@ function MobileTab({
       className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold transition hover:opacity-70"
       style={{ color: active ? 'var(--color-primary)' : 'var(--text-primary)' }}
     >
-      <div className="relative rounded-full px-3 py-1" style={{ backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'transparent' }}>
+      <div className="relative px-3 py-1" style={{ backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'transparent' }}>
         {getIcon()}
         {href === '/cart' && (
           <span
@@ -517,10 +510,10 @@ function DesktopNavLink({ href, label, active }: { href: string; label: string; 
   return (
     <Link
       href={href}
-      className="relative rounded-full px-3 py-2 transition hover:opacity-70"
+      className="relative px-1 py-2 text-xs font-bold uppercase tracking-wide transition hover:opacity-70"
       style={{
         color: active ? 'var(--color-primary)' : 'var(--text-primary)',
-        backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
+        borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent'
       }}
     >
       {label}
@@ -533,11 +526,11 @@ function MobileDrawerLink({ href, label, active, onClick }: { href: string; labe
     <Link
       href={href}
       onClick={onClick}
-      className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
+      className="px-5 py-3 font-semibold uppercase tracking-wide text-sm border-b transition hover:opacity-70"
       style={{
         borderColor: 'var(--border-light)',
-        color: active ? 'var(--color-primary)' : 'var(--text-primary)',
-        backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
+        borderLeft: active ? '4px solid var(--color-primary)' : '4px solid transparent',
+        color: active ? 'var(--color-primary)' : 'var(--text-primary)'
       }}
     >
       {label}
