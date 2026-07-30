@@ -30,6 +30,13 @@ type Influencer = {
   referrals?: Array<{ id: string; conversions: number; clicks: number; order?: { total: number; status: string } | null }>;
 };
 
+type ProductOption = {
+  id: string;
+  name: string;
+  sku?: string;
+  price?: number;
+};
+
 const emptyForm = {
   name: '',
   email: '',
@@ -61,7 +68,7 @@ export default function InfluencersPage() {
   const { data: productData } = useFetch<any>(() => apiService.getProducts({ page: 1, limit: 500 }), { skip: false });
 
   const influencers = (data?.data || []) as Influencer[];
-  const allProducts = productData?.data || [];
+  const allProducts = (productData?.data || []) as ProductOption[];
 
   const filtered = useMemo(() => {
     const value = query.toLowerCase();
@@ -70,9 +77,12 @@ export default function InfluencersPage() {
     );
   }, [influencers, query]);
 
-  // Filter products for current editing influencer
   const filteredProducts = useMemo(() => {
-    return allProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+    const value = productSearch.trim().toLowerCase();
+    if (!value) return allProducts;
+    return allProducts.filter((product: ProductOption) =>
+      [product.name, product.sku || ''].some((field) => field.toLowerCase().includes(value))
+    );
   }, [allProducts, productSearch]);
 
   const paginatedProducts = useMemo(() => {
@@ -97,20 +107,12 @@ export default function InfluencersPage() {
       followers: form.followers ? Number(form.followers) : undefined,
       buyerDiscountPercent: Number(form.buyerDiscountPercent || 10),
       commissionRate: Number(form.commissionRate || 0),
+      productIds: form.productIds,
     };
 
     try {
       if (editingId) {
         await apiService.updateInfluencer(editingId, payload);
-
-        // Update products if any selected
-        if (form.productIds.length > 0) {
-          await fetch(`/api/admin/influencers/${editingId}/products`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productIds: form.productIds })
-          });
-        }
 
         setMessage('✓ Influencer updated.');
       } else {
@@ -244,7 +246,7 @@ export default function InfluencersPage() {
             </div>
 
             {/* Products Section */}
-            {editingId && (
+            {(
               <div className="border-t pt-4">
                 <h3 className="font-bold mb-3">Eligible Products for Discount</h3>
 

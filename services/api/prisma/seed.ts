@@ -822,7 +822,13 @@ async function main() {
         commissionRate: 8,
         totalEarnings: 8382,
         totalReferrals: 1,
-        productId: products[0].id,
+        products: {
+          connect: [
+            { id: products[0].id },
+            { id: products[1].id },
+            { id: products[2].id },
+          ],
+        },
       },
     }),
     prisma.influencer.create({
@@ -841,7 +847,13 @@ async function main() {
         commissionRate: 6,
         totalEarnings: 3100,
         totalReferrals: 1,
-        productId: products[3].id,
+        products: {
+          connect: [
+            { id: products[3].id },
+            { id: products[4].id },
+            { id: products[6].id },
+          ],
+        },
       },
     }),
   ]);
