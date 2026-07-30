@@ -10,20 +10,29 @@ import { AuthDrawerShell } from '../components/AuthDrawerShell';
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, checkAuth, user } = useAuthStore();
+  const { login, checkAuth, user, hydrated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [redirecting, setRedirecting] = useState(false);
   const nextPath = searchParams.get('next') || searchParams.get('redirect') || '/';
 
+  // Redirect after hydration check
   useEffect(() => {
+    if (!hydrated) return;
+
     if (user) {
-      router.push(nextPath);
+      setRedirecting(true);
+      // Small delay to ensure state is fully updated
+      const timer = setTimeout(() => {
+        router.push(nextPath);
+      }, 100);
+      return () => clearTimeout(timer);
     } else {
       checkAuth().catch(() => {});
     }
-  }, [user, router, checkAuth, nextPath]);
+  }, [user, hydrated, router, checkAuth, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,15 +44,31 @@ function LoginContent() {
     }
 
     setLoading(true);
+    setError(null);
     try {
       await login(email.trim(), password);
-      router.push(nextPath);
+      setRedirecting(true);
+      // Don't manually redirect - let useEffect handle it
+      // The useEffect will catch the user update and redirect
     } catch (err) {
+      setRedirecting(false);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading state while redirecting
+  if (redirecting) {
+    return (
+      <AuthDrawerShell title="Welcome Back">
+        <div className="flex flex-col items-center justify-center gap-4 py-12">
+          <div className="w-8 h-8 border-4 border-transparent border-t-current rounded-full animate-spin" style={{ color: 'var(--color-primary)' }} />
+          <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>Redirecting...</p>
+        </div>
+      </AuthDrawerShell>
+    );
+  }
 
   return (
     <AuthDrawerShell title="Welcome Back">

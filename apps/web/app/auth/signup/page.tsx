@@ -74,9 +74,9 @@ function SignupContent() {
     return (
       <AuthDrawerShell title="Register">
         <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
-          <CheckCircle size={64} className="mb-5 text-primary" />
-          <h1 className="text-2xl font-black">Check your email</h1>
-          <p className="mt-3 leading-7 text-black/60">We sent a verification code to continue your Fly Free account setup.</p>
+          <CheckCircle size={64} className="mb-5" style={{ color: 'var(--color-primary)' }} />
+          <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Check your email</h1>
+          <p className="mt-3 leading-7" style={{ color: 'var(--text-secondary)' }}>We sent a verification code to continue your Fly Free account setup.</p>
         </div>
       </AuthDrawerShell>
     );
@@ -84,63 +84,107 @@ function SignupContent() {
 
   return (
     <AuthDrawerShell title="Register">
-      <form onSubmit={handleSubmit} className="space-y-9">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="flex gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <AlertCircle size={18} className="mt-0.5 shrink-0" />
-            <p>{error}</p>
+          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />
+            <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
           </div>
         )}
 
-        <div className="space-y-9">
-          <input
-            type="text"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleChange}
-            placeholder="First Name"
-            autoComplete="given-name"
-            className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
-          />
-          <input
-            type="text"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleChange}
-            placeholder="Last Name"
-            autoComplete="family-name"
-            className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
-          />
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email *"
-            autoComplete="email"
-            className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
-          />
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Password *"
-            autoComplete="new-password"
-            className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
-          />
+        <div className="space-y-4">
+          <label className="block">
+            <span className="sr-only">First Name</span>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="First Name"
+              autoComplete="given-name"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+            />
+          </label>
+          <label className="block">
+            <span className="sr-only">Last Name</span>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Last Name (optional)"
+              autoComplete="family-name"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+            />
+          </label>
+          <label className="block">
+            <span className="sr-only">Email</span>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Email address"
+              autoComplete="email"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+            />
+          </label>
+          <label className="block">
+            <span className="sr-only">Password</span>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Password"
+              autoComplete="new-password"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+            />
+          </label>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-base font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full h-12 rounded-lg font-black text-white transition flex items-center justify-center gap-2 uppercase tracking-wide hover:opacity-90 disabled:opacity-60"
+          style={{
+            backgroundColor: 'var(--color-primary)',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
         >
           {loading && <Loader2 size={18} className="animate-spin" />}
-          {loading ? 'Creating account...' : 'Register'}
+          <span>{loading ? 'Creating account...' : 'Create Account'}</span>
         </button>
 
-        <Link href={`/auth/login?next=${encodeURIComponent(nextPath)}`} className="inline-block text-base text-black/55 underline underline-offset-2 hover:text-black">
+        <Link href={`/auth/login?next=${encodeURIComponent(nextPath)}`} className="inline-block text-sm font-bold transition hover:opacity-80" style={{ color: 'var(--color-primary)' }}>
           Already have an account? Login here
         </Link>
       </form>
