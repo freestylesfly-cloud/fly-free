@@ -43,30 +43,44 @@ export default function ProfileInfoPage() {
     }
   };
 
-  if (!user) return <div className="py-12 text-center text-sm text-[#666]">Loading profile...</div>;
+  if (!user) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>Loading profile...</div>;
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-[#1f1f1f] md:text-3xl">Profile Information</h1>
-        <p className="mt-2 text-sm text-[#666]">Keep your contact details ready for checkout and order updates.</p>
+        <h1 className="text-2xl font-black md:text-3xl" style={{ color: 'var(--text-primary)' }}>Profile Information</h1>
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Keep your contact details ready for checkout and order updates.</p>
       </div>
 
-      {error && <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
+      {error && (
+        <div className="mb-6 rounded-lg border-2 p-4 flex gap-3" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
+          <X size={18} className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }} />
+          <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
+        </div>
+      )}
       {success && (
-        <div className="mb-6 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
-          <CheckCircle2 size={18} /> {success}
+        <div className="mb-6 rounded-lg border-2 p-4 flex items-center gap-3" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }}>
+          <CheckCircle2 size={18} style={{ color: 'var(--color-primary)' }} />
+          <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>{success}</p>
         </div>
       )}
 
-      <div className="max-w-3xl space-y-4">
+      <div className="max-w-3xl space-y-5">
         <Field label="Full Name">
           <input
             type="text"
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             disabled={!isEditing}
-            className="w-full rounded-md border border-black/15 bg-white px-4 py-3 text-sm font-bold text-[#1f1f1f] outline-none transition focus:border-[#f04423] disabled:text-[#666]"
+            className="w-full h-12 px-4 rounded-lg border-2 font-semibold outline-none transition"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: isEditing ? 'var(--bg-primary)' : 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              cursor: isEditing ? 'text' : 'not-allowed',
+            }}
+            onFocus={(e) => isEditing && (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
           />
         </Field>
 
@@ -76,9 +90,15 @@ export default function ProfileInfoPage() {
               type="email"
               value={form.email}
               disabled
-              className="w-full cursor-not-allowed rounded-md border border-black/15 bg-white px-4 py-3 text-sm font-bold text-[#666]"
+              className="w-full h-12 px-4 rounded-lg border-2 font-semibold"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
+                cursor: 'not-allowed',
+              }}
             />
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
+            <span className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black uppercase tracking-wide whitespace-nowrap" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: 'var(--color-primary)' }}>
               <CheckCircle2 size={16} /> Verified
             </span>
           </div>
@@ -91,23 +111,31 @@ export default function ProfileInfoPage() {
             onChange={(event) => setForm({ ...form, phone: event.target.value })}
             disabled={!isEditing}
             placeholder="10 digit phone number"
-            className="w-full rounded-md border border-black/15 bg-white px-4 py-3 text-sm font-bold text-[#1f1f1f] outline-none transition focus:border-[#f04423] disabled:text-[#666]"
+            className="w-full h-12 px-4 rounded-lg border-2 font-semibold outline-none transition"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: isEditing ? 'var(--bg-primary)' : 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              cursor: isEditing ? 'text' : 'not-allowed',
+            }}
+            onFocus={(e) => isEditing && (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-color)')}
           />
         </Field>
 
         <div className="flex flex-col gap-3 pt-4 sm:flex-row">
           {!isEditing ? (
             <>
-              <button onClick={() => setIsEditing(true)} className="inline-flex items-center justify-center gap-2 rounded-md bg-[#f04423] px-6 py-3 text-sm font-black text-white transition hover:bg-[#d93618]">
+              <button onClick={() => setIsEditing(true)} className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-wide rounded-lg text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
                 <Edit2 size={18} /> Edit Profile
               </button>
-              <button onClick={() => router.push('/profile/password')} className="inline-flex items-center justify-center gap-2 rounded-md border border-black/15 px-6 py-3 text-sm font-black text-[#1f1f1f] transition hover:bg-[#f7f4ef]">
+              <button onClick={() => router.push('/profile/password')} className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-wide rounded-lg border-2 transition hover:opacity-80" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
                 <Lock size={18} /> Change Password
               </button>
             </>
           ) : (
             <>
-              <button onClick={handleSave} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:opacity-50">
+              <button onClick={handleSave} disabled={loading} className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-wide rounded-lg text-white transition hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: 'var(--color-primary)', cursor: loading ? 'not-allowed' : 'pointer' }}>
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Changes
               </button>
               <button
@@ -115,7 +143,8 @@ export default function ProfileInfoPage() {
                   setIsEditing(false);
                   setForm({ name: user.name || '', phone: user.phone || '', email: user.email || '' });
                 }}
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-black/15 px-6 py-3 text-sm font-black text-[#1f1f1f] transition hover:bg-[#f7f4ef]"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold uppercase tracking-wide rounded-lg border-2 transition hover:opacity-80"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
               >
                 <X size={18} /> Cancel
               </button>
@@ -129,8 +158,8 @@ export default function ProfileInfoPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-[#fafafa] p-5">
-      <label className="mb-2 block text-xs font-black uppercase text-[#777]">{label}</label>
+    <div className="rounded-lg border-2 p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+      <label className="mb-3 block text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{label}</label>
       {children}
     </div>
   );
