@@ -20,6 +20,7 @@ export function Header() {
   const [hasMounted, setHasMounted] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loginPrompt, setLoginPrompt] = useState('');
+  const [hoveredMenuItem, setHoveredMenuItem] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const cartCount = useCartStore((state) => state.getItemCount());
@@ -28,9 +29,14 @@ export function Header() {
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   const handleLogout = async () => {
-    await logout();
-    setIsProfileOpen(false);
-    router.push('/');
+    try {
+      await logout();
+      setIsProfileOpen(false);
+      setIsOpen(false);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   useEffect(() => {
@@ -283,88 +289,99 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown - Professional Drawer */}
+        {/* Mobile Menu Drawer - Professional Navigation */}
         {isOpen && (
           <div
-            className="md:hidden fixed inset-0 top-20 z-30 flex flex-col"
+            className="md:hidden fixed inset-0 top-20 z-30 flex flex-col overflow-hidden"
             style={{
               backgroundColor: 'var(--bg-secondary)',
-              animation: 'slideDown 0.3s ease-out'
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsOpen(false);
+              }
             }}
           >
-            <nav className="flex flex-col max-h-[calc(100vh-120px)] overflow-y-auto pb-4">
-              {/* Main Navigation Links */}
+            <nav className="flex-1 overflow-y-auto pb-4">
+              {/* Main Navigation Section */}
               <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} />
-                <MobileDrawerLink href="/products" label="Shop Products" active={isActive('/products')} onClick={() => setIsOpen(false)} />
-                <MobileDrawerLink href="/about" label="About Us" active={isActive('/about')} onClick={() => setIsOpen(false)} />
-                <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} />
-                <MobileDrawerLink href="/contact" label="Contact" active={isActive('/contact')} onClick={() => setIsOpen(false)} />
+                <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
+                  Navigation
+                </p>
+                <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} icon="🏠" />
+                <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon="🛍️" />
+                <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon="ℹ️" />
+                <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} icon="⭐" />
+                <MobileDrawerLink href="/#reviews" label="Reviews" active={false} onClick={() => setIsOpen(false)} icon="⭐" />
               </div>
 
               {/* Account Section */}
-              <div className="border-b py-2" style={{ borderColor: 'var(--border-color)' }}>
-                <p className="px-5 py-2 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>Account</p>
-                <Link
-                  href={user ? '/profile/orders' : '/auth/login'}
-                  onClick={() => setIsOpen(false)}
-                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
-                  style={{ color: 'var(--text-primary)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <Package size={16} style={{ color: 'var(--color-primary)' }} />
-                  {user ? 'My Orders' : 'Orders'}
-                </Link>
-                <Link
-                  href={user ? '/profile/wishlist' : '/auth/login'}
-                  onClick={() => setIsOpen(false)}
-                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
-                  style={{ color: 'var(--text-primary)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <Heart size={16} style={{ color: 'var(--color-primary)' }} />
-                  {user ? 'Saved Items' : 'Wishlist'}
-                </Link>
-                <Link
-                  href={user ? '/profile' : '/auth/login'}
-                  onClick={() => setIsOpen(false)}
-                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
-                  style={{ color: 'var(--text-primary)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <User size={16} style={{ color: 'var(--color-primary)' }} />
-                  {user ? 'My Profile' : 'Login / Register'}
-                </Link>
+              <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
+                  Account
+                </p>
+                {user ? (
+                  <>
+                    <MobileDrawerLink
+                      href="/profile/orders"
+                      label="My Orders"
+                      active={isActive('/profile/orders')}
+                      onClick={() => setIsOpen(false)}
+                      icon={<Package size={16} />}
+                    />
+                    <MobileDrawerLink
+                      href="/profile/wishlist"
+                      label="Saved Items"
+                      active={isActive('/profile/wishlist')}
+                      onClick={() => setIsOpen(false)}
+                      icon={<Heart size={16} />}
+                    />
+                    <MobileDrawerLink
+                      href="/profile"
+                      label="My Profile"
+                      active={isActive('/profile')}
+                      onClick={() => setIsOpen(false)}
+                      icon={<User size={16} />}
+                    />
+                  </>
+                ) : (
+                  <MobileDrawerLink
+                    href="/auth/login"
+                    label="Login / Register"
+                    active={isActive('/auth')}
+                    onClick={() => setIsOpen(false)}
+                    icon="🔐"
+                  />
+                )}
               </div>
 
-              {/* Logout */}
+              {/* Logout Button - Only for logged-in users */}
               {user && (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-left px-5 py-3 font-semibold transition flex items-center gap-3"
-                  style={{ color: '#dc2626' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <LogOut size={16} />
-                  Logout
-                </button>
+                <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-5 py-3 font-semibold uppercase tracking-wide text-sm flex items-center gap-3 transition"
+                    style={{
+                      color: '#dc2626',
+                      borderBottom: `1px solid var(--border-light)`,
+                      backgroundColor: hoveredMenuItem === 'logout' ? 'rgba(220, 38, 38, 0.1)' : 'transparent',
+                    }}
+                    onMouseEnter={() => setHoveredMenuItem('logout')}
+                    onMouseLeave={() => setHoveredMenuItem(null)}
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
               )}
             </nav>
 
-            {/* Close area at bottom */}
+            {/* Close Info */}
             <div
-              className="mt-auto px-5 py-4 border-t text-center text-xs"
+              className="px-5 py-4 border-t text-center text-xs font-bold"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
-              onClick={() => setIsOpen(false)}
             >
-              Tap to close menu
+              Tap outside to close
             </div>
           </div>
         )}
@@ -572,18 +589,36 @@ function DesktopNavLink({ href, label, active }: { href: string; label: string; 
   );
 }
 
-function MobileDrawerLink({ href, label, active, onClick }: { href: string; label: string; active: boolean; onClick: () => void }) {
+function MobileDrawerLink({
+  href,
+  label,
+  active,
+  onClick,
+  icon
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <Link
       href={href}
       onClick={onClick}
-      className="px-5 py-3 font-semibold uppercase tracking-wide text-sm border-b transition hover:opacity-70"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="px-5 py-3 font-semibold uppercase tracking-wide text-sm border-b transition flex items-center gap-3"
       style={{
         borderColor: 'var(--border-light)',
         borderLeft: active ? '4px solid var(--color-primary)' : '4px solid transparent',
-        color: active ? 'var(--color-primary)' : 'var(--text-primary)'
+        color: active ? 'var(--color-primary)' : 'var(--text-primary)',
+        backgroundColor: isHovered ? 'var(--bg-tertiary)' : 'transparent',
       }}
     >
+      {icon && <span style={{ color: 'var(--color-primary)' }}>{icon}</span>}
       {label}
     </Link>
   );

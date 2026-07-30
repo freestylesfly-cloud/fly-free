@@ -22,8 +22,8 @@ interface CartStore {
 
   // Cart operations
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
-  removeItem: (productId: string, size: string, color: string) => void;
-  updateQuantity: (productId: string, size: string, color: string, quantity: number) => void;
+  removeItem: (productId: string, size: string, color: string, variantId?: string, hamperId?: string, offerCode?: string) => void;
+  updateQuantity: (productId: string, size: string, color: string, quantity: number, variantId?: string, hamperId?: string, offerCode?: string) => void;
   clearCart: () => void;
 
   // Calculations
@@ -70,21 +70,34 @@ export const useCartStore = create<CartStore>()(
         set({ items: [...items] });
       },
 
-      removeItem: (productId, size, color) => {
+      removeItem: (productId, size, color, variantId, hamperId, offerCode) => {
         const items = get().items.filter(
-          (i) => !(i.productId === productId && i.size === size && i.color === color)
+          (i) =>
+            !(
+              i.productId === productId &&
+              i.size === size &&
+              i.color === color &&
+              i.variantId === variantId &&
+              i.hamperId === hamperId &&
+              i.offerCode === offerCode
+            )
         );
         set({ items });
       },
 
-      updateQuantity: (productId, size, color, quantity) => {
+      updateQuantity: (productId, size, color, quantity, variantId, hamperId, offerCode) => {
         if (quantity <= 0) {
-          get().removeItem(productId, size, color);
+          get().removeItem(productId, size, color, variantId, hamperId, offerCode);
           return;
         }
 
         const items = get().items.map((item) =>
-          item.productId === productId && item.size === size && item.color === color
+          item.productId === productId &&
+          item.size === size &&
+          item.color === color &&
+          item.variantId === variantId &&
+          item.hamperId === hamperId &&
+          item.offerCode === offerCode
             ? { ...item, quantity }
             : item
         );
