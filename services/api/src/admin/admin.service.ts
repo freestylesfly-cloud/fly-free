@@ -986,7 +986,7 @@ export class AdminService {
   async listInfluencers() {
     const data = await this.prisma.influencer.findMany({
       include: {
-        products: { select: { id: true, name: true, slug: true, sku: true, price: true } },
+        products: true,
         referrals: { include: { order: true }, orderBy: { createdAt: "desc" } }
       },
       orderBy: { createdAt: "desc" }

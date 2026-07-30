@@ -1,12 +1,13 @@
 'use client';
 
-import { Heart, Share2, Shirt, ShoppingCart, X } from 'lucide-react';
+import { Heart, Share2, Shirt, ShoppingCart, X, Gift } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '../lib/utils';
 import { useCartStore } from '../stores/cartStore';
 import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
+import { ImageZoomGallery } from './ImageZoomGallery';
 
 interface ProductCardProps {
   id: string;
@@ -15,16 +16,25 @@ interface ProductCardProps {
   image?: string;
   tag?: string;
   slug: string;
+  images?: Array<{ url: string; alt?: string; type?: 'front' | 'back' | 'detail' }>;
+  hasHamper?: boolean;
 }
 
-export function ProductCard({ id, name, price, image, tag, slug }: ProductCardProps) {
+export function ProductCard({ id, name, price, image, tag, slug, images, hasHamper }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [shareText, setShareText] = useState('Share');
+  const [useGallery, setUseGallery] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const token = useAuthStore((state) => state.token);
+
+  const imageList = images && images.length > 0
+    ? images
+    : image
+    ? [{ url: image, alt: name }]
+    : [];
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -98,18 +108,18 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
         borderWidth: '1px'
       }}
     >
-      {/* Image */}
+      {/* Image with Zoom Gallery */}
       <Link href={`/products/${slug}`}>
-        <div
-          className="mb-4 flex aspect-[4/5] items-center justify-center rounded-lg transition cursor-pointer"
-          style={{ backgroundColor: 'var(--bg-tertiary)' }}
-        >
-          {image ? (
-            <img src={image} alt={name} className="w-full h-full object-cover rounded-lg" />
-          ) : (
+        {imageList.length > 0 ? (
+          <ImageZoomGallery images={imageList} productName={name} />
+        ) : (
+          <div
+            className="mb-4 flex aspect-[4/5] items-center justify-center rounded-lg transition cursor-pointer"
+            style={{ backgroundColor: 'var(--bg-tertiary)' }}
+          >
             <Shirt size={54} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
-          )}
-        </div>
+          </div>
+        )}
       </Link>
       <div className="absolute right-6 top-6 flex gap-2">
         <button
@@ -135,8 +145,15 @@ export function ProductCard({ id, name, price, image, tag, slug }: ProductCardPr
         </button>
       </div>
 
-      {/* Tag */}
-      {tag && <span className="text-xs font-black uppercase" style={{ color: 'var(--accent-primary)' }}>{tag}</span>}
+      {/* Tags and Badges */}
+      <div className="flex gap-2 items-center flex-wrap mt-2">
+        {tag && <span className="text-xs font-black uppercase" style={{ color: 'var(--accent-primary)' }}>{tag}</span>}
+        {hasHamper && (
+          <span className="inline-flex items-center gap-1 text-xs font-black px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}>
+            <Gift size={12} /> Hamper
+          </span>
+        )}
+      </div>
 
       {/* Name */}
       <Link href={`/products/${slug}`}>

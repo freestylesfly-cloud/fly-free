@@ -2,6 +2,7 @@ import { Shirt, Sparkles, ArrowRight, Star, Instagram, Share2 } from "lucide-rea
 import { getApiBaseUrl } from "./lib/api";
 import Link from "next/link";
 import { ProductCard } from "./components/ProductCard";
+import { HeroThemeSection } from "./components/HeroThemeSection";
 
 const API_BASE = getApiBaseUrl();
 
@@ -11,39 +12,51 @@ async function getHomeData() {
   try {
     const defaultHome = { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null };
 
-    const [home, productsRes] = await Promise.all([
+    const [home, productsRes, themesRes, announcementsRes] = await Promise.all([
       fetch(`${API_BASE}/cms/home`, { cache: "no-store" })
         .then((response) => response.ok ? response.json() : null)
-        .catch(() => {
-          return null;
-        }),
+        .catch(() => null),
       fetch(`${API_BASE}/catalog/products?limit=50`, { cache: "no-store" })
         .then((response) => response.ok ? response.json() : null)
-        .catch(() => {
-          return null;
-        })
+        .catch(() => null),
+      fetch(`${API_BASE}/cms/themes`, { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null),
+      fetch(`${API_BASE}/cms/announcements`, { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .catch(() => null)
     ]);
 
     let products = Array.isArray(productsRes) ? productsRes : productsRes?.data || [];
     products = products.filter((p: any) => p.isVisible !== false);
 
+    let themes = themesRes?.data || themesRes || [];
+    if (!Array.isArray(themes)) themes = [];
+
+    let announcements = announcementsRes?.data || announcementsRes || [];
+    if (!Array.isArray(announcements)) announcements = [];
+
     return {
       home: home?.data || home || defaultHome,
-      products
+      products,
+      themes,
+      announcements
     };
   } catch {
     return {
       home: { banners: [], themes: [], websiteTheme: null, categories: [], announcements: [], influencers: [], reviews: [], settings: null },
-      products: []
+      products: [],
+      themes: [],
+      announcements: []
     };
   }
 }
 
 export default async function HomePage() {
-  const { home, products } = await getHomeData();
+  const { home, products, themes: fetchedThemes, announcements } = await getHomeData();
   const settings = home.settings || {};
   const banners = home.banners || [];
-  const themes = home.themes || [];
+  const themesData = fetchedThemes && fetchedThemes.length > 0 ? fetchedThemes : home.themes || [];
   const websiteTheme = home.websiteTheme;
   let categories = home.categories || [];
   const influencers = home.influencers || [];
@@ -59,14 +72,14 @@ export default async function HomePage() {
   }
 
   // Fallback themes if none exist
-  if (themes.length === 0) {
-    const fallbackThemes = [
+  let displayThemes = themesData;
+  if (!displayThemes || displayThemes.length === 0) {
+    displayThemes = [
       { id: '1', name: 'Anime', slug: 'anime', story: 'A merch theme focused on energetic art and fandom confidence', animationStyle: 'snap-slide', primaryColor: '#ff6b5b' },
       { id: '2', name: 'Spider-Man', slug: 'spider-man', story: 'High-motion campaign for web-slinger fans with bold graphics', animationStyle: 'web-swing', primaryColor: '#ff3333' },
       { id: '3', name: 'Minimal', slug: 'minimal', story: 'Comfort-first theme for simple, premium basics', animationStyle: 'fade', primaryColor: '#111827' },
       { id: '4', name: 'Graphic', slug: 'graphic', story: 'Creative playground for expressive artwork', animationStyle: 'pop', primaryColor: '#4ecdc4' }
     ];
-    themes.push(...fallbackThemes.slice(0, 4 - themes.length));
   }
 
   // Get trending products - prioritize isTrending, then isFeatured, then all visible
@@ -184,6 +197,17 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Hero Theme Section - NEW Interactive Theme Showcase */}
+      <section className="mx-auto max-w-7xl px-5 py-16 md:py-24">
+        <HeroThemeSection
+          themes={displayThemes}
+          products={products}
+          announcements={announcements}
+          websiteTheme={websiteTheme}
+          settings={settings}
+        />
+      </section>
+
       {/* Shop by Theme Section */}
       <section id="themes" className="mx-auto max-w-7xl px-5 py-16 md:py-24">
         <div className="mb-12">
@@ -191,7 +215,7 @@ export default async function HomePage() {
           <p className="mt-4 text-lg text-gray-500">Limited drops, seasonal collections & exclusive campaigns</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {themes.map((theme: any, idx: number) => (
+          {displayThemes.map((theme: any, idx: number) => (
             <Link
               key={theme.id}
               href={`/themes/${theme.slug}`}

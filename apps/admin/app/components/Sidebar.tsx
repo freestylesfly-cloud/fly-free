@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift } from 'lucide-react';
+import { Bell, FileText, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -24,6 +24,7 @@ const menuItems = [
     label: 'Marketing',
     items: [
       { label: 'Influencers', href: '/influencers', icon: Share2 },
+      { label: 'Performance', href: '/influencer-performance', icon: BarChart3 },
       { label: 'Reviews', href: '/reviews', icon: MessageSquare },
       { label: 'Notifications', href: '/notifications', icon: Bell },
       { label: 'Email', href: '/email', icon: Mail },
