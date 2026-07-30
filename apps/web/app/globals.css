@@ -2,47 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Modernist theme — tokens ported from the flyfree Claude Design "Modernist" system */
+/* Professional T-Shirt Brand Design System - Vibrant & Modern */
 :root {
   color-scheme: light;
 
+  /* === PROFESSIONAL COLOR PALETTE === */
+  /* This is a vibrant, modern T-shirt brand aesthetic inspired by */
+  /* Supreme, Myntra, The Souled Store, and international fashion brands */
+
   /* Surfaces */
-  --bg-primary: #f3f2f2;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #eae9e9;
+  --bg-primary: #f8f7f6;       /* Warm off-white instead of gray */
+  --bg-secondary: #ffffff;      /* Clean white */
+  --bg-tertiary: #efefef;       /* Very light gray */
 
   /* Text */
-  --text-primary: #201e1d;
-  --text-secondary: #605d5d;
-  --text-tertiary: #7d7979;
-  --text-muted: #7d7979;
+  --text-primary: #1a1a1a;      /* Almost black for better contrast */
+  --text-secondary: #666666;    /* Medium gray */
+  --text-tertiary: #999999;     /* Light gray */
+  --text-muted: #999999;
 
   /* Dividers */
-  --border-color: color-mix(in srgb, #201e1d 40%, transparent);
-  --border-light: color-mix(in srgb, #201e1d 15%, transparent);
+  --border-color: color-mix(in srgb, #1a1a1a 15%, transparent);
+  --border-light: color-mix(in srgb, #1a1a1a 8%, transparent);
 
-  /* Accent (used site-wide for CTAs, prices, badges, active states) */
-  --accent-primary: #ec3013;
-  --accent-secondary: #e15b47;
-  --accent-tertiary: #ff563c;
+  /* === BRAND COLORS - VIBRANT & PROFESSIONAL === */
+  /* Primary: Bold Red (energetic, premium feel) */
+  --color-primary: #FF4A4E;        /* Vibrant Red */
 
-  --shadow-light: rgba(32, 30, 29, 0.08);
-  --shadow-medium: rgba(32, 30, 29, 0.14);
+  /* Secondary: Electric Blue (complements red, modern) */
+  --color-secondary: #00A8E8;      /* Bright Blue */
 
-  /* Admin-overridable brand colors */
-  --color-primary: #ec3013;
-  --color-secondary: #201e1d;
-  --color-accent: #e15b47;
-  --campaign-gradient: linear-gradient(135deg, #201e1d, #ec3013);
+  /* Accent: Warm Gold (luxury, premium feel) */
+  --color-accent: #FFB703;         /* Warm Gold/Yellow */
+
+  /* Tertiary: Deep Navy (sophisticated) */
+  --color-tertiary: #1D3557;       /* Deep Navy */
+
+  /* Gradients for premium feel */
+  --campaign-gradient: linear-gradient(135deg, #FF4A4E, #FFB703);
+  --gradient-primary-secondary: linear-gradient(135deg, #FF4A4E, #00A8E8);
+  --gradient-accent: linear-gradient(45deg, #FFB703, #FF4A4E);
+
+  /* Shadows for depth */
+  --shadow-light: rgba(26, 26, 26, 0.06);
+  --shadow-medium: rgba(26, 26, 26, 0.12);
+  --shadow-dark: rgba(26, 26, 26, 0.18);
+
+  /* Accent colors for buttons, badges, etc */
+  --accent-primary: #FF4A4E;
+  --accent-secondary: #00A8E8;
+  --accent-tertiary: #FFB703;
+
+  /* Typography */
   --font-family: var(--font-archivo), Archivo, system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-archivo), Archivo, system-ui, -apple-system, sans-serif;
 }
 
 body {
   margin: 0;
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, #fafaf8 100%);
   color: var(--text-primary);
   font-family: var(--font-family), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
 }
 
 a {
@@ -74,6 +95,8 @@ a {
   background: var(--text-primary);
 }
 
+/* === PROFESSIONAL COMPONENT STYLES === */
+
 .theme-surface {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
@@ -86,6 +109,389 @@ a {
 
 .campaign-gradient {
   background: var(--campaign-gradient);
+  background-attachment: fixed;
+}
+
+/* BUTTON STYLES - Professional & Vibrant */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(255, 74, 78, 0.25);
+}
+
+.btn-primary:hover {
+  background: #E63946;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 74, 78, 0.35);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  padding: 10px 26px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--color-primary);
+  color: white;
+  transform: translateX(2px);
+}
+
+/* BADGE STYLES - Colorful & Prominent */
+.badge-new {
+  display: inline-block;
+  background: var(--color-accent);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(255, 183, 3, 0.3);
+}
+
+.badge-trending {
+  display: inline-block;
+  background: var(--color-secondary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  animation: pulse 2s infinite;
+}
+
+.badge-limited {
+  display: inline-block;
+  background: var(--color-primary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* CARD STYLES - Premium */
+.card-premium {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.card-premium:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 12px 24px var(--shadow-medium);
+  transform: translateY(-4px);
+}
+
+/* GRADIENT TEXT - For Headlines */
+.text-gradient {
+  background: var(--gradient-primary-secondary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}
+
+/* GRADIENT BUTTON - Premium CTA */
+.btn-gradient {
+  background: var(--campaign-gradient);
+  color: white;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 32px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 16px rgba(255, 74, 78, 0.3);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.btn-gradient:hover {
+  box-shadow: 0 10px 28px rgba(255, 74, 78, 0.4);
+  transform: translateY(-3px);
+}
+
+/* ANIMATIONS */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-in {
+  animation: slideInUp 0.5s ease-out;
+}
+
+.animate-fade {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* === SECTION STYLES - Premium & Modern === */
+.section-header {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  letter-spacing: -0.5px;
+}
+
+.section-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.section-divider {
+  height: 3px;
+  background: var(--campaign-gradient);
+  width: 80px;
+  margin: 24px 0 0 0;
+  border-radius: 2px;
+}
+
+/* HERO SECTION */
+.hero-section {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-bottom: 64px;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--campaign-gradient);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.hero-title {
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  color: white;
+  letter-spacing: -1px;
+  margin-bottom: 24px;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 500px;
+  margin-bottom: 32px;
+}
+
+/* CATEGORY CARDS */
+.category-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: var(--campaign-gradient);
+  opacity: 0;
+  transition: all 0.4s ease;
+  pointer-events: none;
+}
+
+.category-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(26, 26, 26, 0.12);
+}
+
+.category-card:hover::before {
+  opacity: 0.08;
+}
+
+.category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--campaign-gradient);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: white;
+}
+
+.category-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.category-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* THEME CARD */
+.theme-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 12px 28px rgba(26, 26, 26, 0.15);
+  transform: translateY(-4px);
+}
+
+.theme-card-header {
+  height: 160px;
+  background: var(--gradient-primary-secondary);
+  padding: 24px;
+  display: flex;
+  align-items: flex-end;
+  color: white;
+  font-weight: 900;
+  font-size: 28px;
+}
+
+.theme-card-body {
+  padding: 16px;
+}
+
+.theme-card-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+/* FEATURE LIST */
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 32px 0;
+}
+
+.feature-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.feature-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  background: var(--campaign-gradient);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.feature-text {
+  flex-grow: 1;
+}
+
+.feature-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.feature-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 /* ── Modernist utilities ─────────────────────────────────────────── */
@@ -94,6 +500,126 @@ a {
    (hero banners, theme tiles, about photos) — matches the design system exactly. */
 .grayscale img {
   filter: grayscale(1) contrast(1.08);
+}
+
+/* === PRODUCT GRID STYLES === */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+}
+
+.product-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 12px 28px rgba(26, 26, 26, 0.15);
+  transform: translateY(-6px);
+}
+
+.product-image {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+  position: relative;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-card:hover .product-image img {
+  transform: scale(1.08);
+}
+
+.product-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  z-index: 10;
+}
+
+.product-badge.new {
+  background: var(--color-accent);
+  color: white;
+}
+
+.product-badge.trending {
+  background: var(--color-primary);
+  color: white;
+}
+
+.product-badge.limited {
+  background: var(--color-secondary);
+  color: white;
+}
+
+.product-info {
+  padding: 16px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  flex-grow: 1;
+}
+
+.product-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin: 8px 0;
+}
+
+.product-price-original {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  margin-left: 8px;
+}
+
+.product-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
 }
 
 /* Grayscale-at-rest, full color on hover — used for purchasable product photos,
