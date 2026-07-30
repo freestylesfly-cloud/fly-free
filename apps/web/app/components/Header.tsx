@@ -60,7 +60,14 @@ export function Header() {
   useEffect(() => {
     fetch(`${API_BASE}/cms/announcements`)
       .then((response) => response.ok ? response.json() : [])
-      .then((data) => setAnnouncements(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const items = Array.isArray(data) ? data : (data?.data ? data.data : []);
+        // Remove duplicates based on title
+        const unique = items.filter((item: any, index: number, self: any[]) =>
+          index === self.findIndex((t: any) => t.title === item.title)
+        );
+        setAnnouncements(unique);
+      })
       .catch(() => setAnnouncements([]));
   }, []);
 
