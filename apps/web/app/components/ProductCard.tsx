@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, Share2, Shirt, ShoppingCart, X } from 'lucide-react';
+import { Heart, Share2, Shirt, ShoppingCart, X, Star, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '../lib/utils';
 import { useCartStore } from '../stores/cartStore';
@@ -16,20 +16,40 @@ interface ProductCardProps {
   hoverImage?: string;
   tag?: string;
   slug: string;
+  rating?: number;
+  reviewCount?: number;
+  isTrending?: boolean;
+  originalPrice?: number;
 }
 
-export function ProductCard({ id, name, price, image, hoverImage, tag, slug }: ProductCardProps) {
+export function ProductCard({
+  id,
+  name,
+  price,
+  image,
+  hoverImage,
+  tag,
+  slug,
+  rating = 4.8,
+  reviewCount = 0,
+  isTrending = false,
+  originalPrice
+}: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [shareText, setShareText] = useState('Share');
+  const [showAddedAnimation, setShowAddedAnimation] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const token = useAuthStore((state) => state.token);
+
+  const discountPercent = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsAdding(true);
+    setShowAddedAnimation(true);
     addItem({
       productId: id,
       productName: name,
@@ -39,7 +59,10 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug }: P
       color: 'Black',
       image,
     });
-    setTimeout(() => setIsAdding(false), 500);
+    setTimeout(() => {
+      setIsAdding(false);
+      setShowAddedAnimation(false);
+    }, 1500);
   };
 
   const handleWishlist = async (event: React.MouseEvent) => {
@@ -82,7 +105,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug }: P
         await navigator.share({ title: name, text: `Check out ${name} on Fly Free`, url });
       } else {
         await navigator.clipboard.writeText(url);
-        setShareText('Copied');
+        setShareText('Copied!');
         setTimeout(() => setShareText('Share'), 1200);
       }
     } catch {
@@ -92,87 +115,185 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug }: P
 
   return (
     <article
-      className="group relative overflow-hidden rounded-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+      className="group relative overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2"
       style={{
         backgroundColor: 'var(--bg-secondary)',
-        border: '1px solid var(--border-color)'
+        borderColor: 'var(--border-color)'
       }}
     >
-      <Link href={`/products/${slug}`}>
-        <div className="relative flex aspect-[4/5] cursor-pointer items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-          {image ? (
-            <>
-              <img src={image} alt={name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-0" />
-              {hoverImage && hoverImage !== image && (
-                <img src={hoverImage} alt={`${name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
-              )}
-            </>
-          ) : (
-            <Shirt size={54} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
-          )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent opacity-0 transition group-hover:opacity-100" />
-          {tag && <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-wide text-ink shadow-sm">{tag}</span>}
-        </div>
-      </Link>
-      <div className="absolute right-3 top-3 flex gap-2">
+      {/* Tag Badges */}
+      <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
+        {tag && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide shadow-md backdrop-blur-sm"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-primary) 90%, transparent)',
+              color: '#fff'
+            }}
+          >
+            {tag}
+          </span>
+        )}
+        {isTrending && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wide shadow-md"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-primary) 85%, transparent)',
+              color: '#fff'
+            }}
+          >
+            <TrendingUp size={12} />
+            Trending
+          </span>
+        )}
+        {discountPercent > 0 && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wide shadow-md"
+            style={{
+              backgroundColor: '#dc2626',
+              color: '#fff'
+            }}
+          >
+            -{discountPercent}%
+          </span>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
         <button
           type="button"
           onClick={handleWishlist}
           disabled={wishlistLoading}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition hover:-translate-y-0.5 disabled:opacity-50"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition hover:scale-110 disabled:opacity-50 backdrop-blur-sm"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: '2px solid var(--border-color)',
+            color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)'
+          }}
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
+          <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
         </button>
         <button
           type="button"
           onClick={handleShare}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition hover:-translate-y-0.5"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition hover:scale-110 backdrop-blur-sm"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: '2px solid var(--border-color)',
+            color: 'var(--text-primary)'
+          }}
           aria-label="Share product"
           title={shareText}
         >
-          <Share2 size={16} />
+          <Share2 size={18} />
         </button>
       </div>
 
-      <div className="p-4">
+      {/* Product Image */}
+      <Link href={`/products/${slug}`}>
+        <div className="relative flex aspect-[3/4] cursor-pointer items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+          {image ? (
+            <>
+              <img
+                src={image}
+                alt={name}
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+              />
+              {hoverImage && hoverImage !== image && (
+                <img
+                  src={hoverImage}
+                  alt={`${name} alternate view`}
+                  className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100 group-hover:scale-110"
+                />
+              )}
+            </>
+          ) : (
+            <Shirt size={64} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+          )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition duration-500 group-hover:opacity-100" />
+        </div>
+      </Link>
+
+      {/* Product Details */}
+      <div className="flex flex-col gap-3 p-4 md:p-5">
+        {/* Rating */}
+        {reviewCount > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  size={14}
+                  fill={i < Math.floor(rating) ? 'var(--color-primary)' : 'var(--border-color)'}
+                  style={{ color: 'var(--color-primary)' }}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+              {rating} ({reviewCount})
+            </span>
+          </div>
+        )}
+
+        {/* Product Name */}
         <Link href={`/products/${slug}`}>
           <h3
-            className="min-h-11 cursor-pointer text-base font-black leading-tight transition line-clamp-2 hover:opacity-80 md:text-lg"
+            className="min-h-10 cursor-pointer text-sm md:text-base font-bold leading-tight transition line-clamp-2 hover:opacity-80"
             style={{ color: 'var(--text-primary)' }}
           >
             {name}
           </h3>
         </Link>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>{formatCurrency(price)}</span>
-          <button
-            onClick={handleAddToCart}
-            disabled={isAdding}
-            className="flex-1 rounded px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{
-              backgroundColor: 'var(--color-primary)',
-              color: 'white'
-            }}
-          >
-            <ShoppingCart size={16} />
-            <span>{isAdding ? 'Adding...' : 'Add'}</span>
-          </button>
+        {/* Pricing */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-xl md:text-2xl font-black" style={{ color: 'var(--color-primary)' }}>
+            {formatCurrency(price)}
+          </span>
+          {originalPrice && originalPrice > price && (
+            <span className="text-xs md:text-sm font-bold line-through" style={{ color: 'var(--text-secondary)' }}>
+              {formatCurrency(originalPrice)}
+            </span>
+          )}
         </div>
+
+        {/* Add to Cart Button */}
+        <button
+          onClick={handleAddToCart}
+          disabled={isAdding}
+          className="relative w-full py-3 md:py-3.5 text-xs md:text-sm font-black uppercase tracking-wide transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden group/btn"
+          style={{
+            backgroundColor: isAdding ? 'var(--color-primary)' : 'var(--color-primary)',
+            color: 'white',
+            opacity: isAdding ? 0.8 : 1,
+            transform: showAddedAnimation ? 'scale(0.95)' : 'scale(1)'
+          }}
+        >
+          <ShoppingCart size={16} className={isAdding ? 'animate-spin' : ''} />
+          <span className="relative">
+            {isAdding ? 'Adding to cart...' : 'Add to Cart'}
+            {showAddedAnimation && (
+              <span className="absolute inset-0 flex items-center justify-center text-xs">
+                ✓ Added!
+              </span>
+            )}
+          </span>
+        </button>
       </div>
+
+      {/* Login Prompt */}
       {showLoginPrompt && (
-        <div className="absolute inset-x-3 bottom-3 rounded-lg p-3 shadow-xl" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
-          <button type="button" onClick={() => setShowLoginPrompt(false)} className="absolute right-2 top-2" aria-label="Close login prompt">
-            <X size={14} />
+        <div className="absolute inset-x-4 bottom-20 rounded-xl p-4 shadow-xl backdrop-blur-sm z-20" style={{ backgroundColor: 'var(--bg-secondary)', border: '2px solid var(--border-color)' }}>
+          <button type="button" onClick={() => setShowLoginPrompt(false)} className="absolute -right-2 -top-2" aria-label="Close login prompt">
+            <X size={18} className="p-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }} />
           </button>
-          <p className="pr-5 text-sm font-black" style={{ color: 'var(--text-primary)' }}>Login to save wishlist</p>
-          <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>You can browse and add to cart without login.</p>
-          <Link href={`/auth/login?redirect=/products/${slug}`} className="mt-3 inline-flex px-3 py-2 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-            Login
+          <p className="pr-5 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>💚 Save to Wishlist</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Login to keep track of your favorite items</p>
+          <Link href={`/auth/login?redirect=/products/${slug}`} className="mt-3 inline-flex px-4 py-2 text-xs font-black text-white hover:opacity-90 transition" style={{ backgroundColor: 'var(--color-primary)' }}>
+            Login Now
           </Link>
         </div>
       )}
