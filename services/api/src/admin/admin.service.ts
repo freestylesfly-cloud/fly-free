@@ -1008,6 +1008,7 @@ export class AdminService {
   async createInfluencer(data: any) {
     const code = (data.code || `${this.slugify(data.name).replace(/-/g, "").slice(0, 8)}${Math.floor(Math.random() * 900 + 100)}`).toUpperCase();
     const linkKey = data.linkKey || this.randomKey();
+    const productIds = this.normalizeProductIds(data.productIds ?? data.productId);
     const influencer = await this.prisma.influencer.create({
       data: {
         name: data.name,
@@ -1022,7 +1023,7 @@ export class AdminService {
         followers: data.followers ? Number(data.followers) : undefined,
         buyerDiscountPercent: Number(data.buyerDiscountPercent || 10),
         commissionRate: Number(data.commissionRate || 5),
-        products: data.productId ? { connect: { id: data.productId } } : undefined
+        products: productIds.length ? { connect: productIds.map((productId) => ({ id: productId })) } : undefined
       },
       include: { products: true, referrals: true }
     });
@@ -1030,24 +1031,30 @@ export class AdminService {
   }
 
   async updateInfluencer(id: string, data: any) {
+    const updateData: any = {
+      name: data.name,
+      email: data.email,
+      code: data.code,
+      linkKey: data.linkKey,
+      imageUrl: data.imageUrl,
+      instagramUrl: data.instagramUrl,
+      facebookUrl: data.facebookUrl,
+      xUrl: data.xUrl,
+      socialHandle: data.socialHandle,
+      followers: data.followers === undefined ? undefined : Number(data.followers),
+      buyerDiscountPercent: data.buyerDiscountPercent === undefined ? undefined : Number(data.buyerDiscountPercent),
+      commissionRate: data.commissionRate === undefined ? undefined : Number(data.commissionRate),
+      isActive: data.isActive
+    };
+
+    if (data.productIds !== undefined || data.productId !== undefined) {
+      const productIds = this.normalizeProductIds(data.productIds ?? data.productId);
+      updateData.products = { set: productIds.map((productId) => ({ id: productId })) };
+    }
+
     const influencer = await this.prisma.influencer.update({
       where: { id },
-      data: {
-        name: data.name,
-        email: data.email,
-        code: data.code,
-        linkKey: data.linkKey,
-        imageUrl: data.imageUrl,
-        instagramUrl: data.instagramUrl,
-        facebookUrl: data.facebookUrl,
-        xUrl: data.xUrl,
-        socialHandle: data.socialHandle,
-        followers: data.followers === undefined ? undefined : Number(data.followers),
-        buyerDiscountPercent: data.buyerDiscountPercent === undefined ? undefined : Number(data.buyerDiscountPercent),
-        commissionRate: data.commissionRate === undefined ? undefined : Number(data.commissionRate),
-        isActive: data.isActive,
-        products: { set: data.productId ? [{ id: data.productId }] : [] }
-      },
+      data: updateData,
       include: { products: true, referrals: true }
     });
     return { ...influencer, product: influencer.products[0] || null };
@@ -1067,19 +1074,10 @@ export class AdminService {
   }
 
   async assignInfluencerProducts(id: string, productIds: string[]) {
-    // First, remove all existing products
-    await this.prisma.influencer.update({
-      where: { id },
-      data: { products: { set: [] } }
-    });
-
-    // Then, assign new products
     return this.prisma.influencer.update({
       where: { id },
       data: {
-        products: {
-          connect: productIds.map(pid => ({ id: pid }))
-        }
+        products: { set: this.normalizeProductIds(productIds).map((productId) => ({ id: productId })) }
       },
       include: { products: { select: { id: true, name: true, price: true } } }
     });
@@ -1217,6 +1215,11 @@ export class AdminService {
 
   private randomKey() {
     return Math.random().toString(36).slice(2, 10).toUpperCase();
+  }
+
+  private normalizeProductIds(value: unknown): string[] {
+    const values = Array.isArray(value) ? value : value ? [value] : [];
+    return Array.from(new Set(values.map((item) => String(item).trim()).filter(Boolean)));
   }
 
   private formatMoney(value: number) {

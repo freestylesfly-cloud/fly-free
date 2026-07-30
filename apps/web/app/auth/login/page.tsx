@@ -46,25 +46,32 @@ function LoginContent() {
   };
 
   return (
-    <AuthDrawerShell title="Login">
-      <form onSubmit={handleSubmit} className="space-y-9">
+    <AuthDrawerShell title="Welcome Back">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="flex gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <AlertCircle size={18} className="mt-0.5 shrink-0" />
-            <p>{error}</p>
+          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />
+            <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
           </div>
         )}
 
-        <div className="space-y-9">
+        <div className="space-y-4">
           <label className="block">
             <span className="sr-only">Email</span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email *"
+              placeholder="Email address"
               autoComplete="email"
-              className="h-[52px] w-full border border-black/30 px-4 text-base outline-none transition focus:border-black"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </label>
 
@@ -74,28 +81,62 @@ function LoginContent() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password *"
+              placeholder="Password"
               autoComplete="current-password"
-              className="h-[52px] w-full border border-black/15 px-4 text-base outline-none transition focus:border-black"
+              className="w-full h-12 px-4 rounded-lg border-2 text-base font-medium transition focus:outline-none"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </label>
         </div>
 
-        <Link href="/auth/forgot-password" className="-mt-6 inline-block text-base text-black/55 underline underline-offset-2 hover:text-black">
-          Forgot your password?
+        <Link
+          href="/auth/forgot-password"
+          className="inline-block text-sm font-bold transition hover:opacity-80"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          Forgot password?
         </Link>
 
         <button
           type="submit"
           disabled={loading}
-          className="flex h-[50px] w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-base font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full h-12 rounded-lg font-black text-white transition flex items-center justify-center gap-2 uppercase tracking-wide"
+          style={{
+            backgroundColor: loading ? 'var(--color-primary)' : 'var(--color-primary)',
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+          onHover={(e) => !loading && (e.currentTarget.style.opacity = '0.9')}
         >
           {loading && <Loader2 size={18} className="animate-spin" />}
-          {loading ? 'Signing in...' : 'Sign In'}
+          <span>{loading ? 'Signing In...' : 'Sign In'}</span>
         </button>
 
-        <Link href={`/auth/signup?next=${encodeURIComponent(nextPath)}`} className="inline-block text-base text-primary underline underline-offset-2 hover:opacity-80">
-          New customer? Create your account
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '2px' }} />
+          <div className="relative flex justify-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <span className="px-2" style={{ color: 'var(--text-secondary)' }}>New customer?</span>
+          </div>
+        </div>
+
+        <Link
+          href={`/auth/signup?next=${encodeURIComponent(nextPath)}`}
+          className="w-full h-12 rounded-lg font-bold transition flex items-center justify-center uppercase tracking-wide border-2"
+          style={{
+            borderColor: 'var(--color-primary)',
+            color: 'var(--color-primary)',
+            backgroundColor: 'transparent',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-primary)' + '15'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          Create Account
         </Link>
       </form>
     </AuthDrawerShell>

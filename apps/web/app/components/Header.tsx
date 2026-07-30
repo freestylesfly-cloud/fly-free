@@ -283,87 +283,117 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
+        {/* Mobile Menu Dropdown - Professional Drawer */}
         {isOpen && (
           <div
-            className="md:hidden transition-all"
+            className="md:hidden fixed inset-0 top-20 z-30 flex flex-col"
             style={{
-              borderTop: '2px solid var(--border-color)',
-              backgroundColor: 'var(--bg-primary)'
+              backgroundColor: 'var(--bg-secondary)',
+              animation: 'slideDown 0.3s ease-out'
             }}
           >
-            <nav className="flex flex-col max-h-96 overflow-y-auto">
-              <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/about" label="About Us" active={isActive('/about')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/contact" label="Contact" active={isActive('/contact')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} />
-              <MobileDrawerLink href="/#reviews" label="Reviews" active={false} onClick={() => setIsOpen(false)} />
-              <Link
-                href={user ? '/profile/orders' : '/auth/login'}
-                onClick={() => setIsOpen(false)}
-                className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
-                style={{
-                  borderColor: 'var(--border-light)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                {user ? 'My Orders' : 'Orders'}
-              </Link>
-              <Link
-                href={user ? '/profile/wishlist' : '/auth/login'}
-                onClick={() => setIsOpen(false)}
-                className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
-                style={{
-                  borderColor: 'var(--border-light)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                {user ? 'Saved Items' : 'Wishlist'}
-              </Link>
-              <Link
-                href={user ? '/profile' : '/auth/login'}
-                onClick={() => setIsOpen(false)}
-                className="px-5 py-3 font-semibold border-b transition hover:opacity-70"
-                style={{
-                  borderColor: 'var(--border-light)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                {user ? 'My Profile' : 'Login / Register'}
-              </Link>
+            <nav className="flex flex-col max-h-[calc(100vh-120px)] overflow-y-auto pb-4">
+              {/* Main Navigation Links */}
+              <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} />
+                <MobileDrawerLink href="/products" label="Shop Products" active={isActive('/products')} onClick={() => setIsOpen(false)} />
+                <MobileDrawerLink href="/about" label="About Us" active={isActive('/about')} onClick={() => setIsOpen(false)} />
+                <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} />
+                <MobileDrawerLink href="/contact" label="Contact" active={isActive('/contact')} onClick={() => setIsOpen(false)} />
+              </div>
+
+              {/* Account Section */}
+              <div className="border-b py-2" style={{ borderColor: 'var(--border-color)' }}>
+                <p className="px-5 py-2 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>Account</p>
+                <Link
+                  href={user ? '/profile/orders' : '/auth/login'}
+                  onClick={() => setIsOpen(false)}
+                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
+                  style={{ color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Package size={16} style={{ color: 'var(--color-primary)' }} />
+                  {user ? 'My Orders' : 'Orders'}
+                </Link>
+                <Link
+                  href={user ? '/profile/wishlist' : '/auth/login'}
+                  onClick={() => setIsOpen(false)}
+                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
+                  style={{ color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Heart size={16} style={{ color: 'var(--color-primary)' }} />
+                  {user ? 'Saved Items' : 'Wishlist'}
+                </Link>
+                <Link
+                  href={user ? '/profile' : '/auth/login'}
+                  onClick={() => setIsOpen(false)}
+                  className="px-5 py-3 font-semibold transition flex items-center gap-3"
+                  style={{ color: 'var(--text-primary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <User size={16} style={{ color: 'var(--color-primary)' }} />
+                  {user ? 'My Profile' : 'Login / Register'}
+                </Link>
+              </div>
+
+              {/* Logout */}
               {user && (
                 <button
                   onClick={() => {
                     handleLogout();
                     setIsOpen(false);
                   }}
-                  className="w-full text-left px-5 py-3 font-semibold border-b transition hover:opacity-70 flex items-center gap-2"
-                  style={{
-                    borderColor: 'var(--border-light)',
-                    color: 'var(--text-primary)'
-                  }}
+                  className="w-full text-left px-5 py-3 font-semibold transition flex items-center gap-3"
+                  style={{ color: '#dc2626' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <LogOut size={18} />
+                  <LogOut size={16} />
                   Logout
                 </button>
               )}
             </nav>
+
+            {/* Close area at bottom */}
+            <div
+              className="mt-auto px-5 py-4 border-t text-center text-xs"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+              onClick={() => setIsOpen(false)}
+            >
+              Tap to close menu
+            </div>
           </div>
         )}
       </header>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar - Professional */}
       <nav
         className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t md:hidden"
-        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+        style={{
+          borderColor: 'var(--border-color)',
+          backgroundColor: 'var(--bg-secondary)',
+          boxShadow: '0 -2px 12px rgba(26, 26, 26, 0.08)',
+          borderTopWidth: '2px',
+        }}
       >
-        <MobileTab href="/" label="Home" active={isActive('/')} />
-        <MobileTab href="/products" label="Shop" active={isActive('/products')} />
-        <MobileTab href="/cart" label={`Cart${displayedCartCount > 0 ? ` ${displayedCartCount}` : ''}`} cartCount={displayedCartCount} active={isActive('/cart')} />
+        <MobileTab href="/" label="Home" active={isActive('/')} icon="🏠" />
+        <MobileTab href="/products" label="Shop" active={isActive('/products')} icon="🛍️" />
+        <MobileTab
+          href="/cart"
+          label={`Cart${displayedCartCount > 0 ? ` ${displayedCartCount}` : ''}`}
+          cartCount={displayedCartCount}
+          active={isActive('/cart')}
+          icon="🛒"
+        />
         <MobileTab
           href={user ? '/profile/wishlist' : '/auth/login'}
           label="Saved"
           active={isActive('/profile/wishlist') || isActive('/wishlist')}
+          icon="❤️"
         />
         <div className="relative">
           <MobileTab
@@ -371,35 +401,43 @@ export function Header() {
             label={user ? 'Profile' : 'Login'}
             onClick={() => user ? setIsProfileOpen(!isProfileOpen) : router.push('/auth/login')}
             active={isActive(user ? '/profile' : '/auth')}
+            icon={user ? '👤' : '🔓'}
           />
           {user && isProfileOpen && (
             <div
-              className="absolute bottom-20 right-0 w-40 border-2 shadow-lg overflow-hidden"
+              className="absolute bottom-20 right-2 w-44 border-2 shadow-xl overflow-hidden rounded-lg"
               style={{
                 borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--bg-secondary)'
+                backgroundColor: 'var(--bg-secondary)',
+                zIndex: 50,
               }}
             >
               <Link
                 href="/profile"
                 onClick={() => setIsProfileOpen(false)}
-                className="block px-4 py-3 text-sm font-semibold border-b transition hover:opacity-70"
-                style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="block px-4 py-3 text-sm font-semibold border-b transition"
+                style={{ borderColor: 'var(--border-light)', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 My Profile
               </Link>
               <Link
                 href="/profile/orders"
                 onClick={() => setIsProfileOpen(false)}
-                className="block px-4 py-3 text-sm font-semibold border-b transition hover:opacity-70"
-                style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="block px-4 py-3 text-sm font-semibold border-b transition"
+                style={{ borderColor: 'var(--border-light)', color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 My Orders
               </Link>
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-2 transition hover:opacity-70"
-                style={{ color: 'var(--text-primary)' }}
+                className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-2 transition"
+                style={{ color: '#dc2626' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <LogOut size={14} />
                 Logout
@@ -454,14 +492,18 @@ function MobileTab({
   onClick,
   cartCount,
   active,
+  icon,
 }: {
   href: string;
   label: string;
   onClick?: () => void;
   cartCount?: number;
   active?: boolean;
+  icon?: string;
 }) {
   const getIcon = () => {
+    if (icon) return <span className="text-xl">{icon}</span>;
+
     switch (href) {
       case '/':
         return <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
@@ -484,24 +526,33 @@ function MobileTab({
         if (href === '#') event.preventDefault();
         onClick?.();
       }}
-      className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-bold transition hover:opacity-70"
-      style={{ color: active ? 'var(--color-primary)' : 'var(--text-primary)' }}
+      className="flex min-h-16 flex-col items-center justify-center gap-1.5 text-[11px] font-bold transition"
+      style={{
+        color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+        borderTop: active ? '3px solid var(--color-primary)' : '3px solid transparent',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
     >
-      <div className="relative px-3 py-1" style={{ backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 14%, transparent)' : 'transparent' }}>
+      <div className="relative">
         {getIcon()}
-        {href === '/cart' && (
+        {href === '/cart' && cartCount && cartCount > 0 && (
           <span
-            className="absolute -top-2 -right-2 h-4 w-4 rounded-full flex items-center justify-center text-[8px] font-black text-white"
+            className="absolute -top-2.5 -right-2.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-black text-white"
             style={{
               backgroundColor: 'var(--color-primary)',
-              display: cartCount && cartCount > 0 ? 'flex' : 'none'
+              fontSize: '10px',
             }}
           >
-            {cartCount && cartCount > 0 && cartCount}
+            {cartCount}
           </span>
         )}
       </div>
-      <span>{label}</span>
+      <span className="uppercase tracking-wide">{label}</span>
     </Link>
   );
 }

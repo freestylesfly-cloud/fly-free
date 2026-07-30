@@ -36,7 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)' }} className="min-h-screen flex flex-col">
         <Providers>
           <Header />
-          <main className="flex-1 pb-16 md:pb-0">{children}</main>
+          <main className="flex-1 pb-28 md:pb-0">{children}</main>
           <Footer />
         </Providers>
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
