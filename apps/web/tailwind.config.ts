@@ -9,6 +9,9 @@ const config: Config = {
         paper: "#f7f3ea",
         leaf: "#27724d",
         coral: "#e05244"
+      },
+      fontFamily: {
+        sans: ["var(--font-archivo)", "system-ui", "-apple-system", "sans-serif"]
       }
     }
   },
