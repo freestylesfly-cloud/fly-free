@@ -89,12 +89,11 @@ export function Footer() {
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Shop</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/products" style={linkStyle}>All products</Link></li>
-              <li><Link href="/search" style={linkStyle}>Search</Link></li>
               <li><Link href="/products?category=regular" style={linkStyle}>Regular</Link></li>
               <li><Link href="/products?category=oversized" style={linkStyle}>Oversized</Link></li>
-              <li><Link href="/products?category=jerseys" style={linkStyle}>Jerseys</Link></li>
-              <li><Link href="/products?category=polos" style={linkStyle}>Polos</Link></li>
-              <li><Link href="/products?category=hoodies" style={linkStyle}>Hoodies</Link></li>
+              <li><Link href="/products?category=jersey" style={linkStyle}>Jersey</Link></li>
+              <li><Link href="/products?category=polo" style={linkStyle}>Polo</Link></li>
+              <li><Link href="/products?category=hoodie" style={linkStyle}>Hoodie</Link></li>
             </ul>
           </div>
 
@@ -102,7 +101,6 @@ export function Footer() {
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Company</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/about" style={linkStyle}>About us</Link></li>
-              <li><Link href="/influencers" style={linkStyle}>Influencers</Link></li>
               <li><Link href="/contact" style={linkStyle}>Contact us</Link></li>
               <li><Link href="/terms" style={linkStyle}>Terms</Link></li>
               <li><Link href="/privacy" style={linkStyle}>Privacy</Link></li>

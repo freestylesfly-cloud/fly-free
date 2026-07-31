@@ -1,14 +1,39 @@
-import { PrismaClient, OrderStatus, PaymentStatus, ReviewStatus } from '@prisma/client';
+import { PrismaClient, ReviewStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Starting comprehensive database seed...');
+/**
+ * Catalog model used by this seed:
+ * - Category  = fit / product type (Regular, Oversized, Jersey, Polo, Hoodie). Not gender.
+ * - Theme     = design story (Spider-Man, Anime, Bihu, ...). A theme spans many fits,
+ *               and a fit spans many themes. The relation emerges through products.
+ * - Hamper    = gift box attached to a THEME. Any product in that theme can be bought
+ *               on its own, or with the hamper box as a paid add-on.
+ * Everything is unisex. There is no men/women split and no seasonal collections.
+ */
 
-  // Clear existing data (order matters due to foreign keys)
+const IMG = {
+  regular: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop',
+  oversized: 'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=900&h=1100&fit=crop',
+  jersey: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&h=1100&fit=crop',
+  polo: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=900&h=1100&fit=crop',
+  hoodie: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=900&h=1100&fit=crop',
+  alt1: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=900&h=1100&fit=crop',
+  alt2: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=900&h=1100&fit=crop',
+  alt3: 'https://images.unsplash.com/photo-1554568218-0f1715e72254?w=900&h=1100&fit=crop',
+  alt4: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=900&h=1100&fit=crop',
+  hamper: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=900&h=1100&fit=crop',
+  hamperAlt: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=900&h=1100&fit=crop',
+  banner: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1800&h=900&fit=crop',
+};
+
+const SIZES = ['XS', 'S', 'M', 'L', 'XL'];
+
+async function wipe() {
+  console.log('Clearing existing data...');
   await prisma.invoice.deleteMany();
   await prisma.referral.deleteMany();
-  await prisma.influencer.deleteMany();
   await prisma.orderStatusHistory.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.payment.deleteMany();
@@ -18,6 +43,7 @@ async function main() {
   await prisma.emailVerification.deleteMany();
   await prisma.review.deleteMany();
   await prisma.wishlist.deleteMany();
+  await prisma.influencer.deleteMany();
   await prisma.productImage.deleteMany();
   await prisma.productHamper.deleteMany();
   await prisma.inventory.deleteMany();
@@ -39,655 +65,313 @@ async function main() {
   await prisma.appSetting.deleteMany();
   await prisma.websiteTheme.deleteMany();
   await prisma.sizeGuide.deleteMany();
+  await prisma.instagramPost.deleteMany();
+}
 
-  // Create fit/type categories. Fly Free is primarily unisex apparel, so
-  // category means product fit/type instead of Men/Women segmentation.
-  const categories = await Promise.all([
-    prisma.category.create({
-      data: {
-        name: 'Regular',
-        slug: 'regular',
-        priority: 1,
-        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Oversized',
-        slug: 'oversized',
-        priority: 2,
-        imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=900&h=1100&fit=crop',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Jerseys',
-        slug: 'jerseys',
-        priority: 3,
-        imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&h=1100&fit=crop',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Polos',
-        slug: 'polos',
-        priority: 4,
-        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=900&h=1100&fit=crop',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Hoodies',
-        slug: 'hoodies',
-        priority: 5,
-        imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=900&h=1100&fit=crop',
-      },
-    }),
-    prisma.category.create({
-      data: {
-        name: 'Combo',
-        slug: 'combo',
-        priority: 6,
-        imageUrl: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=900&h=1100&fit=crop',
-      },
-    }),
-  ]);
+async function main() {
+  await wipe();
 
-  // Create Themes
-  const themeStory = 'A merch theme is a storytelling drop: visual direction, campaign colors, animation feel, and product grouping. It is separate from the customer dark/light mode preference.';
-  const themes = await Promise.all([
-    prisma.theme.create({ data: { name: 'Anime', slug: 'anime', description: 'Bold anime-inspired drops for fans.', story: `${themeStory} Anime focuses on energetic art, expressive poses, and fandom confidence.`, primaryColor: '#ff4f8b', secondaryColor: '#111827', accentColor: '#ffd166', fontFamily: 'Poppins, Arial, sans-serif', animationStyle: 'snap-slide', priority: 1, active: true, imageUrl: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1600' } }),
-    prisma.theme.create({ data: { name: 'Bihu', slug: 'bihu', description: 'Assam heritage and festival expression.', story: 'Rooted in the vibrant heritage of Northeast India, this drop celebrates Bihu, culture, rhythm, and everyday pride through wearable stories.', primaryColor: '#8b1e16', secondaryColor: '#f2c14e', accentColor: '#2f6f4e', fontFamily: 'Georgia, serif', animationStyle: 'soft-wave', priority: 2, active: true, imageUrl: 'https://images.unsplash.com/photo-1600694446265-358f7fabc2c6?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1602848597941-0d3d3a2c1241?w=1600' } }),
-    prisma.theme.create({ data: { name: 'Puja Festival', slug: 'puja-festival', description: 'Festive celebration and family-ready tees.', story: 'A celebratory drop for Puja season with warm palettes, premium styling, and pieces made for family, friends, and celebration moments.', primaryColor: '#b42318', secondaryColor: '#f97316', accentColor: '#facc15', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'glow', priority: 3, active: true, imageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600' } }),
-    prisma.theme.create({ data: { name: 'Spider-Man', slug: 'spider-man', description: 'Red-blue superhero inspired energy.', story: `${themeStory} Spider-Man is a high-motion campaign for web-slinger fans, comic style, and bold color-block graphics.`, primaryColor: '#d90429', secondaryColor: '#0057b8', accentColor: '#ffffff', fontFamily: 'Arial Black, Arial, sans-serif', animationStyle: 'web-swing', priority: 4, active: true, imageUrl: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=900', bannerImageUrl: 'https://images.unsplash.com/photo-1636487658580-04eeffec7d7d?w=1600' } }),
-    prisma.theme.create({ data: { name: 'Minimal', slug: 'minimal', description: 'Clean essentials for everyday wear.', story: 'A comfort-first theme for simple, premium basics with careful fabric, fit, and no compromise in quality.', primaryColor: '#111111', secondaryColor: '#f5f5f5', accentColor: '#777777', fontFamily: 'Inter, Arial, sans-serif', animationStyle: 'fade', priority: 5, active: true } }),
-    prisma.theme.create({ data: { name: 'Graphic', slug: 'graphic', description: 'Art-led graphic apparel.', story: 'A creative playground for expressive artwork, bold prints, and custom crafted visuals.', primaryColor: '#ff006e', secondaryColor: '#00d9ff', accentColor: '#8338ec', fontFamily: 'Bebas Neue, Arial, sans-serif', animationStyle: 'pop', priority: 6, active: true } }),
-    prisma.theme.create({ data: { name: 'Gaming', slug: 'gaming', description: 'Game culture and esports-inspired tees.', story: 'Fast, electric, and playful pieces for gamers and creators.', primaryColor: '#00ff41', secondaryColor: '#0d0221', accentColor: '#ff00ff', fontFamily: 'Courier New, monospace', animationStyle: 'pulse', priority: 7, active: true } }),
-  ]);
-
-  // Create Collections
-  const collections = await Promise.all([
-    prisma.collection.create({
-      data: { name: 'Summer', slug: 'summer', priority: 1 },
-    }),
-    prisma.collection.create({
-      data: { name: 'Winter', slug: 'winter', priority: 2 },
-    }),
-    prisma.collection.create({
-      data: { name: 'Festive', slug: 'festive', priority: 3 },
-    }),
-    prisma.collection.create({
-      data: { name: 'New Arrival', slug: 'new-arrival', priority: 4 },
-    }),
-  ]);
-
-  // Create Size Guides
-  await Promise.all([
-    prisma.sizeGuide.create({
-      data: {
-        size: 'S',
-        chest: '44"',
-        shoulder: '20.5"',
-        length: '28"',
-        sleeve: '8.5"',
-        priority: 1,
-        active: true,
-      },
-    }),
-    prisma.sizeGuide.create({
-      data: {
-        size: 'M',
-        chest: '46"',
-        shoulder: '21.5"',
-        length: '29"',
-        sleeve: '9"',
-        priority: 2,
-        active: true,
-      },
-    }),
-    prisma.sizeGuide.create({
-      data: {
-        size: 'L',
-        chest: '48"',
-        shoulder: '22.5"',
-        length: '30"',
-        sleeve: '9.5"',
-        priority: 3,
-        active: true,
-      },
-    }),
-    prisma.sizeGuide.create({
-      data: {
-        size: 'XL',
-        chest: '51"',
-        shoulder: '23.5"',
-        length: '30.5"',
-        sleeve: '10"',
-        priority: 4,
-        active: true,
-      },
-    }),
-  ]);
-
-  // Sample Products Data
-  const productsData = [
-    // Anime Collection
-    {
-      name: 'Naruto Power',
-      slug: 'naruto-power',
-      sku: 'NARUTO-001',
-      description: 'Epic Naruto ninja design - Perfect for anime lovers',
-      categoryId: categories[2].id,
-      themeId: themes[0].id,
-      collectionId: collections[3].id,
-      price: 49900,
-      mrp: 79900,
-      discountPercent: 38,
-      color: 'Black',
-      tags: ['anime', 'naruto', 'trending'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'One Piece Adventure',
-      slug: 'one-piece-adventure',
-      sku: 'ONEPIECE-001',
-      description: 'Luffy and crew sailing the seas',
-      categoryId: categories[0].id,
-      themeId: themes[0].id,
-      collectionId: collections[3].id,
-      price: 49900,
-      mrp: 79900,
-      discountPercent: 38,
-      color: 'Navy',
-      tags: ['anime', 'one-piece'],
-      isFeatured: false,
-      isTrending: true,
-    },
-    {
-      name: 'Dragon Ball Z Goku',
-      slug: 'dragon-ball-z-goku',
-      sku: 'DBZ-001',
-      description: 'Powerful Goku Kamehameha pose',
-      categoryId: categories[0].id,
-      themeId: themes[0].id,
-      collectionId: collections[3].id,
-      price: 44900,
-      mrp: 74900,
-      discountPercent: 40,
-      color: 'Orange',
-      tags: ['anime', 'dbz'],
-      isFeatured: true,
-      isTrending: false,
-    },
-
-    // Marvel Collection
-    {
-      name: 'Iron Man Classic',
-      slug: 'iron-man-classic',
-      sku: 'IRONMAN-001',
-      description: 'Classic Iron Man armor design',
-      categoryId: categories[0].id,
-      themeId: themes[3].id,
-      collectionId: collections[3].id,
-      price: 54900,
-      mrp: 89900,
-      discountPercent: 39,
-      color: 'Red',
-      tags: ['marvel', 'ironman', 'superhero'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'Captain America Shield',
-      slug: 'captain-america-shield',
-      sku: 'CAPAMERICA-001',
-      description: 'Classic Captain America shield design',
-      categoryId: categories[1].id,
-      themeId: themes[3].id,
-      collectionId: collections[3].id,
-      price: 49900,
-      mrp: 79900,
-      discountPercent: 37,
-      color: 'Blue',
-      tags: ['marvel', 'captain-america'],
-      isFeatured: false,
-      isTrending: true,
-    },
-    {
-      name: 'Thor Mjolnir',
-      slug: 'thor-mjolnir',
-      sku: 'THOR-001',
-      description: 'Thunder God Thor with Mjolnir',
-      categoryId: categories[0].id,
-      themeId: themes[3].id,
-      collectionId: collections[3].id,
-      price: 52900,
-      mrp: 84900,
-      discountPercent: 38,
-      color: 'Gold',
-      tags: ['marvel', 'thor'],
-      isFeatured: false,
-      isTrending: false,
-    },
-
-    // Spider-Man Collection
-    {
-      name: 'Spider-Man Red Suit',
-      slug: 'spider-man-red-suit',
-      sku: 'SPIDERMAN-001',
-      description: 'Amazing Spider-Man iconic red suit',
-      categoryId: categories[0].id,
-      themeId: themes[3].id,
-      collectionId: collections[3].id,
-      price: 49900,
-      mrp: 79900,
-      discountPercent: 38,
-      color: 'Red',
-      tags: ['marvel', 'spider-man', 'superhero'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'Spider-Man Black Suit',
-      slug: 'spider-man-black-suit',
-      sku: 'SPIDERMAN-002',
-      description: 'Symbiote Black Suit Spider-Man',
-      categoryId: categories[0].id,
-      themeId: themes[3].id,
-      collectionId: collections[3].id,
-      price: 49900,
-      mrp: 79900,
-      discountPercent: 38,
-      color: 'Black',
-      tags: ['marvel', 'spider-man'],
-      isFeatured: false,
-      isTrending: false,
-    },
-
-    // Assam Collection
-    {
-      name: 'Bihu Festival',
-      slug: 'bihu-festival',
-      sku: 'BIHU-001',
-      description: 'Celebrate Bihu with this cultural design',
-      categoryId: categories[2].id,
-      themeId: themes[1].id,
-      collectionId: collections[2].id,
-      price: 39900,
-      mrp: 64900,
-      discountPercent: 38,
-      color: 'White',
-      tags: ['assam', 'cultural', 'festive'],
-      isFeatured: true,
-      isTrending: false,
-    },
-    {
-      name: 'Assam Pride',
-      slug: 'assam-pride',
-      sku: 'ASSAM-001',
-      description: 'Proud Assamese heritage tee',
-      categoryId: categories[1].id,
-      themeId: themes[1].id,
-      collectionId: collections[2].id,
-      price: 39900,
-      mrp: 64900,
-      discountPercent: 38,
-      color: 'Maroon',
-      tags: ['assam', 'cultural'],
-      isFeatured: false,
-      isTrending: false,
-    },
-
-    // Minimal Collection
-    {
-      name: 'Pure Black Minimal',
-      slug: 'pure-black-minimal',
-      sku: 'MINIMAL-001',
-      description: 'Classic minimal black tee',
-      categoryId: categories[2].id,
-      themeId: themes[4].id,
-      collectionId: collections[0].id,
-      price: 29900,
-      mrp: 49900,
-      discountPercent: 40,
-      color: 'Black',
-      tags: ['minimal', 'classic'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'Pure White Minimal',
-      slug: 'pure-white-minimal',
-      sku: 'MINIMAL-002',
-      description: 'Clean white essential tee',
-      categoryId: categories[2].id,
-      themeId: themes[4].id,
-      collectionId: collections[0].id,
-      price: 29900,
-      mrp: 49900,
-      discountPercent: 40,
-      color: 'White',
-      tags: ['minimal', 'classic'],
-      isFeatured: false,
-      isTrending: false,
-    },
-
-    // Graphic Collection
-    {
-      name: 'Geometric Vibes',
-      slug: 'geometric-vibes',
-      sku: 'GRAPHIC-001',
-      description: 'Modern geometric design',
-      categoryId: categories[1].id,
-      themeId: themes[5].id,
-      collectionId: collections[0].id,
-      price: 39900,
-      mrp: 64900,
-      discountPercent: 38,
-      color: 'Pink',
-      tags: ['graphic', 'modern'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'Abstract Art',
-      slug: 'abstract-art',
-      sku: 'GRAPHIC-002',
-      description: 'Abstract artistic print',
-      categoryId: categories[0].id,
-      themeId: themes[5].id,
-      collectionId: collections[0].id,
-      price: 39900,
-      mrp: 64900,
-      discountPercent: 38,
-      color: 'Cyan',
-      tags: ['graphic', 'art'],
-      isFeatured: false,
-      isTrending: false,
-    },
-
-    // Gaming Collection
-    {
-      name: 'Gamer Power',
-      slug: 'gamer-power',
-      sku: 'GAMING-001',
-      description: 'Level up your gaming style',
-      categoryId: categories[0].id,
-      themeId: themes[6].id,
-      collectionId: collections[0].id,
-      price: 44900,
-      mrp: 74900,
-      discountPercent: 40,
-      color: 'Green',
-      tags: ['gaming', 'esports'],
-      isFeatured: true,
-      isTrending: true,
-    },
-    {
-      name: 'Console Legend',
-      slug: 'console-legend',
-      sku: 'GAMING-002',
-      description: 'For the gaming legends',
-      categoryId: categories[1].id,
-      themeId: themes[6].id,
-      collectionId: collections[0].id,
-      price: 44900,
-      mrp: 74900,
-      discountPercent: 40,
-      color: 'Magenta',
-      tags: ['gaming'],
-      isFeatured: false,
-      isTrending: false,
-    },
+  // ---------------------------------------------------------------- fits
+  console.log('Creating fits (categories)...');
+  const fitSpecs = [
+    { name: 'Regular', slug: 'regular', imageUrl: IMG.regular, priority: 1 },
+    { name: 'Oversized', slug: 'oversized', imageUrl: IMG.oversized, priority: 2 },
+    { name: 'Jersey', slug: 'jersey', imageUrl: IMG.jersey, priority: 3 },
+    { name: 'Polo', slug: 'polo', imageUrl: IMG.polo, priority: 4 },
+    { name: 'Hoodie', slug: 'hoodie', imageUrl: IMG.hoodie, priority: 5 },
   ];
-
-  // Create Products
-  console.log(`📦 Creating ${productsData.length} products...`);
-  for (const productData of productsData) {
-    const product = await prisma.product.create({
-      data: {
-        name: productData.name,
-        slug: productData.slug,
-        sku: productData.sku,
-        description: productData.description,
-        categoryId: productData.categoryId,
-        themeId: productData.themeId,
-        collectionId: productData.collectionId,
-        price: productData.price,
-        mrp: productData.mrp,
-        discountPercent: productData.discountPercent,
-        tags: productData.tags,
-        isFeatured: productData.isFeatured,
-        isTrending: productData.isTrending,
-        isNewArrival: false,
-        isVisible: true,
-        seoTitle: `${productData.name} - Fly Free`,
-        seoDescription: productData.description,
-      },
-    });
-
-    // Create product images for gallery and color switching
-    const imageUrls = [
-      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop',
-      'https://images.unsplash.com/photo-1554521666-7deae28e1168?w=900&h=1100&fit=crop',
-      'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=900&h=1100&fit=crop',
-      'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=900&h=1100&fit=crop',
-    ];
-
-    await prisma.productImage.createMany({
-      data: [
-        {
-          productId: product.id,
-          color: productData.color,
-          url: imageUrls[0],
-          alt: `${product.name} front view`,
-          priority: 0,
-        },
-        {
-          productId: product.id,
-          color: 'Black',
-          url: imageUrls[1],
-          alt: `${product.name} black color`,
-          priority: 1,
-        },
-        {
-          productId: product.id,
-          color: 'White',
-          url: imageUrls[2],
-          alt: `${product.name} white color`,
-          priority: 2,
-        },
-        {
-          productId: product.id,
-          color: productData.color,
-          url: imageUrls[3],
-          alt: `${product.name} print detail`,
-          priority: 3,
-        },
-      ],
-    });
-
-    // Create product variants (colors & sizes)
-    const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-    const colors = ['Black', 'White', 'Navy', 'Red', 'Blue', 'Green'];
-
-    for (const size of sizes) {
-      for (const color of colors) {
-        const variant = await prisma.productVariant.create({
-          data: {
-            productId: product.id,
-            sku: `${product.sku}-${size}-${color}`,
-            color,
-            size,
-          },
-        });
-
-        // Create inventory
-        await prisma.inventory.create({
-          data: {
-            variantId: variant.id,
-            stock: Math.floor(Math.random() * 100) + 10,
-            lowStockAlert: 5,
-          },
-        });
-      }
-    }
-
-    // Create hampers for products
-    if (Math.random() > 0.4) {
-      await prisma.productHamper.create({
-        data: {
-          productId: product.id,
-          name: `${product.name} Hamper`,
-          description: `Premium hamper packaging for ${product.name}`,
-          contents: ['T-Shirt', 'Greeting Card', 'Sticker Pack', 'Premium Wrap'],
-          images: ['https://images.unsplash.com/photo-1549465220-1a8b70c9a569?w=500'],
-          price: product.price + 30000,
-          gstPercent: 5,
-          isActive: true,
-          priority: 1,
-        },
-      });
-    }
-
-    if (Math.random() > 0.6) {
-      await prisma.productHamper.create({
-        data: {
-          productId: product.id,
-          name: `${product.name} Premium Set`,
-          description: `Deluxe set with accessories for ${product.name}`,
-          contents: ['T-Shirt', 'Socks', 'Cap', 'Mug', 'Box', 'Thank You Card'],
-          images: [
-            'https://images.unsplash.com/photo-1549465220-1a8b70c9a569?w=500',
-            'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500',
-          ],
-          price: product.price + 50000,
-          gstPercent: 5,
-          isActive: true,
-          priority: 2,
-        },
-      });
-    }
+  const fits: Record<string, { id: string }> = {};
+  for (const spec of fitSpecs) {
+    fits[spec.slug] = await prisma.category.create({ data: spec });
   }
 
-  // Create Coupons
-  console.log('🎟️ Creating coupons...');
-  const coupons = await Promise.all([
-    prisma.coupon.create({
+  // -------------------------------------------------------------- themes
+  console.log('Creating themes...');
+  const themeSpecs = [
+    {
+      name: 'Spider-Man', slug: 'spider-man', priority: 1, active: true,
+      description: 'Web-slinger graphics with bold red and midnight blue.',
+      story: 'Comic-panel linework and web textures printed on heavyweight cotton.',
+      primaryColor: '#D32F2F', secondaryColor: '#1A237E', accentColor: '#FFC107',
+    },
+    {
+      name: 'Anime', slug: 'anime', priority: 2, active: true,
+      description: 'Nightblade cuts and shonen energy for everyday wear.',
+      story: 'Hand-drawn panels inspired by late-night anime marathons.',
+      primaryColor: '#7B1FA2', secondaryColor: '#00BCD4', accentColor: '#FF4081',
+    },
+    {
+      name: 'Bihu', slug: 'bihu', priority: 3, active: true,
+      description: 'Assamese heritage motifs, xorai patterns, and gamosa reds.',
+      story: 'Northeast stories translated into wearable prints.',
+      primaryColor: '#C62828', secondaryColor: '#F9A825', accentColor: '#2E7D32',
+    },
+    {
+      name: 'Puja', slug: 'puja', priority: 4, active: true,
+      description: 'Festival-ready prints in dhunuchi golds and alta reds.',
+      story: 'Made for pandal hopping and family portraits.',
+      primaryColor: '#E65100', secondaryColor: '#B71C1C', accentColor: '#FFD54F',
+    },
+    {
+      name: 'Cricket', slug: 'cricket', priority: 5, active: true,
+      description: 'Boundary-line jerseys and polos built for match day.',
+      story: 'Breathable knits for the stands and the street.',
+      primaryColor: '#1B5E20', secondaryColor: '#0D47A1', accentColor: '#FFEB3B',
+    },
+    {
+      name: 'Retro', slug: 'retro', priority: 6, active: true,
+      description: 'Static grain, faded gradients, and analogue nostalgia.',
+      story: 'VHS artefacts and 90s colour palettes.',
+      primaryColor: '#4527A0', secondaryColor: '#00838F', accentColor: '#FF7043',
+    },
+  ];
+  const themes: Record<string, { id: string; name: string }> = {};
+  for (const spec of themeSpecs) {
+    themes[spec.slug] = await prisma.theme.create({
+      data: { ...spec, imageUrl: IMG.banner, bannerImageUrl: IMG.banner },
+    });
+  }
+
+  // ------------------------------------------------------------ products
+  // Each theme spans several fits; each fit appears across several themes.
+  console.log('Creating products...');
+  const productSpecs: {
+    name: string; theme: string; fit: string; price: number; mrp: number;
+    images: string[]; featured?: boolean; trending?: boolean; newArrival?: boolean;
+  }[] = [
+    // Spider-Man
+    { name: 'Web Strike Tee', theme: 'spider-man', fit: 'regular', price: 799, mrp: 1099, images: [IMG.regular, IMG.alt1], featured: true, newArrival: true },
+    { name: 'Web Strike Oversized', theme: 'spider-man', fit: 'oversized', price: 899, mrp: 1299, images: [IMG.oversized, IMG.alt2], trending: true },
+    { name: 'Spidey Match Jersey', theme: 'spider-man', fit: 'jersey', price: 1099, mrp: 1499, images: [IMG.jersey, IMG.alt3] },
+    { name: 'Web Line Polo', theme: 'spider-man', fit: 'polo', price: 949, mrp: 1299, images: [IMG.polo, IMG.alt4] },
+
+    // Anime
+    { name: 'Nightblade Tee', theme: 'anime', fit: 'regular', price: 699, mrp: 999, images: [IMG.regular, IMG.alt2], featured: true },
+    { name: 'Nightblade Oversized', theme: 'anime', fit: 'oversized', price: 849, mrp: 1199, images: [IMG.oversized, IMG.alt1], trending: true, newArrival: true },
+    { name: 'Shonen Static Hoodie', theme: 'anime', fit: 'hoodie', price: 1399, mrp: 1899, images: [IMG.hoodie, IMG.alt3] },
+
+    // Bihu
+    { name: 'Bihu Xorai Tee', theme: 'bihu', fit: 'regular', price: 749, mrp: 1049, images: [IMG.regular, IMG.alt3], featured: true },
+    { name: 'Bihu Xorai Jersey', theme: 'bihu', fit: 'jersey', price: 899, mrp: 1249, images: [IMG.jersey, IMG.alt1], newArrival: true },
+    { name: 'Gamosa Stripe Polo', theme: 'bihu', fit: 'polo', price: 899, mrp: 1199, images: [IMG.polo, IMG.alt2] },
+
+    // Puja
+    { name: 'Festival Blessed Tee', theme: 'puja', fit: 'regular', price: 799, mrp: 1099, images: [IMG.regular, IMG.alt4], featured: true, newArrival: true },
+    { name: 'Dhunuchi Oversized', theme: 'puja', fit: 'oversized', price: 949, mrp: 1349, images: [IMG.oversized, IMG.alt3], trending: true },
+    { name: 'Pandal Nights Hoodie', theme: 'puja', fit: 'hoodie', price: 1449, mrp: 1999, images: [IMG.hoodie, IMG.alt1] },
+
+    // Cricket
+    { name: 'Boundary Polo', theme: 'cricket', fit: 'polo', price: 749, mrp: 1049, images: [IMG.polo, IMG.alt2], featured: true },
+    { name: 'Match Day Jersey', theme: 'cricket', fit: 'jersey', price: 1149, mrp: 1599, images: [IMG.jersey, IMG.alt4], trending: true },
+    { name: 'Twelfth Man Tee', theme: 'cricket', fit: 'regular', price: 699, mrp: 949, images: [IMG.regular, IMG.alt3] },
+
+    // Retro
+    { name: 'Retro Static Hoodie', theme: 'retro', fit: 'hoodie', price: 1299, mrp: 1799, images: [IMG.hoodie, IMG.alt2], featured: true, trending: true },
+    { name: 'Analogue Grain Tee', theme: 'retro', fit: 'regular', price: 699, mrp: 999, images: [IMG.regular, IMG.alt1], newArrival: true },
+    { name: 'VHS Oversized', theme: 'retro', fit: 'oversized', price: 899, mrp: 1249, images: [IMG.oversized, IMG.alt4] },
+  ];
+
+  const products: { id: string; slug: string; name: string; themeSlug: string }[] = [];
+
+  for (const [index, spec] of productSpecs.entries()) {
+    const slug = spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const skuBase = `FF-${spec.theme.toUpperCase().replace(/[^A-Z]/g, '')}-${index + 1}`;
+
+    const product = await prisma.product.create({
       data: {
-        code: 'WELCOME10',
-        description: '10% off on first order',
-        discountPercent: 10,
-        minOrderAmount: 0,
-        isActive: true,
+        name: spec.name,
+        slug,
+        sku: skuBase,
+        description: `${spec.name} from the ${themes[spec.theme].name} drop. 220 GSM combed cotton with a DTG print that survives the wash. Unisex ${spec.fit} fit with taped shoulders.`,
+        tags: [spec.theme, spec.fit, 'unisex'],
+        material: '220 GSM combed cotton',
+        washCare: 'Machine wash cold, inside out. Do not bleach. Tumble dry low.',
+        price: spec.price * 100,
+        mrp: spec.mrp * 100,
+        discountPercent: Math.round(((spec.mrp - spec.price) / spec.mrp) * 100),
+        gstPercent: 5,
+        weightGrams: spec.fit === 'hoodie' ? 620 : 210,
+        isVisible: true,
+        isFeatured: Boolean(spec.featured),
+        isTrending: Boolean(spec.trending),
+        isNewArrival: Boolean(spec.newArrival),
+        categoryId: fits[spec.fit].id,
+        themeId: themes[spec.theme].id,
+        images: {
+          create: spec.images.map((url, i) => ({
+            url,
+            alt: `${spec.name} view ${i + 1}`,
+            priority: i,
+          })),
+        },
       },
+    });
+
+    // one variant per size, all unisex, with stock
+    for (const [sizeIndex, size] of SIZES.entries()) {
+      const variant = await prisma.productVariant.create({
+        data: {
+          productId: product.id,
+          sku: `${skuBase}-${size}`,
+          color: 'Black',
+          size,
+          price: spec.price * 100,
+        },
+      });
+      await prisma.inventory.create({
+        data: {
+          variantId: variant.id,
+          stock: sizeIndex === 0 ? 4 : 25 - sizeIndex * 2,
+          lowStockAlert: 5,
+          warehouse: 'Guwahati',
+        },
+      });
+    }
+
+    products.push({ id: product.id, slug, name: spec.name, themeSlug: spec.theme });
+  }
+
+  // ------------------------------------------------------------- hampers
+  // One gift box per theme. Any product in that theme can add it at checkout.
+  console.log('Creating theme hampers...');
+  const hamperSpecs = [
+    { theme: 'spider-man', name: 'Spider-Man Gift Box', price: 500 },
+    { theme: 'anime', name: 'Anime Collector Box', price: 450 },
+    { theme: 'bihu', name: 'Bihu Festive Hamper', price: 550 },
+    { theme: 'puja', name: 'Puja Gifting Hamper', price: 600 },
+    { theme: 'cricket', name: 'Match Day Fan Box', price: 480 },
+    { theme: 'retro', name: 'Retro Nostalgia Box', price: 520 },
+  ];
+
+  for (const [index, spec] of hamperSpecs.entries()) {
+    await prisma.productHamper.create({
+      data: {
+        themeId: themes[spec.theme].id,
+        name: spec.name,
+        description: `Gift-ready box for the ${themes[spec.theme].name} drop. Your tee ships inside the box with themed extras.`,
+        contents: [
+          'Your selected tee',
+          'Themed sticker pack',
+          'Enamel keychain',
+          'Mini lookbook card',
+          'Reusable gift box + ribbon',
+        ],
+        imageUrl: IMG.hamper,
+        images: [IMG.hamper, IMG.hamperAlt],
+        sizeNote: 'Box fits one tee in any size (XS-XL).',
+        price: spec.price * 100,
+        gstPercent: 5,
+        isActive: true,
+        priority: index + 1,
+      },
+    });
+  }
+
+  // --------------------------------------------------------- size guides
+  console.log('Creating size guides...');
+  const sizeRows = [
+    { size: 'XS', chest: '36"', shoulder: '16.5"', length: '26"', sleeve: '7.5"', priority: 1 },
+    { size: 'S', chest: '38"', shoulder: '17.5"', length: '27"', sleeve: '8"', priority: 2 },
+    { size: 'M', chest: '40"', shoulder: '18.5"', length: '28"', sleeve: '8.5"', priority: 3 },
+    { size: 'L', chest: '42"', shoulder: '19.5"', length: '29"', sleeve: '9"', priority: 4 },
+    { size: 'XL', chest: '44"', shoulder: '20.5"', length: '30"', sleeve: '9.5"', priority: 5 },
+  ];
+  for (const row of sizeRows) {
+    await prisma.sizeGuide.create({ data: { ...row, active: true } });
+  }
+
+  // ------------------------------------------------------ website themes
+  // These drive the site-wide CSS variables. One must always be active.
+  console.log('Creating website themes...');
+  const websiteTheme = await prisma.websiteTheme.create({
+    data: {
+      name: 'Fly Free Default',
+      slug: 'fly-free-default',
+      description: 'Core brand skin: red, blue, and gold on paper white.',
+      primaryColor: '#FF4A4E',
+      secondaryColor: '#00A8E8',
+      accentColor: '#FFB703',
+      backgroundColor: '#FFFFFF',
+      textColor: '#111827',
+      fontFamily: 'Inter, Arial, sans-serif',
+      animationStyle: 'fade',
+      priority: 1,
+      isActive: true,
+    },
+  });
+
+  await prisma.websiteTheme.create({
+    data: {
+      name: 'Festive Night',
+      slug: 'festive-night',
+      description: 'Darker festive skin for Puja and Bihu drops.',
+      primaryColor: '#E65100',
+      secondaryColor: '#B71C1C',
+      accentColor: '#FFD54F',
+      backgroundColor: '#12100E',
+      textColor: '#F8F5F0',
+      fontFamily: 'Inter, Arial, sans-serif',
+      animationStyle: 'fade',
+      priority: 2,
+      isActive: false,
+    },
+  });
+
+  // ------------------------------------------------------- announcements
+  // These render as the scrolling marquee strip above the header.
+  console.log('Creating announcements...');
+  const announcements = [
+    { title: 'New drop: Puja Edition', message: 'Festival-ready prints are live.', href: '/themes/puja', ctaLabel: 'Shop Puja' },
+    { title: 'Bihu collection live', message: 'Wear Northeast stories.', href: '/themes/bihu', ctaLabel: 'Shop Bihu' },
+    { title: 'Free shipping over ₹999', message: 'Applied automatically at checkout.', href: '/products', ctaLabel: 'Shop all' },
+    { title: '30-day exchange', message: 'Easy size swaps on every order.', href: '/products', ctaLabel: 'Learn more' },
+  ];
+  for (const [index, item] of announcements.entries()) {
+    await prisma.announcement.create({
+      data: {
+        ...item,
+        type: 'EVENT',
+        priority: index + 1,
+        isActive: true,
+        websiteThemeId: websiteTheme.id,
+        startsAt: new Date(Date.now() - 86400000),
+        endsAt: new Date(Date.now() + 86400000 * 60),
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------- users
+  console.log('Creating users...');
+  const passwordHash = await bcrypt.hash('Password123', 10);
+  const customers = await Promise.all([
+    prisma.user.create({
+      data: { name: 'Biswajit Das', email: 'dhrubajyotidas329@gmail.com', phone: '+919876543210', passwordHash, emailVerified: true, emailVerifiedAt: new Date() },
     }),
-    prisma.coupon.create({
-      data: {
-        code: 'FLY100',
-        description: 'Flat ₹100 off',
-        discountAmount: 10000,
-        minOrderAmount: 50000,
-        isActive: true,
-      },
+    prisma.user.create({
+      data: { name: 'Priya Mehta', email: 'priya@example.com', phone: '+919876543211', passwordHash, emailVerified: true, emailVerifiedAt: new Date() },
     }),
-    prisma.coupon.create({
-      data: {
-        code: 'BUY2GET10',
-        description: '10% off on 2+ items',
-        discountPercent: 10,
-        minOrderAmount: 0,
-        isActive: true,
-      },
-    }),
-    prisma.coupon.create({
-      data: {
-        code: 'SUMMER20',
-        description: '20% off on summer collection',
-        discountPercent: 20,
-        minOrderAmount: 0,
-        isActive: true,
-      },
+    prisma.user.create({
+      data: { name: 'Vikram Kalita', email: 'vikram@example.com', phone: '+919876543212', passwordHash, emailVerified: true, emailVerifiedAt: new Date() },
     }),
   ]);
 
-  // Create Test Users
-  console.log('👥 Creating test users...');
-  const users = await Promise.all([
-    prisma.user.create({
-      data: {
-        email: 'john@example.com',
-        name: 'John Doe',
-        phone: '9876543210',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    }),
-    prisma.user.create({
-      data: {
-        email: 'jane@example.com',
-        name: 'Jane Smith',
-        phone: '9876543211',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    }),
-    prisma.user.create({
-      data: {
-        email: 'test@example.com',
-        name: 'Test User',
-        phone: '9876543212',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    }),
-  ]);
+  await prisma.address.create({
+    data: {
+      userId: customers[0].id,
+      fullName: 'Biswajit Das',
+      phone: '+919876543210',
+      line1: 'House 21, Zoo Road',
+      line2: 'Near RG Baruah Park',
+      city: 'Guwahati',
+      state: 'Assam',
+      postalCode: '781024',
+      country: 'India',
+      isDefault: true,
+    },
+  });
 
-  // Create Addresses for Users
-  console.log('📍 Creating addresses...');
-  const addresses = await Promise.all([
-    prisma.address.create({
-      data: {
-        userId: users[0].id,
-        fullName: 'John Doe',
-        phone: '9876543210',
-        line1: '123 Main Street',
-        line2: 'Apt 4B',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        postalCode: '400001',
-        country: 'India',
-      },
-    }),
-    prisma.address.create({
-      data: {
-        userId: users[0].id,
-        fullName: 'John Doe',
-        phone: '9876543210',
-        line1: '456 Park Avenue',
-        city: 'Bangalore',
-        state: 'Karnataka',
-        postalCode: '560001',
-        country: 'India',
-      },
-    }),
-    prisma.address.create({
-      data: {
-        userId: users[1].id,
-        fullName: 'Jane Smith',
-        phone: '9876543211',
-        line1: '789 Ocean Drive',
-        city: 'Chennai',
-        state: 'Tamil Nadu',
-        postalCode: '600001',
-        country: 'India',
-      },
-    }),
-  ]);
-
-  // Create Admin Roles
-  console.log('🔐 Creating admin roles...');
+  // --------------------------------------------------------------- admin
+  console.log('Creating admin users...');
   const adminRole = await prisma.role.create({
     data: {
       name: 'Admin',
@@ -702,661 +386,116 @@ async function main() {
       },
     },
   });
-
-  // Create Admin Users
-  console.log('👨‍💼 Creating admin users...');
-  const admins = await Promise.all([
-    prisma.adminUser.create({
-      data: {
-        name: 'Admin User',
-        email: 'admin@flyfree.com',
-        roleId: adminRole.id,
-      },
-    }),
-    prisma.adminUser.create({
-      data: {
-        name: 'Manager User',
-        email: 'manager@flyfree.com',
-        roleId: adminRole.id,
-      },
-    }),
-  ]);
-
-  // Create Sample Orders
-  console.log('📦 Creating sample orders...');
-  const products = await prisma.product.findMany({ take: 16 });
-  const variants = await prisma.productVariant.findMany({ take: 6 });
-
-  const orders = await Promise.all([
-    prisma.order.create({
-      data: {
-        userId: users[0].id,
-        shippingAddressId: addresses[0].id,
-        status: 'DELIVERED',
-        reviewRequestSentAt: new Date(),
-        reviewSubmittedAt: new Date(),
-        subtotal: 99800,
-        discount: 10000,
-        shippingFee: 0,
-        tax: 14970,
-        total: 104770,
-        items: {
-          create: [
-            {
-              productId: products[0].id,
-              variantId: variants[0].id,
-              name: products[0].name,
-              sku: variants[0].sku,
-              price: 49900,
-              quantity: 2,
-            },
-          ],
-        },
-      },
-    }),
-    prisma.order.create({
-      data: {
-        userId: users[1].id,
-        shippingAddressId: addresses[2].id,
-        status: 'SHIPPED',
-        reviewRequestSentAt: new Date(),
-        subtotal: 49900,
-        discount: 5000,
-        shippingFee: 0,
-        tax: 6735,
-        total: 51635,
-        items: {
-          create: [
-            {
-              productId: products[1].id,
-              variantId: variants[1].id,
-              name: products[1].name,
-              sku: variants[1].sku,
-              price: 49900,
-              quantity: 1,
-            },
-          ],
-        },
-      },
-    }),
-    prisma.order.create({
-      data: {
-        userId: users[2].id,
-        shippingAddressId: addresses[0].id,
-        status: 'CONFIRMED',
-        subtotal: 149700,
-        discount: 15000,
-        shippingFee: 50,
-        tax: 20220,
-        total: 154970,
-        items: {
-          create: [
-            {
-              productId: products[2].id,
-              variantId: variants[2].id,
-              name: products[2].name,
-              sku: variants[2].sku,
-              price: 44900,
-              quantity: 3,
-            },
-          ],
-        },
-      },
-    }),
-  ]);
-
-  // Create payments, influencers, referral attribution, and invoices
-  await Promise.all([
-    prisma.payment.create({
-      data: {
-        orderId: orders[0].id,
-        status: 'PAID',
-        amount: orders[0].total,
-        providerPaymentId: 'rzp_demo_delivered_001',
-        paidAt: new Date(),
-      },
-    }),
-    prisma.payment.create({
-      data: {
-        orderId: orders[1].id,
-        status: 'PAID',
-        amount: orders[1].total,
-        providerPaymentId: 'rzp_demo_shipped_002',
-        paidAt: new Date(),
-      },
-    }),
-    prisma.payment.create({
-      data: {
-        orderId: orders[2].id,
-        status: 'PENDING',
-        amount: orders[2].total,
-      },
-    }),
-  ]);
-
-  const influencers = await Promise.all([
-    prisma.influencer.create({
-      data: {
-        name: 'Aarav Style',
-        email: 'aarav.influencer@example.com',
-        code: 'AARAV20',
-        linkKey: 'AARAVSTYLE',
-        imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
-        instagramUrl: 'https://instagram.com/aaravstyle',
-        facebookUrl: 'https://facebook.com/aaravstyle',
-        xUrl: 'https://x.com/aaravstyle',
-        socialHandle: '@aaravstyle',
-        followers: 82000,
-        buyerDiscountPercent: 20,
-        commissionRate: 8,
-        totalEarnings: 8382,
-        totalReferrals: 1,
-        products: {
-          connect: [
-            { id: products[0].id },
-            { id: products[1].id },
-            { id: products[2].id },
-          ],
-        },
-      },
-    }),
-    prisma.influencer.create({
-      data: {
-        name: 'Maya Threads',
-        email: 'maya.threads@example.com',
-        code: 'MAYA15',
-        linkKey: 'MAYATHREADS',
-        imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-        instagramUrl: 'https://instagram.com/mayathreads',
-        facebookUrl: 'https://facebook.com/mayathreads',
-        xUrl: 'https://x.com/mayathreads',
-        socialHandle: '@mayathreads',
-        followers: 54000,
-        buyerDiscountPercent: 15,
-        commissionRate: 6,
-        totalEarnings: 3100,
-        totalReferrals: 1,
-        products: {
-          connect: [
-            { id: products[3].id },
-            { id: products[4].id },
-            { id: products[6].id },
-          ],
-        },
-      },
-    }),
-  ]);
-
-  await Promise.all([
-    prisma.referral.create({
-      data: {
-        influencerId: influencers[0].id,
-        orderId: orders[0].id,
-        code: influencers[0].code,
-        linkKey: influencers[0].linkKey,
-        clicks: 128,
-        conversions: 1,
-        buyerDiscountPercent: 20,
-        commissionAmount: 8382,
-        totalEarnings: 8382,
-        convertedAt: orders[0].createdAt,
-      },
-    }),
-    prisma.referral.create({
-      data: {
-        influencerId: influencers[1].id,
-        orderId: orders[1].id,
-        code: influencers[1].code,
-        linkKey: influencers[1].linkKey,
-        clicks: 74,
-        conversions: 1,
-        buyerDiscountPercent: 15,
-        commissionAmount: 3100,
-        totalEarnings: 3100,
-        convertedAt: orders[1].createdAt,
-      },
-    }),
-  ]);
-
-  await Promise.all([
-    prisma.invoice.create({
-      data: { orderId: orders[0].id, invoiceNumber: 'INV-2026-00001', status: 'SENT', sentAt: new Date() },
-    }),
-    prisma.invoice.create({
-      data: { orderId: orders[1].id, invoiceNumber: 'INV-2026-00002', status: 'GENERATED' },
-    }),
-  ]);
-
-  await Promise.all([
-    prisma.orderStatusHistory.createMany({
-      data: [
-        { orderId: orders[0].id, fromStatus: null, toStatus: 'PLACED', note: 'Order created after Razorpay payment success.', changedBy: 'system' },
-        { orderId: orders[0].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted the order.', changedBy: admins[0].email },
-        { orderId: orders[0].id, fromStatus: 'CONFIRMED', toStatus: 'PACKED', note: 'Packed at warehouse.', changedBy: admins[0].email },
-        { orderId: orders[0].id, fromStatus: 'PACKED', toStatus: 'SHIPPED', note: 'Shipment handed to courier.', changedBy: admins[1].email },
-        { orderId: orders[0].id, fromStatus: 'SHIPPED', toStatus: 'DELIVERED', note: 'Delivery completed.', changedBy: 'system' },
-      ],
-    }),
-    prisma.orderStatusHistory.createMany({
-      data: [
-        { orderId: orders[1].id, fromStatus: null, toStatus: 'PLACED', note: 'Influencer order created after Razorpay payment success.', changedBy: 'system' },
-        { orderId: orders[1].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted the order.', changedBy: admins[0].email },
-        { orderId: orders[1].id, fromStatus: 'CONFIRMED', toStatus: 'PACKED', note: 'Packed and ready to ship.', changedBy: admins[1].email },
-        { orderId: orders[1].id, fromStatus: 'PACKED', toStatus: 'SHIPPED', note: 'Tracking shared with customer.', changedBy: admins[1].email },
-      ],
-    }),
-    prisma.orderStatusHistory.createMany({
-      data: [
-        { orderId: orders[2].id, fromStatus: null, toStatus: 'PLACED', note: 'Order created, payment pending.', changedBy: 'system' },
-        { orderId: orders[2].id, fromStatus: 'PLACED', toStatus: 'CONFIRMED', note: 'Admin accepted pending-payment order.', changedBy: admins[0].email },
-      ],
-    }),
-  ]);
-
-  // Create Reviews
-  console.log('⭐ Creating product reviews...');
-  await Promise.all([
-    prisma.review.create({
-      data: {
-        userId: users[0].id,
-        productId: products[0].id,
-        orderId: orders[0].id,
-        rating: 5,
-        title: 'Absolutely amazing!',
-        body: 'Great quality and fit. Will definitely buy again!',
-        status: 'APPROVED',
-      },
-    }),
-    prisma.review.create({
-      data: {
-        userId: users[1].id,
-        productId: products[0].id,
-        orderId: orders[1].id,
-        rating: 4,
-        title: 'Good quality',
-        body: 'Nice t-shirt, sizing runs a bit small',
-        status: 'APPROVED',
-      },
-    }),
-    prisma.review.create({
-      data: {
-        userId: users[0].id,
-        productId: products[1].id,
-        rating: 5,
-        title: 'Perfect design',
-        body: 'The anime design is exactly as shown',
-        status: 'APPROVED',
-      },
-    }),
-    prisma.review.create({
-      data: {
-        userId: users[2].id,
-        productId: products[2].id,
-        rating: 3,
-        title: 'Average',
-        body: 'Okay product, nothing special',
-        status: 'PENDING',
-      },
-    }),
-  ]);
-
-  // Create Wishlist Items
-  console.log('❤️ Creating wishlist items...');
-  await Promise.all([
-    prisma.wishlist.create({
-      data: {
-        userId: users[0].id,
-        productId: products[3].id,
-      },
-    }),
-    prisma.wishlist.create({
-      data: {
-        userId: users[0].id,
-        productId: products[4].id,
-      },
-    }),
-    prisma.wishlist.create({
-      data: {
-        userId: users[1].id,
-        productId: products[5].id,
-      },
-    }),
-  ]);
-
-  // Create Cart Items
-  console.log('🛒 Creating cart items...');
-  const cart1 = await prisma.cart.create({
-    data: { userId: users[0].id },
+  await prisma.adminUser.create({
+    data: { name: 'Admin User', email: 'admin@flyfree.com', roleId: adminRole.id },
   });
 
-  const cart2 = await prisma.cart.create({
-    data: { userId: users[1].id },
-  });
-
-  await Promise.all([
-    prisma.cartItem.create({
+  // --------------------------------------------------------- influencers
+  console.log('Creating influencers...');
+  const influencerSpecs = [
+    { name: 'Aarav Sharma', email: 'aarav@example.com', code: 'AARAV10', handle: '@aarav.wears', followers: 48200, image: IMG.alt1 },
+    { name: 'Maya Threads', email: 'maya@example.com', code: 'MAYA10', handle: '@maya.threads', followers: 91500, image: IMG.alt2 },
+    { name: 'Rohit Baruah', email: 'rohit@example.com', code: 'ROHIT10', handle: '@rohit.fits', followers: 33800, image: IMG.alt3 },
+    { name: 'Ananya Das', email: 'ananya@example.com', code: 'ANANYA10', handle: '@ananya.styles', followers: 65100, image: IMG.alt4 },
+  ];
+  for (const spec of influencerSpecs) {
+    const themed = products.filter((p) => ['spider-man', 'bihu'].includes(p.themeSlug)).slice(0, 5);
+    await prisma.influencer.create({
       data: {
-        cartId: cart1.id,
-        variantId: variants[0].id,
-        quantity: 1,
-      },
-    }),
-    prisma.cartItem.create({
-      data: {
-        cartId: cart1.id,
-        variantId: variants[1].id,
-        quantity: 2,
-      },
-    }),
-    prisma.cartItem.create({
-      data: {
-        cartId: cart2.id,
-        variantId: variants[2].id,
-        quantity: 1,
-      },
-    }),
-  ]);
-
-  const websiteThemes = await Promise.all([
-    prisma.websiteTheme.create({
-      data: {
-        name: 'Puja Festival Website',
-        slug: 'puja-festival-website',
-        description: 'Global festive site skin with warm colors, hero banner, and Puja gifting mood.',
-        primaryColor: '#111827',
-        secondaryColor: '#b42318',
-        backgroundColor: '#f7f3ea',
-        textColor: '#161616',
-        accentColor: '#facc15',
-        fontFamily: 'Inter, Arial, sans-serif',
-        animationStyle: 'glow',
-        heroTitle: 'Fly Free Puja Festival',
-        heroSubtitle: 'Gift-ready tees, bold festive graphics, and comfortable custom apparel for family, friends, and bulk celebration orders.',
-        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1604608678051-64d46d8f20df?w=1600',
-        heroMobileImageUrl: 'https://images.unsplash.com/photo-1607861716497-e65ab29fc7ac?w=900',
-        heroCtaLabel: 'Shop Puja styles',
-        heroHref: '/themes/puja-festival',
-        priority: 1,
+        name: spec.name,
+        email: spec.email,
+        code: spec.code,
+        imageUrl: spec.image,
+        instagramUrl: `https://instagram.com/${spec.handle.replace('@', '')}`,
+        socialHandle: spec.handle,
+        followers: spec.followers,
+        buyerDiscountPercent: 10,
+        commissionRate: 5,
         isActive: true,
+        products: { connect: themed.map((p) => ({ id: p.id })) },
       },
-    }),
-    prisma.websiteTheme.create({
+    });
+  }
+
+  // ------------------------------------------------------------- reviews
+  console.log('Creating reviews...');
+  const reviewSpecs = [
+    { product: 0, user: 1, rating: 5, title: 'Print quality is unreal', body: 'Washed it four times and the web print has not cracked at all. Fit is true to size.' },
+    { product: 1, user: 2, rating: 5, title: 'Perfect oversized drop', body: 'Shoulder seams sit exactly where they should. Fabric is heavy without being hot.' },
+    { product: 4, user: 1, rating: 4, title: 'Great everyday tee', body: 'Colour is slightly deeper than the photos, which I actually prefer. Sizing runs a touch large.' },
+    { product: 7, user: 2, rating: 5, title: 'Bought it for Bihu', body: 'The xorai detailing is beautiful and got compliments all day. Shipping to Guwahati was quick.' },
+    { product: 13, user: 1, rating: 5, title: 'Match day sorted', body: 'Breathable enough for a full day in the stands. Collar has held its shape.' },
+    { product: 16, user: 2, rating: 4, title: 'Cosy retro hoodie', body: 'Really warm and the gradient print looks exactly like the listing. Wish it had deeper pockets.' },
+  ];
+  for (const spec of reviewSpecs) {
+    await prisma.review.create({
       data: {
-        name: 'Winter Street Website',
-        slug: 'winter-street-website',
-        description: 'Cool winter campaign skin for hoodies, dark tees, and seasonal comfort drops.',
-        primaryColor: '#0f172a',
-        secondaryColor: '#38bdf8',
-        backgroundColor: '#f8fafc',
-        textColor: '#0f172a',
-        accentColor: '#e0f2fe',
-        fontFamily: 'Inter, Arial, sans-serif',
-        animationStyle: 'snow',
-        heroTitle: 'Winter Street Drop',
-        heroSubtitle: 'Layer-ready colors, soft cotton fits, and limited cold-weather graphics.',
-        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?w=1600',
-        heroMobileImageUrl: 'https://images.unsplash.com/photo-1483664852095-d6cc6870702d?w=900',
-        heroCtaLabel: 'Explore winter',
-        heroHref: '/products',
-        priority: 2,
-        isActive: false,
+        productId: products[spec.product].id,
+        userId: customers[spec.user].id,
+        rating: spec.rating,
+        title: spec.title,
+        body: spec.body,
+        mediaUrls: [],
+        status: ReviewStatus.APPROVED,
       },
-    }),
-    prisma.websiteTheme.create({
+    });
+  }
+
+  // ---------------------------------------------------- instagram posts
+  console.log('Creating Instagram posts...');
+  const instagramSpecs = [
+    { imageUrl: IMG.regular, caption: 'Bihu drop is live. Wear Northeast stories.' },
+    { imageUrl: IMG.oversized, caption: 'Puja gifting open. Gift-ready tees and hamper boxes.' },
+    { imageUrl: IMG.alt1, caption: 'Spider-Man collection restocked in every size.' },
+    { imageUrl: IMG.alt2, caption: 'Oversized fits that hit different. 220 GSM combed cotton.' },
+    { imageUrl: IMG.alt3, caption: 'Anime drop back in stock. Nightblade in all sizes.' },
+    { imageUrl: IMG.hoodie, caption: 'Retro static hoodie. Built for the cold season.' },
+  ];
+  for (const [index, spec] of instagramSpecs.entries()) {
+    await prisma.instagramPost.create({
       data: {
-        name: 'Game Night Website',
-        slug: 'game-night-website',
-        description: 'Electric global skin for gaming and creator-led product moments.',
-        primaryColor: '#111827',
-        secondaryColor: '#00ff41',
-        backgroundColor: '#0d0221',
-        textColor: '#ffffff',
-        accentColor: '#ff00ff',
-        fontFamily: 'Courier New, monospace',
-        animationStyle: 'game-pulse',
-        heroTitle: 'Game Night Graphics',
-        heroSubtitle: 'Fast, electric tees for gamers, creators, and fans of loud graphic energy.',
-        heroDesktopImageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
-        heroMobileImageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=900',
-        heroCtaLabel: 'Shop gaming',
-        heroHref: '/themes/gaming',
-        priority: 3,
-        isActive: false,
+        imageUrl: spec.imageUrl,
+        caption: spec.caption,
+        instagramLink: 'https://instagram.com/flyfree_styles',
+        displayOrder: index + 1,
       },
-    }),
-  ]);
+    });
+  }
 
-  // Create app settings, editable pages, and admin notifications
-  const aboutContent = `Fly Free was founded by Miss Sneha Jyoti Naiding Shah with a simple yet powerful vision: to celebrate freedom, individuality, and self-expression through fashion. The name Fly Free reflects our belief that everyone deserves the confidence and freedom to wear what they love without limitations.
-
-At Fly Free, we are more than a clothing brand. We are a movement that encourages people to embrace their unique identity, culture, and personal style. Every piece we create is designed with the idea that fashion should feel empowering, comfortable, and liberating.
-
-Rooted deeply in the vibrant heritage of Northeast India, our collections transform everyday apparel into wearable stories, celebrating rich diversity while making it affordable for all.
-
-We believe true style is a balance of creativity and comfort. Our focus goes beyond striking visuals: every garment is thoughtfully made with no compromise in quality and custom crafted for everyday wear.
-
-Meet the Team
-Founder and Designer: Sneha Jyoti Naiding Shah
-Management Team: Mr Abidul Islam, Mr Sourav Das
-Graphic Designer: Mr Ghanshyam Deka
-Website Developer: Fly Free Web Team
-
-Together, our team is committed to building a brand that inspires, connects, and empowers individuals through meaningful fashion.`;
-
-  const missionContent = `Fly Free is not just about clothing. It is about self-expression, flexible creation, customisation, and quality without compromise. We create fashion that lets you celebrate who you are. We also support company bulk orders at special pricing and keep the brand running with emotion, effort, and care.`;
-
+  // ------------------------------------------------------------ settings
+  console.log('Creating app settings...');
   await prisma.appSetting.create({
+    data: { key: 'gst', value: { gstPercent: 5 } },
+  });
+  await prisma.appSetting.create({
+    data: { key: 'shipping', value: { flatRate: 7900, freeAbove: 99900 } },
+  });
+  await prisma.appSetting.create({
+    data: { key: 'branding', value: { appLogo: '/logo.png', appFavicon: '/logo.png' } },
+  });
+
+  await prisma.page.create({
     data: {
-      key: 'admin_settings',
-      value: {
-        appName: 'Fly Free',
-        appTitle: 'Fly Free - Custom T-shirts',
-        appDescription: 'Freedom, individuality, and self-expression through fashion.',
-        appLogo: '/brand/flyfree-logo.png',
-        appFavicon: '/favicon.ico',
-        seoTitle: 'Fly Free - Custom T-shirts',
-        seoDescription: 'Shop Fly Free custom, anime, Bihu, Puja, gaming, Assam, and graphic t-shirts.',
-        seoKeywords: 'custom t-shirts, anime tees, bihu t-shirts, puja t-shirts, assam t-shirts, gifting',
-        contactEmail: 'support@flyfree.com',
-        supportEmail: 'support@flyfree.com',
-        contactPhone: '9876543210',
-        businessName: 'Fly Free',
-        ownerName: 'Sneha Jyoti Naiding Shah',
-        founderName: 'Sneha Jyoti Naiding Shah',
-        teamName: 'Sneha Jyoti Naiding Shah, Abidul Islam, Sourav Das, Ghanshyam Deka',
-        businessAddress: 'Guwahati, Assam, India',
-        gstNumber: 'GSTIN-DEMO-UPDATE-IN-ADMIN',
-        invoicePrefix: 'INV',
-        taxRate: 18,
-        footerText: 'Fly Free: freedom, comfort, culture, and self-expression.',
-        brandStory: aboutContent,
-        mission: missionContent,
-        socialLinks: {
-          instagram: 'https://instagram.com/flyfree',
-          facebook: 'https://facebook.com/flyfree',
-          twitter: 'https://x.com/flyfree',
-          youtube: 'https://youtube.com/@flyfree',
-          whatsapp: 'https://wa.me/919876543210',
-        },
-      },
+      slug: 'size-chart',
+      title: 'Size Chart',
+      content: 'All measurements are in inches and taken flat. Unisex sizing across every fit.',
     },
   });
 
-  await Promise.all([
-    prisma.page.create({
-      data: {
-        slug: 'about-us',
-        title: 'About Us',
-        content: aboutContent,
-        metaTitle: 'About Fly Free',
-        metaDesc: 'Learn about Fly Free and our t-shirt brand story.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'vision-mission',
-        title: 'Vision and Mission',
-        content: missionContent,
-        metaTitle: 'Fly Free Vision and Mission',
-        metaDesc: 'Fly Free brand vision and mission.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'terms-and-conditions',
-        title: 'Terms and Conditions',
-        content: `Welcome to Fly Free. By using our website, placing an order, or requesting a custom design, you agree to provide accurate account, contact, payment, and delivery details.
-
-Product photos, colours, sizes, prices, and stock may change as collections are updated. Custom, gifting, festival, anime, Bihu, Puja, Spider-Man-inspired, and bulk order requests are confirmed only after design scope, quantity, pricing, and delivery timing are accepted by Fly Free.
-
-Payments must be completed through the supported checkout methods. Orders may be cancelled, paused, or delayed if payment fails, delivery information is incomplete, the requested item is unavailable, or the custom brief needs clarification.
-
-Fly Free designs, campaign stories, product photos, brand assets, and website content belong to Fly Free or are used with permission. Customers may not copy, reproduce, resell, or misuse them without written approval.
-
-For order support, returns, cancellations, customisation, or bulk gifting questions, contact Fly Free with your order details so the team can help quickly.`,
-        metaTitle: 'Terms and Conditions',
-        metaDesc: 'Fly Free terms and conditions.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'return-policy',
-        title: 'Return Policy',
-        content: 'Eligible items can be returned according to the return window and product condition rules configured by Fly Free.',
-        metaTitle: 'Return Policy',
-        metaDesc: 'Fly Free return and refund policy.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'privacy-policy',
-        title: 'Privacy Policy',
-        content: `Fly Free collects the information needed to create accounts, process orders, deliver products, support customisation requests, and improve the shopping experience.
-
-This may include your name, email address, phone number, delivery address, order history, payment status, saved preferences, and messages or files you share for custom designs, gifting, or bulk orders.
-
-We use this information to confirm purchases, send verification codes, share order and delivery updates, manage returns, prevent fraud, improve our products, and show relevant website messages such as scheduled theme announcements.
-
-We do not sell customer personal information. Trusted providers for payment, delivery, email, analytics, hosting, and storage may process information only to help operate Fly Free services.
-
-You can contact Fly Free support for privacy questions, account help, or communication preferences. We keep customer information only as long as needed for service, legal, security, and business requirements.`,
-        metaTitle: 'Privacy Policy',
-        metaDesc: 'Fly Free privacy policy.',
-      },
-    }),
-    prisma.page.create({
-      data: {
-        slug: 'contact-us',
-        title: 'Contact Us',
-        content: 'Contact Fly Free at support@flyfree.com or 9876543210 for orders, returns, custom designs, and influencer partnerships.',
-        metaTitle: 'Contact Fly Free',
-        metaDesc: 'Fly Free customer support and contact details.',
-      },
-    }),
-  ]);
-
-  // Instagram posts
-  console.log('📸 Creating Instagram posts...');
-  await Promise.all([
-    prisma.instagramPost.create({
-      data: {
-        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=500&fit=crop',
-        caption: 'Bihu drop is live! 🎉 Wear Northeast stories with our new collection. Link in bio.',
-        instagramLink: 'https://instagram.com/flyfree',
-        displayOrder: 1,
-      },
-    }),
-    prisma.instagramPost.create({
-      data: {
-        imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=400&h=500&fit=crop',
-        caption: 'Puja gifting open 🎁 Schedule gift-ready tees and custom cards for Puja season. Shop now!',
-        instagramLink: 'https://instagram.com/flyfree',
-        displayOrder: 2,
-      },
-    }),
-    prisma.instagramPost.create({
-      data: {
-        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=500&fit=crop',
-        caption: 'Spider-Man collection dropping soon 🕷️ Who\'s excited? Pre-order coming this week.',
-        instagramLink: 'https://instagram.com/flyfree',
-        displayOrder: 3,
-      },
-    }),
-  ]);
-
-  // Gift options removed - using hampers instead
-
-  await Promise.all([
-    prisma.announcement.create({
-      data: {
-        title: 'Bihu drop is live',
-        message: 'Wear Northeast stories with the new Bihu collection.',
-        href: '/themes/bihu',
-        ctaLabel: 'Shop Bihu',
-        type: 'EVENT',
-        priority: 1,
-        websiteThemeId: websiteThemes[0].id,
-        startsAt: new Date(Date.now() - 86400000),
-        endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      },
-    }),
-    prisma.announcement.create({
-      data: {
-        title: 'Puja gifting open',
-        message: 'Schedule gift-ready tees and custom cards for Puja season.',
-        href: '/gifting',
-        ctaLabel: 'Explore gifts',
-        type: 'OFFER',
-        priority: 2,
-        websiteThemeId: websiteThemes[0].id,
-        startsAt: new Date(Date.now() - 86400000),
-        endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 45),
-      },
-    }),
-    prisma.notification.create({
-      data: {
-        channel: 'ADMIN',
-        type: 'NEW_ORDER',
-        entityType: 'Order',
-        entityId: orders[2].id,
-        title: 'New order received',
-        body: `Order ${orders[2].id} is waiting for confirmation.`,
-        status: 'PENDING',
-      },
-    }),
-    prisma.notification.create({
-      data: {
-        channel: 'ADMIN',
-        type: 'INFLUENCER_ORDER',
-        entityType: 'Influencer',
-        entityId: influencers[0].id,
-        title: 'Influencer conversion',
-        body: `${influencers[0].name} generated an order with code ${influencers[0].code}.`,
-        status: 'PENDING',
-      },
-    }),
-  ]);
-
-  console.log('✅ Seed completed!');
-  console.log(`✅ Created ${productsData.length} products with ${6 * 6} variants`);
-  console.log(`✅ Created ${categories.length} categories`);
-  console.log(`✅ Created ${themes.length} themes`);
-  console.log(`✅ Created ${collections.length} collections`);
-  console.log(`✅ Created ${coupons.length} coupons`);
-  console.log(`✅ Created ${users.length} test users`);
-  console.log(`✅ Created ${addresses.length} addresses`);
-  console.log(`✅ Created ${admins.length} admin users`);
-  console.log(`✅ Created ${orders.length} sample orders`);
-  console.log(`✅ Created 4 product reviews`);
-  console.log(`✅ Created 3 wishlist items`);
-  console.log(`✅ Created 3 cart items`);
+  console.log('\nSeed complete');
+  console.log(`  fits:        ${fitSpecs.length}`);
+  console.log(`  themes:      ${themeSpecs.length}`);
+  console.log(`  products:    ${products.length}`);
+  console.log(`  hampers:     ${hamperSpecs.length}`);
+  console.log(`  reviews:     ${reviewSpecs.length}`);
+  console.log(`  influencers: ${influencerSpecs.length}`);
+  console.log('\n  admin login:    admin@flyfree.com');
+  console.log('  customer login: dhrubajyotidas329@gmail.com / Password123');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+  .catch((error) => {
+    console.error(error);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => prisma.$disconnect());

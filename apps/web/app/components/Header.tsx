@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import type React from 'react';
-import { Heart, PackageSearch, Package, ShoppingBag, Menu, X, Megaphone, User, Search, LogOut } from 'lucide-react';
+import { ChevronDown, Heart, PackageSearch, Package, ShoppingBag, Menu, X, Megaphone, User, Search, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
@@ -21,6 +21,10 @@ export function Header() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loginPrompt, setLoginPrompt] = useState('');
   const [hoveredMenuItem, setHoveredMenuItem] = useState<string | null>(null);
+  // themes = design drops, fits = product types (regular, oversized, jersey, ...)
+  const [themes, setThemes] = useState<any[]>([]);
+  const [fits, setFits] = useState<any[]>([]);
+  const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const cartCount = useCartStore((state) => state.getItemCount());
@@ -69,6 +73,19 @@ export function Header() {
         setAnnouncements(unique);
       })
       .catch(() => setAnnouncements([]));
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/catalog/filters`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        setThemes(data?.themes ?? []);
+        setFits(data?.categories ?? []);
+      })
+      .catch(() => {
+        setThemes([]);
+        setFits([]);
+      });
   }, []);
 
   return (
@@ -163,10 +180,43 @@ export function Header() {
 
           {/* Center: Navigation Menu */}
           <nav className="flex gap-8 text-sm font-semibold flex-1 justify-center">
+            <DesktopNavLink href="/" label="Home" active={isActive('/')} />
             <DesktopNavLink href="/products" label="Shop" active={isActive('/products')} />
+
+            <MegaMenu
+              label="Themes"
+              href="/products"
+              active={isActive('/themes')}
+              isOpen={hoveredMenuItem === 'themes'}
+              onOpen={() => setHoveredMenuItem('themes')}
+              onClose={() => setHoveredMenuItem(null)}
+              items={themes.map((theme) => ({
+                key: theme.id,
+                label: theme.name,
+                href: `/themes/${theme.slug}`,
+                imageUrl: theme.bannerImageUrl || theme.imageUrl,
+                caption: theme.description,
+              }))}
+              emptyLabel="No themes yet"
+            />
+
+            <MegaMenu
+              label="Fit"
+              href="/products"
+              active={false}
+              isOpen={hoveredMenuItem === 'fits'}
+              onOpen={() => setHoveredMenuItem('fits')}
+              onClose={() => setHoveredMenuItem(null)}
+              items={fits.map((fit) => ({
+                key: fit.id,
+                label: fit.name,
+                href: `/products?category=${fit.slug}`,
+                imageUrl: fit.imageUrl,
+              }))}
+              emptyLabel="No fits yet"
+            />
+
             <DesktopNavLink href="/about" label="About" active={isActive('/about')} />
-            <DesktopNavLink href="/influencers" label="Influencers" active={isActive('/influencers')} />
-            <DesktopNavLink href="/reviews" label="Reviews" active={isActive('/reviews')} />
           </nav>
 
           {/* Right: Actions */}
@@ -337,9 +387,34 @@ export function Header() {
                 </p>
                 <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} icon="🏠" />
                 <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon="🛍️" />
+
+                <MobileDrawerGroup
+                  label="Themes"
+                  icon="🎨"
+                  isOpen={openMobileGroup === 'themes'}
+                  onToggle={() => setOpenMobileGroup(openMobileGroup === 'themes' ? null : 'themes')}
+                  items={themes.map((theme) => ({
+                    key: theme.id,
+                    label: theme.name,
+                    href: `/themes/${theme.slug}`,
+                  }))}
+                  onNavigate={() => setIsOpen(false)}
+                />
+
+                <MobileDrawerGroup
+                  label="Fit"
+                  icon="👕"
+                  isOpen={openMobileGroup === 'fits'}
+                  onToggle={() => setOpenMobileGroup(openMobileGroup === 'fits' ? null : 'fits')}
+                  items={fits.map((fit) => ({
+                    key: fit.id,
+                    label: fit.name,
+                    href: `/products?category=${fit.slug}`,
+                  }))}
+                  onNavigate={() => setIsOpen(false)}
+                />
+
                 <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon="ℹ️" />
-                <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} icon="⭐" />
-                <MobileDrawerLink href="/reviews" label="Reviews" active={isActive('/reviews')} onClick={() => setIsOpen(false)} icon="⭐" />
               </div>
 
               {/* Account Section */}
@@ -560,6 +635,159 @@ function DesktopNavLink({ href, label, active }: { href: string; label: string; 
     >
       {label}
     </Link>
+  );
+}
+
+type MenuItem = {
+  key: string;
+  label: string;
+  href: string;
+  imageUrl?: string | null;
+  caption?: string | null;
+};
+
+/** Desktop nav entry that reveals a panel of themes or fits on hover. */
+function MegaMenu({
+  label,
+  href,
+  active,
+  isOpen,
+  onOpen,
+  onClose,
+  items,
+  emptyLabel
+}: {
+  label: string;
+  href: string;
+  active: boolean;
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  items: MenuItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
+      <Link
+        href={href}
+        className="relative flex items-center gap-1 px-1 py-2 text-xs font-bold uppercase tracking-wide transition hover:opacity-70"
+        style={{
+          color: active || isOpen ? 'var(--color-primary)' : 'var(--text-primary)',
+          borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent'
+        }}
+      >
+        {label}
+        <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+      </Link>
+
+      {isOpen && (
+        <div
+          className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3"
+          style={{ minWidth: items.length > 0 ? '640px' : '220px' }}
+        >
+          <div
+            className="rounded-lg border-2 p-4 shadow-xl"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+          >
+            {items.length === 0 ? (
+              <p className="px-2 py-3 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
+                {emptyLabel}
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                {items.map((item) => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={onClose}
+                    className="group flex items-center gap-3 rounded-lg p-2 transition"
+                    style={{ backgroundColor: 'transparent' }}
+                    onMouseEnter={(event) => (event.currentTarget.style.backgroundColor = 'var(--bg-tertiary)')}
+                    onMouseLeave={(event) => (event.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <span
+                      className="h-12 w-12 flex-shrink-0 overflow-hidden rounded"
+                      style={{ backgroundColor: 'var(--bg-tertiary)' }}
+                    >
+                      {item.imageUrl && (
+                        <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black" style={{ color: 'var(--text-primary)' }}>
+                        {item.label}
+                      </span>
+                      {item.caption && (
+                        <span className="block truncate text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          {item.caption}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Mobile drawer entry that expands to reveal themes or fits. */
+function MobileDrawerGroup({
+  label,
+  icon,
+  isOpen,
+  onToggle,
+  items,
+  onNavigate
+}: {
+  label: string;
+  icon: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+  items: MenuItem[];
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="border-b" style={{ borderColor: 'var(--border-light)' }}>
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-5 py-3 text-sm font-semibold uppercase tracking-wide"
+        style={{ color: 'var(--text-primary)', borderLeft: '4px solid transparent' }}
+        aria-expanded={isOpen}
+      >
+        <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+        <span className="flex-1 text-left">{label}</span>
+        <ChevronDown
+          size={16}
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}
+        />
+      </button>
+
+      {isOpen && (
+        <div style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+          {items.length === 0 ? (
+            <p className="px-12 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Nothing here yet
+            </p>
+          ) : (
+            items.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={onNavigate}
+                className="block px-12 py-3 text-sm font-bold"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {item.label}
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

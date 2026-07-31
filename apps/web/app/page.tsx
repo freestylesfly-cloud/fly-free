@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { ArrowRight, Instagram, Mail, Star, Zap } from 'lucide-react';
+import { ArrowRight, Star, Zap } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HorizontalSlider } from './components/HorizontalSlider';
 import { InstagramFeedCarousel } from './components/InstagramFeedCarousel';
 import { HeroCarousel } from './components/HeroCarousel';
+import { AutoSlider } from './components/AutoSlider';
 import { getApiBaseUrl } from './lib/api';
 
 const API_BASE = getApiBaseUrl();
@@ -12,12 +13,14 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  mrp?: number;
   slug: string;
   images?: Array<{ url: string }>;
   theme?: { name: string };
   category?: { name: string };
   isFeatured?: boolean;
   isTrending?: boolean;
+  isNewArrival?: boolean;
   isVisible?: boolean;
 }
 
@@ -29,215 +32,154 @@ interface Theme {
   primaryColor: string;
   bannerImageUrl?: string;
   imageUrl?: string;
-  isActive?: boolean;
 }
 
 interface Review {
   id: string;
   rating: number;
-  message?: string;
+  title?: string;
   body?: string;
+  mediaUrls?: string[];
   user?: { name: string };
-  product?: { name: string };
+  product?: { name: string; slug: string };
 }
 
+/** A hamper hangs off a theme, so it links through to that theme's products. */
 interface Hamper {
   id: string;
   name: string;
-  description: string;
-  basePrice: number;
-  images?: Array<{ url: string }>;
-  isVisible?: boolean;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  images?: string[];
+  theme?: { id: string; name: string; slug: string } | null;
+}
+
+interface Influencer {
+  id: string;
+  name: string;
+  code: string;
+  imageUrl?: string;
+  socialHandle?: string;
+  followers?: number;
+  instagramUrl?: string;
+  buyerDiscountPercent?: number;
 }
 
 interface InstagramPost {
   id: string;
   imageUrl?: string;
-  videoUrl?: string;
   caption: string;
   instagramLink: string;
 }
 
-async function getHomeData() {
+function unwrap<T>(payload: any): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
+
+async function getJson(path: string) {
   try {
-    const [themesRes, productsRes, reviewsRes, hampersRes, instagramRes] = await Promise.all([
-      fetch(`${API_BASE}/cms/themes?limit=20`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/catalog/products?limit=50`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/reviews/latest?limit=12`, { cache: 'no-store' }).catch(() => null),
-      fetch(`${API_BASE}/cms/hampers?limit=12`, { cache: 'no-store' }).catch(() => null),
-      fetch(`${API_BASE}/instagram-posts?limit=12`, { cache: 'no-store' }).catch(() => null),
-    ]);
-
-    const themes = themesRes.ok ? await themesRes.json() : { data: [] };
-    const products = productsRes.ok ? await productsRes.json() : { data: [] };
-    const reviews = reviewsRes?.ok ? await reviewsRes.json() : { data: [] };
-    const hampers = hampersRes?.ok ? await hampersRes.json() : { data: [] };
-    const instagram = instagramRes?.ok ? await instagramRes.json() : { data: [] };
-
-    return {
-      themes: (Array.isArray(themes) ? themes : themes.data || []).filter(Boolean),
-      products: (Array.isArray(products) ? products : products.data || []).filter((p: Product) => p.isVisible !== false),
-      reviews: (Array.isArray(reviews) ? reviews : reviews.data || []).filter(Boolean),
-      hampers: (Array.isArray(hampers) ? hampers : hampers.data || []).filter((h: Hamper) => h.isVisible !== false),
-      instagram: Array.isArray(instagram) ? instagram : instagram.data || [],
-    };
-  } catch (error) {
-    console.error('Failed to load home data:', error);
-    return {
-      themes: [],
-      products: [],
-      reviews: [],
-      hampers: [],
-      instagram: [],
-    };
+    const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
   }
 }
 
-export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram } = await getHomeData();
+async function getHomeData() {
+  const [themes, products, reviews, hampers, instagram, influencers] = await Promise.all([
+    getJson('/cms/themes'),
+    getJson('/catalog/products'),
+    getJson('/reviews/latest?limit=12'),
+    getJson('/cms/hampers'),
+    getJson('/instagram-posts'),
+    getJson('/influencers'),
+  ]);
 
-  const heroThemes = themes.filter((t: Theme) => t.bannerImageUrl).slice(0, 5);
-  const heroSlides = (heroThemes.length > 0 ? heroThemes : themes.slice(0, 3)).map((theme: Theme) => ({
-    id: theme.id,
-    image: theme.bannerImageUrl,
-    tag: 'New Drop',
-    title: theme.name,
-    subtitle: theme.description,
-    ctaLabel: `Shop ${theme.name}`,
-    ctaHref: `/themes/${theme.slug}`,
-  }));
-  const featuredProducts = products.filter((p: Product) => p.isFeatured || p.isTrending).slice(0, 8);
-  const bestSellers = products.slice(0, 8);
+  return {
+    themes: unwrap<Theme>(themes),
+    products: unwrap<Product>(products).filter((p) => p.isVisible !== false),
+    reviews: unwrap<Review>(reviews),
+    hampers: unwrap<Hamper>(hampers),
+    instagram: unwrap<InstagramPost>(instagram),
+    influencers: unwrap<Influencer>(influencers),
+  };
+}
+
+const rupees = (paise: number) => Math.round((paise || 0) / 100);
+
+export default async function HomePage() {
+  const { themes, products, reviews, hampers, instagram, influencers } = await getHomeData();
+
+  const heroSlides = themes
+    .filter((theme) => theme.bannerImageUrl || theme.imageUrl)
+    .slice(0, 5)
+    .map((theme) => ({
+      id: theme.id,
+      image: theme.bannerImageUrl || theme.imageUrl,
+      tag: 'New drop',
+      title: theme.name,
+      subtitle: theme.description,
+      ctaLabel: `Shop ${theme.name}`,
+      ctaHref: `/themes/${theme.slug}`,
+    }));
+
+  const newDrops = products.filter((p) => p.isNewArrival || p.isFeatured).slice(0, 10);
+  const bestSellers = products.filter((p) => p.isTrending || p.isFeatured).slice(0, 8);
   const avgRating =
     reviews.length > 0
-      ? (reviews.reduce((sum: number, r: Review) => sum + (r.rating || 5), 0) / reviews.length).toFixed(1)
-      : '5.0';
+      ? (reviews.reduce((sum, r) => sum + (r.rating || 5), 0) / reviews.length).toFixed(1)
+      : null;
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* HERO BANNER - Auto-sliding theme carousel */}
+      {/* HERO — auto-sliding theme banners */}
       <HeroCarousel slides={heroSlides} />
 
-      {/* FEATURED PRODUCTS - New Drops */}
-      {featuredProducts.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <Zap size={20} />
-              <span className="text-sm font-black uppercase">Latest Arrivals</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              New Drops
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Explore our fresh collection of premium apparel
-            </p>
-          </div>
-
-          <HorizontalSlider
-            title=""
-            action={
-              <Link href="/products" className="inline-flex items-center gap-2 text-sm font-bold uppercase" style={{ color: 'var(--color-primary)' }}>
-                View All <ArrowRight size={16} />
-              </Link>
-            }
-          >
-            {featuredProducts.map((product: Product) => (
-              <div key={product.id} className="mo-slide flex-shrink-0" style={{ width: '280px' }}>
+      {/* NEW DROPS */}
+      {newDrops.length > 0 && (
+        <Section>
+          <SectionHeading
+            eyebrow="Latest arrivals"
+            eyebrowIcon={<Zap size={20} />}
+            title="New drops"
+            subtitle="Fresh prints across every fit"
+          />
+          <HorizontalSlider title="" action={<ViewAll href="/products" />}>
+            {newDrops.map((product) => (
+              <div key={product.id} className="mo-slide flex-shrink-0" style={{ width: '260px' }}>
                 <ProductCard
                   id={product.id}
                   name={product.name}
-                  price={Math.round((product.price || 0) / 100)}
+                  price={rupees(product.price)}
+                  originalPrice={product.mrp ? rupees(product.mrp) : undefined}
                   slug={product.slug}
                   image={product.images?.[0]?.url}
                   hoverImage={product.images?.[1]?.url}
-                  tag={product.theme?.name || 'New'}
+                  tag={product.theme?.name}
                 />
               </div>
             ))}
           </HorizontalSlider>
-        </section>
+        </Section>
       )}
 
-      {/* OFFER BANNER - Influencer Code */}
-      <section
-        className="my-16 mx-auto max-w-7xl px-5 py-12 rounded-xl"
-        style={{ backgroundColor: 'var(--color-accent)', backgroundImage: 'linear-gradient(135deg, var(--color-accent) 0%, rgba(255,183,3,0.8) 100%)' }}
-      >
-        <div className="text-center">
-          <p className="text-sm font-bold uppercase text-black/60 mb-2">Exclusive Offer</p>
-          <h3 className="text-3xl md:text-4xl font-black text-black mb-4">Use Code: BIHU10</h3>
-          <p className="text-black/80 mb-6">Get 10% OFF on Spider-Man Collection</p>
-          <Link
-            href="/products?theme=spider-man"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-white"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            Shop Now <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
-
-      {/* BEST SELLERS */}
-      {bestSellers.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <Star size={20} />
-              <span className="text-sm font-black uppercase">Customer Favorites</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              Best Sellers
-            </h2>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {bestSellers.slice(0, 8).map((product: Product) => (
-              <div key={product.id}>
-                <ProductCard
-                  id={product.id}
-                  name={product.name}
-                  price={Math.round((product.price || 0) / 100)}
-                  slug={product.slug}
-                  image={product.images?.[0]?.url}
-                  hoverImage={product.images?.[1]?.url}
-                  tag={product.theme?.name || product.category?.name || 'Featured'}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* THEMES GRID */}
+      {/* SHOP BY THEME — single sliding row */}
       {themes.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              Shop by Theme
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Explore our curated collections
-            </p>
-          </div>
-
-          <HorizontalSlider
-            title=""
-            action={
-              <Link href="/themes" className="inline-flex items-center gap-2 text-sm font-bold uppercase" style={{ color: 'var(--color-primary)' }}>
-                View All <ArrowRight size={16} />
-              </Link>
-            }
-          >
-            {themes.map((theme: Theme) => (
+        <Section>
+          <SectionHeading title="Shop by theme" subtitle="Every design drop, one row" />
+          <HorizontalSlider title="" action={<ViewAll href="/products" />}>
+            {themes.map((theme) => (
               <Link
                 key={theme.id}
                 href={`/themes/${theme.slug}`}
-                className="mo-slide group relative flex-shrink-0 overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
-                style={{ width: '320px', borderColor: 'var(--border-color)' }}
+                className="mo-slide group flex-shrink-0 overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
+                style={{ width: '300px', borderColor: 'var(--border-color)' }}
               >
                 <div
-                  className="aspect-video flex items-end justify-start p-6 text-white"
+                  className="flex aspect-video items-end p-5 text-white"
                   style={{
                     backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
                     backgroundColor: theme.primaryColor || 'var(--color-primary)',
@@ -247,190 +189,296 @@ export default async function HomePage() {
                 >
                   <h3 className="text-2xl font-black leading-tight drop-shadow">{theme.name}</h3>
                 </div>
-
                 <div className="p-5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                  <p className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="line-clamp-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {theme.description}
                   </p>
-                  <div className="mt-4 inline-flex items-center gap-2 text-sm font-bold uppercase transition group-hover:gap-3" style={{ color: 'var(--color-primary)' }}>
+                  <span
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-bold uppercase transition group-hover:gap-3"
+                    style={{ color: 'var(--color-primary)' }}
+                  >
                     Explore <ArrowRight size={16} />
-                  </div>
+                  </span>
                 </div>
               </Link>
             ))}
           </HorizontalSlider>
-        </section>
+        </Section>
       )}
 
-      {/* REVIEWS */}
-      {reviews.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12 flex items-end justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-                <Star size={20} />
-                <span className="text-sm font-black uppercase">Customer Reviews</span>
-              </div>
-              <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-                What They Say
-              </h2>
-            </div>
+      {/* BEST SELLERS */}
+      {bestSellers.length > 0 && (
+        <Section>
+          <SectionHeading
+            eyebrow="Customer favourites"
+            eyebrowIcon={<Star size={20} />}
+            title="Best sellers"
+          />
+          <div className="grid gap-5 grid-cols-2 lg:grid-cols-4">
+            {bestSellers.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={rupees(product.price)}
+                originalPrice={product.mrp ? rupees(product.mrp) : undefined}
+                slug={product.slug}
+                image={product.images?.[0]?.url}
+                hoverImage={product.images?.[1]?.url}
+                tag={product.theme?.name || product.category?.name}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
-            <div className="hidden sm:flex items-center gap-4">
+      {/* HAMPERS — every box, no "view all" */}
+      {hampers.length > 0 && (
+        <Section>
+          <SectionHeading
+            eyebrow="Gift boxes"
+            eyebrowIcon={<span className="text-xl">🎁</span>}
+            title="Hampers"
+            subtitle="Pick any tee from the theme and ship it gift-ready"
+          />
+          <div className="grid gap-5 grid-cols-2 lg:grid-cols-3">
+            {hampers.map((hamper) => {
+              const cover = hamper.imageUrl || hamper.images?.[0];
+              const href = hamper.theme ? `/themes/${hamper.theme.slug}` : '/products';
+              return (
+                <Link
+                  key={hamper.id}
+                  href={href}
+                  className="group overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  <div
+                    className="flex aspect-square items-center justify-center overflow-hidden"
+                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    {cover ? (
+                      <img
+                        src={cover}
+                        alt={hamper.name}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <span className="text-4xl">🎁</span>
+                    )}
+                  </div>
+                  <div className="p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                    {hamper.theme && (
+                      <span className="text-xs font-black uppercase" style={{ color: 'var(--color-primary)' }}>
+                        {hamper.theme.name}
+                      </span>
+                    )}
+                    <h3 className="mt-1 font-black" style={{ color: 'var(--text-primary)' }}>
+                      {hamper.name}
+                    </h3>
+                    <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Adds ₹{rupees(hamper.price)} to any {hamper.theme?.name ?? ''} tee
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {/* REVIEWS — auto sliding, with customer photos */}
+      {reviews.length > 0 && (
+        <Section>
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <SectionHeading
+              eyebrow="Customer reviews"
+              eyebrowIcon={<Star size={20} />}
+              title="What they say"
+              bare
+            />
+            {avgRating && (
               <div>
-                <div className="text-4xl font-black flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <div className="flex items-center gap-2 text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
                   {avgRating}
-                  <span style={{ color: 'var(--color-accent)' }}>⭐</span>
+                  <Star size={26} className="fill-current" style={{ color: 'var(--color-accent)' }} />
                 </div>
-                <p className="text-xs font-bold mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  {reviews.length} reviews
+                <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  {reviews.length} verified review{reviews.length === 1 ? '' : 's'}
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {reviews.slice(0, 6).map((review: Review) => (
-              <div
+          <AutoSlider ariaLabel="Customer reviews">
+            {reviews.map((review) => (
+              <article
                 key={review.id}
-                className="rounded-lg border-2 p-6"
+                data-slide
+                className="flex-shrink-0 rounded-lg border-2 p-6"
                 style={{
+                  width: '340px',
+                  scrollSnapAlign: 'start',
                   borderColor: 'var(--border-color)',
                   backgroundColor: 'var(--bg-secondary)',
                 }}
               >
                 <div className="mb-4 flex gap-1" style={{ color: 'var(--color-accent)' }}>
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} className={i < (review.rating || 5) ? 'fill-current' : 'opacity-30'} />
+                  {[...Array(5)].map((_, index) => (
+                    <Star
+                      key={index}
+                      size={16}
+                      className={index < (review.rating || 5) ? 'fill-current' : 'opacity-30'}
+                    />
                   ))}
                 </div>
 
-                <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
-                  "{review.message || review.body}"
+                {review.title && (
+                  <h3 className="mb-2 font-black" style={{ color: 'var(--text-primary)' }}>
+                    {review.title}
+                  </h3>
+                )}
+
+                <p className="mb-4 line-clamp-4 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {review.body}
                 </p>
+
+                {review.mediaUrls && review.mediaUrls.length > 0 && (
+                  <div className="mb-4 flex gap-2">
+                    {review.mediaUrls.slice(0, 3).map((url) => (
+                      <img
+                        key={url}
+                        src={url}
+                        alt=""
+                        className="h-16 w-16 rounded object-cover"
+                        style={{ border: '1px solid var(--border-color)' }}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <p className="text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>
-                  {review.user?.name || 'Customer'} • {review.product?.name || 'Fly Free'}
+                  {review.user?.name || 'Verified customer'}
+                  {review.product?.name ? ` · ${review.product.name}` : ''}
                 </p>
-              </div>
+              </article>
             ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link
-              href="/reviews"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              See All Reviews <ArrowRight size={18} />
-            </Link>
-          </div>
-        </section>
+          </AutoSlider>
+        </Section>
       )}
 
-      {/* HAMPER SHOWCASE - Gift Collections */}
-      {hampers.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <span className="text-2xl">🎁</span>
-              <span className="text-sm font-black uppercase">Gift Collections</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              Perfect Hampers for Every Occasion
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Curated gift sets and bundles for your loved ones
-            </p>
-          </div>
-
-          <HorizontalSlider
-            title=""
-            action={
-              <Link href="/hampers" className="inline-flex items-center gap-2 text-sm font-bold uppercase" style={{ color: 'var(--color-primary)' }}>
-                View All <ArrowRight size={16} />
-              </Link>
-            }
-          >
-            {hampers.slice(0, 6).map((hamper: Hamper) => (
-              <Link
-                key={hamper.id}
-                href={`/hampers/${hamper.id}`}
-                className="mo-slide flex-shrink-0 group overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
-                style={{ width: '280px', borderColor: 'var(--border-color)' }}
+      {/* INFLUENCERS — inline list, no separate page */}
+      {influencers.length > 0 && (
+        <Section>
+          <SectionHeading
+            eyebrow="Creators"
+            title="Fly Free collective"
+            subtitle="Use a creator code for a discount on their picks"
+          />
+          <AutoSlider ariaLabel="Influencers" intervalMs={5000}>
+            {influencers.map((influencer) => (
+              <article
+                key={influencer.id}
+                data-slide
+                className="flex-shrink-0 overflow-hidden rounded-xl border-2"
+                style={{
+                  width: '260px',
+                  scrollSnapAlign: 'start',
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-secondary)',
+                }}
               >
-                <div
-                  className="aspect-square bg-gray-200 overflow-hidden flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--bg-secondary)' }}
-                >
-                  {hamper.images?.[0]?.url ? (
-                    <img
-                      src={hamper.images[0].url}
-                      alt={hamper.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                    />
-                  ) : (
-                    <span className="text-4xl">🎁</span>
+                <div className="aspect-square overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                  {influencer.imageUrl && (
+                    <img src={influencer.imageUrl} alt={influencer.name} className="h-full w-full object-cover" />
                   )}
                 </div>
-                <div className="p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                  <h3 className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>
-                    {hamper.name}
+                <div className="p-4">
+                  <h3 className="font-black" style={{ color: 'var(--text-primary)' }}>
+                    {influencer.name}
                   </h3>
-                  <p className="text-sm mt-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                    {hamper.description}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="font-black text-lg" style={{ color: 'var(--color-primary)' }}>
-                      ₹{Math.round((hamper.basePrice || 0) / 100)}
+                  {influencer.socialHandle && (
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {influencer.socialHandle}
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center justify-between">
+                    <span
+                      className="rounded px-2 py-1 text-xs font-black text-white"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      {influencer.code}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold uppercase transition group-hover:gap-2" style={{ color: 'var(--color-primary)' }}>
-                      View <ArrowRight size={14} />
-                    </span>
+                    {influencer.buyerDiscountPercent ? (
+                      <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                        {influencer.buyerDiscountPercent}% off
+                      </span>
+                    ) : null}
                   </div>
                 </div>
-              </Link>
+              </article>
             ))}
-          </HorizontalSlider>
-        </section>
+          </AutoSlider>
+        </Section>
       )}
 
-      {/* INSTAGRAM FEED - Auto-scrolling single row */}
+      {/* INSTAGRAM — single auto-scrolling row */}
       <InstagramFeedCarousel posts={instagram} />
-
-      {/* NEWSLETTER */}
-      <section
-        className="mx-auto max-w-2xl px-5 py-16 md:py-20 rounded-xl"
-        style={{
-          backgroundColor: 'var(--color-secondary)',
-          backgroundImage: 'linear-gradient(135deg, var(--color-secondary) 0%, rgba(0,168,232,0.8) 100%)',
-        }}
-      >
-        <div className="text-center text-white">
-          <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20">
-            <Mail size={18} />
-            <span className="text-sm font-bold">Newsletter</span>
-          </div>
-
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Stay Updated</h2>
-          <p className="mb-8 opacity-90">Get first access to new drops, themes, and exclusive offers</p>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 rounded-lg text-black font-bold outline-none focus:ring-2 focus:ring-white/30"
-            />
-            <button
-              className="px-6 py-3 rounded-lg font-black text-white transition hover:opacity-90"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              Subscribe
-            </button>
-          </div>
-        </div>
-      </section>
-
     </main>
+  );
+}
+
+function Section({ children }: { children: React.ReactNode }) {
+  return (
+    <section
+      className="mx-auto max-w-7xl border-b px-4 py-14 sm:px-5 md:py-20"
+      style={{ borderColor: 'var(--border-color)' }}
+    >
+      {children}
+    </section>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  eyebrowIcon,
+  title,
+  subtitle,
+  bare,
+}: {
+  eyebrow?: string;
+  eyebrowIcon?: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  bare?: boolean;
+}) {
+  return (
+    <div className={bare ? '' : 'mb-10'}>
+      {eyebrow && (
+        <div className="mb-3 inline-flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
+          {eyebrowIcon}
+          <span className="text-sm font-black uppercase">{eyebrow}</span>
+        </div>
+      )}
+      <h2 className="text-3xl font-black sm:text-4xl" style={{ color: 'var(--text-primary)' }}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ViewAll({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 text-sm font-bold uppercase"
+      style={{ color: 'var(--color-primary)' }}
+    >
+      View all <ArrowRight size={16} />
+    </Link>
   );
 }

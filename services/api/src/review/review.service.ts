@@ -1,10 +1,73 @@
-import { Injectable, BadRequestException, UnauthorizedException } from "@nestjs/common";
+import { Injectable, BadRequestException, UnauthorizedException, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as jwt from "jsonwebtoken";
+
+const REVIEW_BUCKET = "product-images";
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 5;
 
 @Injectable()
 export class ReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ReviewService.name);
+  private readonly storage: SupabaseClient | null;
+
+  constructor(private readonly prisma: PrismaService) {
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    this.storage = url && serviceKey ? createClient(url, serviceKey) : null;
+  }
+
+  async uploadImages(images: string[], authHeader?: string) {
+    this.extractUserId(authHeader);
+
+    if (!Array.isArray(images) || images.length === 0) {
+      return { data: { urls: [] } };
+    }
+    if (images.length > MAX_IMAGES) {
+      throw new BadRequestException(`You can upload at most ${MAX_IMAGES} images`);
+    }
+    if (!this.storage) {
+      throw new BadRequestException("Image storage is not configured");
+    }
+
+    const urls: string[] = [];
+
+    for (const image of images) {
+      const match = /^data:([a-z/+-]+);base64,(.+)$/i.exec(image || "");
+      if (!match) {
+        throw new BadRequestException("Images must be base64 data URLs");
+      }
+
+      const [, mimeType, base64] = match;
+      if (!ALLOWED_IMAGE_TYPES.includes(mimeType.toLowerCase())) {
+        throw new BadRequestException(`Unsupported image type: ${mimeType}`);
+      }
+
+      const buffer = Buffer.from(base64, "base64");
+      if (buffer.byteLength > MAX_IMAGE_BYTES) {
+        throw new BadRequestException("Each image must be smaller than 5MB");
+      }
+
+      const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
+      const objectPath = `reviews/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
+
+      const { data, error } = await this.storage.storage
+        .from(REVIEW_BUCKET)
+        .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
+
+      if (error) {
+        this.logger.error(`Review image upload failed: ${error.message}`);
+        throw new BadRequestException("Failed to upload review image");
+      }
+
+      const { data: pub } = this.storage.storage.from(REVIEW_BUCKET).getPublicUrl(data.path);
+      urls.push(pub.publicUrl);
+    }
+
+    return { data: { urls } };
+  }
 
   private extractUserId(authHeader?: string): string {
     if (!authHeader) {

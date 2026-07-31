@@ -335,8 +335,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 </div>
               )}
               {selectedHamper && (
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Includes {selectedHamper.name} hamper
+                <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  {formatCurrency(Math.round(productPrice / 100))} tee
+                  {' + '}
+                  {formatCurrency(Math.round(hamperPrice / 100))} {selectedHamper.name}
                 </p>
               )}
             </div>
@@ -522,6 +524,20 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{review.body}</p>
+                  {review.mediaUrls?.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {review.mediaUrls.map((url: string, index: number) => (
+                        <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={url}
+                            alt={`Review photo ${index + 1}`}
+                            className="h-20 w-20 rounded object-cover transition hover:opacity-80"
+                            style={{ border: '1px solid var(--border-color)' }}
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (

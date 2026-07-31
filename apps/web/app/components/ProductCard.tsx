@@ -107,8 +107,22 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
             <Shirt size={52} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
           )}
           <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
-            {tag && <span className="rounded bg-white/95 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-ink shadow-sm">{tag}</span>}
-            {discountPercent > 0 && <span className="rounded bg-coral px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm">{discountPercent}% off</span>}
+            {tag && (
+              <span
+                className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm"
+                style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+              >
+                {tag}
+              </span>
+            )}
+            {discountPercent > 0 && (
+              <span
+                className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                {discountPercent}% off
+              </span>
+            )}
           </div>
         </div>
       </Link>

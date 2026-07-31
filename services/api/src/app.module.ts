@@ -11,6 +11,7 @@ import { LoggerModule } from "./logger/logger.module";
 import { WebsiteThemeModule } from "./theme/website-theme.module";
 import { InstagramModule } from "./instagram/instagram.module";
 import { ReviewModule } from "./review/review.module";
+import { InfluencerModule } from "./influencer/influencer.module";
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { ReviewModule } from "./review/review.module";
     LoggerModule,
     WebsiteThemeModule,
     InstagramModule,
-    ReviewModule
+    ReviewModule,
+    InfluencerModule
   ]
 })
 export class AppModule {}

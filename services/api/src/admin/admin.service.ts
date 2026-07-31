@@ -1404,14 +1404,16 @@ export class AdminService {
   async listHampers() {
     return await this.prisma.productHamper.findMany({
       orderBy: { priority: "asc" },
-      include: { product: true }
+      include: { product: true, theme: true }
     });
   }
 
+  // A hamper attaches to either a single product or a whole theme, never both.
   async createHamper(data: any) {
     return await this.prisma.productHamper.create({
       data: {
         productId: data.productId || null,
+        themeId: data.themeId || null,
         name: data.name,
         description: data.description || null,
         contents: data.contents || [],
@@ -1423,7 +1425,7 @@ export class AdminService {
         isActive: data.isActive !== false,
         priority: data.priority || 0
       },
-      include: { product: true }
+      include: { product: true, theme: true }
     });
   }
 
@@ -1431,6 +1433,7 @@ export class AdminService {
     const updateData: any = {};
 
     if (data.productId !== undefined) updateData.productId = data.productId;
+    if (data.themeId !== undefined) updateData.themeId = data.themeId;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.contents !== undefined) updateData.contents = data.contents;
@@ -1445,7 +1448,7 @@ export class AdminService {
     return await this.prisma.productHamper.update({
       where: { id },
       data: updateData,
-      include: { product: true }
+      include: { product: true, theme: true }
     });
   }
 

@@ -5,12 +5,12 @@ import { PrismaService } from "../prisma/prisma.service";
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // `category` is the fit / product type (regular, oversized, jersey, polo, hoodie).
+  // There is no gender or seasonal-collection filtering: the catalogue is unisex.
   listProducts(filters: {
     category?: string;
     theme?: string;
-    collection?: string;
     q?: string;
-    gender?: string;
     minPrice?: string;
     maxPrice?: string;
     rating?: string;
@@ -38,10 +38,6 @@ export class CatalogService {
         isVisible: true,
         category: filters.category ? { slug: filters.category } : undefined,
         theme: filters.theme ? { slug: filters.theme } : undefined,
-        collection: filters.collection ? { slug: filters.collection } : undefined,
-        gender: filters.gender && ["MEN", "WOMEN", "UNISEX"].includes(filters.gender.toUpperCase())
-          ? filters.gender.toUpperCase() as any
-          : undefined,
         price: minPrice || maxPrice ? {
           gte: minPrice,
           lte: maxPrice
@@ -58,7 +54,6 @@ export class CatalogService {
       },
       include: {
         category: true,
-        collection: true,
         theme: true,
         images: { orderBy: { priority: "asc" } },
         variants: { include: { inventory: true } }
@@ -72,7 +67,6 @@ export class CatalogService {
       where: { slug },
       include: {
         category: true,
-        collection: true,
         theme: true,
         images: { orderBy: { priority: "asc" } },
         variants: { include: { inventory: true } },
@@ -88,23 +82,31 @@ export class CatalogService {
       throw new NotFoundException("Product not found");
     }
 
-    return product;
-  }
+    // Hampers are attached to a theme, so every product in that theme can be
+    // gifted in the same box. Product-specific hampers are merged in as well.
+    const hampers = await this.prisma.productHamper.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { productId: product.id },
+          ...(product.themeId ? [{ themeId: product.themeId }] : [])
+        ]
+      },
+      orderBy: { priority: "asc" }
+    });
 
-  listCollections() {
-    return this.prisma.collection.findMany({ orderBy: { priority: "asc" } });
+    return { ...product, hampers };
   }
 
   async listFilters() {
-    const [categories, themes, collections] = await Promise.all([
+    const [categories, themes] = await Promise.all([
       this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
       this.prisma.theme.findMany({
         where: { active: true },
         orderBy: [{ priority: "asc" }, { name: "asc" }]
-      }),
-      this.listCollections()
+      })
     ]);
 
-    return { categories, themes, collections };
+    return { categories, themes };
   }
 }

@@ -88,11 +88,15 @@ export class CmsService {
     });
   }
 
+  // Hampers hang off a theme, so each one links through to that theme's products.
   getVisibleHampers() {
     return this.prisma.productHamper.findMany({
       where: { isActive: true },
       orderBy: [{ priority: "asc" }, { name: "asc" }],
-      include: { product: { include: { images: { take: 1, orderBy: { priority: "asc" } } } } }
+      include: {
+        theme: { select: { id: true, name: true, slug: true } },
+        product: { select: { id: true, name: true, slug: true } }
+      }
     });
   }
 

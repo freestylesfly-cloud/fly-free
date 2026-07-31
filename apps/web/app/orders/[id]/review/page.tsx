@@ -6,9 +6,21 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Package, Star, Send } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { getApiBaseUrl } from '../../../lib/api';
-import { uploadImage } from '../../../lib/supabase';
 
 const API_BASE = getApiBaseUrl();
+
+const MAX_IMAGES = 5;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
 
 interface OrderItem {
   id?: string;
@@ -95,10 +107,21 @@ export default function OrderReviewPage() {
     const newImages = Array.from(files);
     const currentReview = reviews[productId];
 
-    // Limit to 5 images per review
     const totalImages = (currentReview?.images?.length || 0) + newImages.length;
-    if (totalImages > 5) {
-      setError('Maximum 5 images per review');
+    if (totalImages > MAX_IMAGES) {
+      setError(`Maximum ${MAX_IMAGES} images per review`);
+      return;
+    }
+
+    const badType = newImages.find((file) => !ALLOWED_IMAGE_TYPES.includes(file.type));
+    if (badType) {
+      setError('Only JPG, PNG, WebP, and GIF images are allowed');
+      return;
+    }
+
+    const tooLarge = newImages.find((file) => file.size > MAX_IMAGE_BYTES);
+    if (tooLarge) {
+      setError(`${tooLarge.name} is larger than 5MB`);
       return;
     }
 
@@ -162,12 +185,24 @@ export default function OrderReviewPage() {
     setSuccess('');
 
     try {
-      // Upload images to Supabase storage first
+      // Upload images through the API (server holds the storage credentials)
       let imageUrls: string[] = [];
       if (review.images && review.images.length > 0) {
-        imageUrls = await Promise.all(
-          review.images.map((file) => uploadImage('products', file, 'reviews'))
-        );
+        const encoded = await Promise.all(review.images.map(fileToDataUrl));
+
+        const uploadRes = await fetch(`${API_BASE}/reviews/upload-images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ images: encoded })
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => null);
+          throw new Error(errData?.message || 'Failed to upload review images');
+        }
+
+        const uploadData = await uploadRes.json();
+        imageUrls = uploadData.data?.urls || [];
       }
 
       // Submit review with image URLs

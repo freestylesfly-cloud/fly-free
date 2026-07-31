@@ -12,9 +12,9 @@ import { getApiBaseUrl } from '../lib/api';
 const API_URL = getApiBaseUrl();
 
 type FilterData = {
+  // categories are fits (regular, oversized, jersey, polo, hoodie)
   categories: any[];
   themes: any[];
-  collections: any[];
 };
 
 export default function ProductsPage() {
@@ -28,10 +28,9 @@ export default function ProductsPage() {
 function ProductsBrowser() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
-  const [filters, setFilters] = useState<FilterData>({ categories: [], themes: [], collections: [] });
+  const [filters, setFilters] = useState<FilterData>({ categories: [], themes: [] });
   const [category, setCategory] = useState('');
   const [theme, setTheme] = useState('');
-  const [collection, setCollection] = useState('');
   const [query, setQuery] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
@@ -43,7 +42,6 @@ function ProductsBrowser() {
   useEffect(() => {
     setCategory(searchParams.get('category') || '');
     setTheme(searchParams.get('theme') || '');
-    setCollection(searchParams.get('collection') || '');
     setQuery(searchParams.get('q') || '');
     setMinPrice(searchParams.get('minPrice') || '');
     setMaxPrice(searchParams.get('maxPrice') || '');
@@ -58,7 +56,6 @@ function ProductsBrowser() {
         const params = new URLSearchParams();
         if (category) params.set('category', category);
         if (theme) params.set('theme', theme);
-        if (collection) params.set('collection', collection);
         if (query) params.set('q', query);
         if (minPrice) params.set('minPrice', minPrice);
         if (maxPrice) params.set('maxPrice', maxPrice);
@@ -73,7 +70,7 @@ function ProductsBrowser() {
         const productsData = await productsResponse.json();
         const filtersData = await filtersResponse.json();
         setProducts(Array.isArray(productsData) ? productsData : productsData?.data || []);
-        setFilters(filtersData || { categories: [], themes: [], collections: [] });
+        setFilters(filtersData || { categories: [], themes: [] });
       } catch {
         setProducts([]);
       } finally {
@@ -83,11 +80,11 @@ function ProductsBrowser() {
 
     const timer = window.setTimeout(fetchData, 220);
     return () => window.clearTimeout(timer);
-  }, [category, theme, collection, query, minPrice, maxPrice, rating, sort]);
+  }, [category, theme, query, minPrice, maxPrice, rating, sort]);
 
   const activeCount = useMemo(
-    () => [category, theme, collection, query, minPrice, maxPrice, rating].filter(Boolean).length,
-    [category, theme, collection, query, minPrice, maxPrice, rating]
+    () => [category, theme, query, minPrice, maxPrice, rating].filter(Boolean).length,
+    [category, theme, query, minPrice, maxPrice, rating]
   );
 
   const activeLabels = useMemo(() => {
@@ -95,18 +92,16 @@ function ProductsBrowser() {
     return [
       category && labelFor(filters.categories, category),
       theme && labelFor(filters.themes, theme),
-      collection && labelFor(filters.collections, collection),
       query && `"${query}"`,
       minPrice && `From ${formatCurrency(Number(minPrice))}`,
       maxPrice && `To ${formatCurrency(Number(maxPrice))}`,
       rating && `${rating}+ stars`,
     ].filter(Boolean) as string[];
-  }, [category, collection, filters, maxPrice, minPrice, query, rating, theme]);
+  }, [category, filters, maxPrice, minPrice, query, rating, theme]);
 
   function clearFilters() {
     setCategory('');
     setTheme('');
-    setCollection('');
     setQuery('');
     setMinPrice('');
     setMaxPrice('');
@@ -121,8 +116,6 @@ function ProductsBrowser() {
       setCategory={setCategory}
       theme={theme}
       setTheme={setTheme}
-      collection={collection}
-      setCollection={setCollection}
       minPrice={minPrice}
       setMinPrice={setMinPrice}
       maxPrice={maxPrice}
@@ -268,8 +261,6 @@ function FilterPanel(props: {
   setCategory: (value: string) => void;
   theme: string;
   setTheme: (value: string) => void;
-  collection: string;
-  setCollection: (value: string) => void;
   minPrice: string;
   setMinPrice: (value: string) => void;
   maxPrice: string;
@@ -292,10 +283,6 @@ function FilterPanel(props: {
 
       <FilterGroup label="Shop theme">
         <RadioRows value={props.theme} onChange={props.setTheme} options={props.filters.themes} emptyLabel="All themes" />
-      </FilterGroup>
-
-      <FilterGroup label="Collection">
-        <RadioRows value={props.collection} onChange={props.setCollection} options={props.filters.collections} emptyLabel="All collections" />
       </FilterGroup>
 
       <FilterGroup label="Price">

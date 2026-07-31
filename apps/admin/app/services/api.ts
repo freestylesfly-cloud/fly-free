@@ -306,6 +306,7 @@ class ApiService {
       content: review.content ?? review.body ?? '',
       rating: review.rating ?? 0,
       status: review.status ?? 'PENDING',
+      mediaUrls: review.mediaUrls ?? [],
       product: review.product ?? { name: 'Product' },
       user: review.user ?? { name: 'Customer', email: '' },
       createdAt: review.createdAt ?? new Date().toISOString()

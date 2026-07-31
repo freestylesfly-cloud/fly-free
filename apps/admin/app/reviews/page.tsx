@@ -17,6 +17,7 @@ interface Review {
   title: string;
   content: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  mediaUrls?: string[];
   product: { name: string };
   user: { name: string; email: string };
   createdAt: string;
@@ -298,6 +299,26 @@ export default function ReviewsPage() {
                   <p className="text-black/60 text-sm mb-2">Review</p>
                   <p className="text-ink leading-relaxed">{selectedReview.content}</p>
                 </div>
+
+                {/* Customer Photos */}
+                {(selectedReview.mediaUrls?.length ?? 0) > 0 && (
+                  <div className="border-t pt-6">
+                    <p className="text-black/60 text-sm mb-3">
+                      Customer photos ({selectedReview.mediaUrls!.length})
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {selectedReview.mediaUrls!.map((url, index) => (
+                        <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={url}
+                            alt={`Review photo ${index + 1}`}
+                            className="h-24 w-24 rounded-lg border object-cover transition hover:opacity-80"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Customer Info */}
                 <div className="border-t pt-6">

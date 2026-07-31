@@ -158,10 +158,6 @@ export function InstagramFeedCarousel({ posts }: { posts: InstagramPost[] }) {
         )}
       </div>
 
-      {/* Auto-scroll indicator */}
-      <p className="mt-4 text-center text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-        Auto-scrolling • Click to view on Instagram
-      </p>
     </section>
   );
 }

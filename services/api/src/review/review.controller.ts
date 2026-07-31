@@ -23,6 +23,16 @@ export class ReviewController {
     return await this.reviewService.getLatestReviews(parseInt(limit || "8"));
   }
 
+  // Upload review images (base64 data URLs)
+  @ApiTags("⭐ Reviews")
+  @Post("upload-images")
+  async uploadImages(
+    @Body() body: { images: string[] },
+    @Headers("authorization") auth?: string
+  ) {
+    return await this.reviewService.uploadImages(body?.images || [], auth);
+  }
+
   // Create review
   @ApiTags("⭐ Reviews")
   @Post()
