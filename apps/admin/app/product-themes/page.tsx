@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { Edit3, Plus, Search, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 
@@ -13,6 +14,12 @@ type ProductTheme = {
   name: string;
   slug: string;
   description?: string;
+  story?: string;
+  imageUrl?: string;
+  bannerImageUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
   priority: number;
   active: boolean;
   _count?: { products?: number };
@@ -23,14 +30,28 @@ type ThemeForm = {
   name: string;
   slug: string;
   description: string;
+  story: string;
+  imageUrl: string;
+  bannerImageUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
   priority: number;
+  active: boolean;
 };
 
 const emptyForm: ThemeForm = {
   name: '',
   slug: '',
   description: '',
-  priority: 0
+  story: '',
+  imageUrl: '',
+  bannerImageUrl: '',
+  primaryColor: '#111827',
+  secondaryColor: '#FF4A4E',
+  accentColor: '#FFB703',
+  priority: 0,
+  active: true
 };
 
 export default function ProductThemesPage() {
@@ -114,7 +135,14 @@ export default function ProductThemesPage() {
       name: theme.name || '',
       slug: theme.slug || '',
       description: theme.description || '',
-      priority: theme.priority || 0
+      story: theme.story || '',
+      imageUrl: theme.imageUrl || '',
+      bannerImageUrl: theme.bannerImageUrl || '',
+      primaryColor: theme.primaryColor || '#111827',
+      secondaryColor: theme.secondaryColor || '#FF4A4E',
+      accentColor: theme.accentColor || '#FFB703',
+      priority: theme.priority || 0,
+      active: theme.active !== false
     });
   }
 
@@ -192,8 +220,39 @@ export default function ProductThemesPage() {
             <div className="space-y-3">
               <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
               <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="auto from name if empty" />
-              <Field label="Description" value={form.description} onChange={(value) => setForm({ ...form, description: value })} placeholder="What's this theme about?" isTextarea />
+              <Field label="Description" value={form.description} onChange={(value) => setForm({ ...form, description: value })} placeholder="Short line shown on theme cards" isTextarea />
+              <Field label="Story" value={form.story} onChange={(value) => setForm({ ...form, story: value })} placeholder="Longer copy shown on the theme page" isTextarea />
+
+              <ImageField
+                label="Banner image"
+                hint="Full-width hero on the theme page and the homepage carousel."
+                value={form.bannerImageUrl}
+                onChange={(value) => setForm({ ...form, bannerImageUrl: value })}
+              />
+              <ImageField
+                label="Card image"
+                hint="Square-ish thumbnail used in menus and theme cards."
+                value={form.imageUrl}
+                onChange={(value) => setForm({ ...form, imageUrl: value })}
+              />
+
+              <div className="grid grid-cols-3 gap-2">
+                <ColorField label="Primary" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} />
+                <ColorField label="Secondary" value={form.secondaryColor} onChange={(value) => setForm({ ...form, secondaryColor: value })} />
+                <ColorField label="Accent" value={form.accentColor} onChange={(value) => setForm({ ...form, accentColor: value })} />
+              </div>
+
               <Field label="Priority" value={String(form.priority)} onChange={(value) => setForm({ ...form, priority: Number(value) })} type="number" />
+
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(event) => setForm({ ...form, active: event.target.checked })}
+                  className="h-4 w-4"
+                />
+                Active (visible on the storefront)
+              </label>
 
               <button
                 type="submit"
@@ -207,6 +266,63 @@ export default function ProductThemesPage() {
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+function ImageField({
+  label,
+  hint,
+  value,
+  onChange
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <ImageUploadField
+        label={label}
+        value={value}
+        onChange={onChange}
+        bucket="product-images"
+        folder="themes"
+        aspect={16 / 9}
+        alt={label}
+      />
+      <p className="text-xs text-black/50">{hint}</p>
+    </div>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid gap-1.5 text-xs font-bold">
+      {label}
+      <span className="flex items-center gap-2 rounded border border-black/10 px-2 py-1.5">
+        <input
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+          aria-label={`${label} colour`}
+        />
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full min-w-0 border-0 p-0 text-xs font-bold uppercase outline-none"
+        />
+      </span>
+    </label>
   );
 }
 

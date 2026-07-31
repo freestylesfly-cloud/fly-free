@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import * as jwt from "jsonwebtoken";
@@ -19,8 +19,18 @@ export class EcommerceService {
     });
   }
 
+  // Idempotent: clicking the heart twice must not blow up on a duplicate row.
   async addToWishlist(productId: string, token: string) {
     const userId = this.extractUserId(token);
+
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new NotFoundException("Product not found");
+    }
+
+    const existing = await this.prisma.wishlist.findFirst({ where: { userId, productId } });
+    if (existing) return existing;
+
     return this.prisma.wishlist.create({
       data: { userId, productId }
     });
@@ -332,7 +342,7 @@ export class EcommerceService {
     // Generate invoice data
     const o = order as any;
     return {
-      invoiceNumber: `INV-${o.id}`,
+      invoiceNumber: o.orderNumber ? `INV-${o.orderNumber}` : `INV-${o.id}`,
       orderDate: o.createdAt,
       shippingAddress: {
         name: o.shippingName,
@@ -379,7 +389,7 @@ export class EcommerceService {
 
     return {
       id: o.id,
-      orderNumber: o.invoice?.invoiceNumber || o.id,
+      orderNumber: o.orderNumber || o.invoice?.invoiceNumber || o.id,
       status: o.status,
       subtotal: money(o.subtotal),
       discount: money(o.discount),

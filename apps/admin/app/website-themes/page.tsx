@@ -246,7 +246,7 @@ export default function WebsiteThemesPage() {
                   label="Desktop hero banner"
                   value={form.heroDesktopImageUrl}
                   onChange={(value) => setForm({ ...form, heroDesktopImageUrl: value })}
-                  bucket="banners"
+                  bucket="product-images"
                   folder={form.slug || slugify(form.name || 'website-theme')}
                   aspect={16 / 7}
                   alt={form.heroTitle || form.name}
@@ -255,7 +255,7 @@ export default function WebsiteThemesPage() {
                   label="Mobile hero banner"
                   value={form.heroMobileImageUrl}
                   onChange={(value) => setForm({ ...form, heroMobileImageUrl: value })}
-                  bucket="banners"
+                  bucket="product-images"
                   folder={form.slug || slugify(form.name || 'website-theme')}
                   aspect={4 / 5}
                   alt={form.heroTitle || form.name}

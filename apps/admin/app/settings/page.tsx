@@ -17,6 +17,12 @@ type AppSettings = {
   contactPhone: string;
   supportEmail: string;
   footerText: string;
+  /** Prefix for generated order numbers, e.g. FF -> FF-2026-000123 */
+  orderPrefix: string;
+  /** Rupees. Charged when the order total is below the free threshold. */
+  deliveryFee: number;
+  /** Rupees. Orders at or above this ship free. */
+  freeDeliveryAbove: number;
   socialLinks: {
     facebook?: string;
     instagram?: string;
@@ -35,12 +41,15 @@ const emptySettings: AppSettings = {
   contactPhone: '',
   supportEmail: '',
   footerText: '',
+  orderPrefix: 'FF',
+  deliveryFee: 60,
+  freeDeliveryAbove: 1000,
   socialLinks: {}
 };
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(emptySettings);
-  const [activeTab, setActiveTab] = useState<'general' | 'social'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'delivery' | 'social'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -87,6 +96,7 @@ export default function SettingsPage() {
 
           <div className="flex gap-2 border-b border-black/10">
             <button onClick={() => setActiveTab('general')} className={`px-4 py-3 font-bold ${activeTab === 'general' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>General</button>
+            <button onClick={() => setActiveTab('delivery')} className={`px-4 py-3 font-bold ${activeTab === 'delivery' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Delivery &amp; Orders</button>
             <button onClick={() => setActiveTab('social')} className={`px-4 py-3 font-bold ${activeTab === 'social' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Social Links</button>
           </div>
 
@@ -109,6 +119,57 @@ export default function SettingsPage() {
                   Footer Text
                   <textarea value={settings.footerText} onChange={(event) => update('footerText', event.target.value)} rows={3} className="rounded border border-black/10 px-3 py-2" />
                 </label>
+              </div>
+            ) : activeTab === 'delivery' ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-bold">
+                  Delivery Fee (₹)
+                  <input
+                    type="number"
+                    min={0}
+                    value={settings.deliveryFee}
+                    onChange={(event) => update('deliveryFee', Number(event.target.value))}
+                    className="rounded border border-black/10 px-3 py-2"
+                  />
+                  <span className="text-xs font-normal text-black/50">
+                    Charged when the order total is below the free-delivery threshold.
+                  </span>
+                </label>
+
+                <label className="grid gap-2 text-sm font-bold">
+                  Free Delivery Above (₹)
+                  <input
+                    type="number"
+                    min={0}
+                    value={settings.freeDeliveryAbove}
+                    onChange={(event) => update('freeDeliveryAbove', Number(event.target.value))}
+                    className="rounded border border-black/10 px-3 py-2"
+                  />
+                  <span className="text-xs font-normal text-black/50">
+                    Orders at or above this amount ship free.
+                  </span>
+                </label>
+
+                <label className="grid gap-2 text-sm font-bold">
+                  Order Number Prefix
+                  <input
+                    value={settings.orderPrefix}
+                    onChange={(event) => update('orderPrefix', event.target.value.toUpperCase())}
+                    className="rounded border border-black/10 px-3 py-2"
+                  />
+                  <span className="text-xs font-normal text-black/50">
+                    Orders are numbered {settings.orderPrefix || 'FF'}-{new Date().getFullYear()}-000001.
+                  </span>
+                </label>
+
+                <div className="rounded border border-black/10 bg-black/[0.02] p-4 text-sm md:col-span-2">
+                  <p className="font-bold">Customer sees</p>
+                  <p className="mt-1 text-black/60">
+                    Under ₹{settings.freeDeliveryAbove}: delivery ₹{settings.deliveryFee} added at checkout, with a
+                    prompt showing how much more to spend for free delivery. At or above ₹{settings.freeDeliveryAbove}:
+                    delivery is free. No tax line is shown.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
@@ -134,7 +195,7 @@ export default function SettingsPage() {
     </ProtectedRoute>
   );
 
-  function update(key: keyof AppSettings, value: string) {
+  function update(key: keyof AppSettings, value: string | number) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 }

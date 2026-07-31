@@ -23,6 +23,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistError, setWishlistError] = useState('');
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [shareText, setShareText] = useState('Share');
   const addItem = useCartStore((state) => state.addItem);
@@ -56,16 +57,26 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
 
     try {
       setWishlistLoading(true);
+      setWishlistError('');
       const response = await fetch(`${getApiBaseUrl()}/ecommerce/wishlist/${id}`, {
         method: isWishlisted ? 'DELETE' : 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await readApiResponse(response);
 
-      if (!response.ok) throw new Error(data?.error || 'Wishlist update failed');
+      // Only a rejected session should send the user to login. Any other
+      // failure is a real error and must not masquerade as "please log in".
+      if (response.status === 401 || response.status === 403) {
+        setShowLoginPrompt(true);
+        return;
+      }
+
+      const data = await readApiResponse(response);
+      if (!response.ok) throw new Error(data?.error || data?.message || 'Could not update wishlist');
+
       setIsWishlisted(!isWishlisted);
-    } catch {
-      setShowLoginPrompt(true);
+    } catch (error) {
+      setWishlistError(error instanceof Error ? error.message : 'Could not update wishlist');
+      window.setTimeout(() => setWishlistError(''), 3000);
     } finally {
       setWishlistLoading(false);
     }
@@ -172,6 +183,12 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
           <ShoppingCart size={15} />
           {isAdding ? 'Added' : 'Add to cart'}
         </button>
+
+        {wishlistError && (
+          <p className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
+            {wishlistError}
+          </p>
+        )}
       </div>
 
       {showLoginPrompt && (

@@ -1,55 +1,58 @@
-import { createBrowserClient } from '@supabase/ssr';
+/**
+ * Image storage helpers.
+ *
+ * Uploads go through the API rather than straight to Supabase: the storage
+ * buckets have no INSERT policy, so the browser's anon key is rejected by RLS.
+ * The server performs the write with the service-role key.
+ */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-let supabase: any = null;
-
-if (supabaseUrl && supabaseKey) {
-  supabase = createBrowserClient(supabaseUrl, supabaseKey);
+function authHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = window.localStorage.getItem('flyfree_admin_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export { supabase };
-
-function getSupabaseClient() {
-  if (!supabase) {
-    throw new Error('Supabase upload is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
-  }
-
-  return supabase;
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
 }
 
-export async function uploadImage(bucket: string, file: File, folder = '') {
-  const client = getSupabaseClient();
-  const safeName = file.name.replace(/[^a-z0-9._-]/gi, '-').toLowerCase();
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
-  const filePath = folder ? `${folder}/${fileName}` : fileName;
+/**
+ * @param _bucket kept for call-site compatibility; the server always writes to
+ *                the `product-images` bucket.
+ */
+export async function uploadImage(_bucket: string, file: File, folder = ''): Promise<string> {
+  const image = await fileToDataUrl(file);
 
-  const { data, error } = await client.storage.from(bucket).upload(filePath, file, {
-    cacheControl: '31536000',
-    upsert: false
+  const response = await fetch(`${API_BASE}/api/admin/upload-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ image, folder }),
   });
 
-  if (error) throw error;
-
-  const { data: publicUrl } = client.storage.from(bucket).getPublicUrl(data.path);
-  return publicUrl.publicUrl as string;
-}
-
-export async function deleteImage(bucket: string, urlOrPath: string) {
-  if (!urlOrPath) return;
-
-  const client = getSupabaseClient();
-  let path = urlOrPath;
-
-  if (urlOrPath.includes('/storage/v1/object/public/')) {
-    const publicPath = urlOrPath.split('/storage/v1/object/public/')[1] || '';
-    const parts = publicPath.split('/');
-    path = parts[0] === bucket ? parts.slice(1).join('/') : publicPath;
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message || body?.error || 'Image upload failed');
   }
 
-  if (!path || path.startsWith('http')) return;
+  const data = await response.json();
+  return data.url as string;
+}
 
-  const { error } = await client.storage.from(bucket).remove([path]);
-  if (error) throw error;
+export async function deleteImage(_bucket: string, urlOrPath: string): Promise<void> {
+  if (!urlOrPath || !urlOrPath.includes('/storage/v1/object/public/')) return;
+
+  await fetch(`${API_BASE}/api/admin/delete-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ url: urlOrPath }),
+  }).catch(() => {
+    // Removing the stored file is best-effort; the record is already updated.
+  });
 }

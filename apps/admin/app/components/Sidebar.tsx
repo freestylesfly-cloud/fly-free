@@ -58,9 +58,10 @@ export function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-5 left-5 z-50 p-2 rounded-lg bg-ink text-white hover:bg-ink/90 transition"
+        className="md:hidden fixed top-4 left-3 z-50 p-2 rounded-lg bg-ink text-white hover:bg-ink/90 transition"
+        aria-label={isOpen ? 'Close menu' : 'Open menu'}
       >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
+        {isOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
       {/* Backdrop */}

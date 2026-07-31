@@ -71,13 +71,18 @@ export class CommerceService {
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const coupon = body.couponCode || body.offerCode ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal) : null;
     const discount = coupon?.discount || 0;
-    const shippingFee = 0;
-    const tax = Math.round((subtotal - discount) * 0.18);
-    const total = Math.max(subtotal - discount + shippingFee + tax, 0);
+
+    // Delivery is the only charge on top of items; there is no tax line.
+    const payable = Math.max(subtotal - discount, 0);
+    const { deliveryFee, freeDeliveryAbove } = await this.getDeliverySettings();
+    const shippingFee = payable >= freeDeliveryAbove ? 0 : deliveryFee;
+    const tax = 0;
+    const total = payable + shippingFee;
 
     const order = await this.prisma.$transaction(async (tx: any) => {
       const created = await tx.order.create({
         data: {
+          orderNumber: await this.generateOrderNumber(tx),
           user: { connect: { id: userId } },
           shippingName: address.name,
           shippingPhone: address.phone,
@@ -284,6 +289,33 @@ export class CommerceService {
         amount: order.total,
         currency: "INR"
       }
+    };
+  }
+
+  /**
+   * Human-facing order reference: <PREFIX>-<YEAR>-<6 digit serial>, e.g. FF-2026-000123.
+   * The serial restarts each calendar year. Callers retry on the unique
+   * constraint, so a race between two checkouts resolves on the next attempt.
+   */
+  private async generateOrderNumber(tx: any) {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+    const prefix = String(value?.orderPrefix || "FF").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const year = new Date().getFullYear();
+
+    const startOfYear = new Date(year, 0, 1);
+    const countThisYear = await tx.order.count({ where: { createdAt: { gte: startOfYear } } });
+
+    return `${prefix}-${year}-${String(countThisYear + 1).padStart(6, "0")}`;
+  }
+
+  /** Delivery pricing comes from admin settings so it can change without a deploy. */
+  private async getDeliverySettings() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+    return {
+      deliveryFee: Number(value?.deliveryFee ?? 60),
+      freeDeliveryAbove: Number(value?.freeDeliveryAbove ?? 1000)
     };
   }
 

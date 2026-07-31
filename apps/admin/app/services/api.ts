@@ -43,8 +43,13 @@ class ApiService {
     try {
       const headers = new Headers(options.headers);
 
-      // Always set default headers (Content-Type, etc)
-      Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+      // Only declare a JSON body when one is actually being sent. Fastify
+      // rejects a request that advertises application/json but has no body.
+      if (options.body != null) {
+        Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+      } else {
+        headers.delete('Content-Type');
+      }
 
       // Add auth headers
       Object.entries(this.authHeaders()).forEach(([key, value]) => headers.set(key, value));

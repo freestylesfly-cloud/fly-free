@@ -8,7 +8,6 @@ import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { EmailModule } from "./email/email.module";
 import { LoggerModule } from "./logger/logger.module";
-import { WebsiteThemeModule } from "./theme/website-theme.module";
 import { InstagramModule } from "./instagram/instagram.module";
 import { ReviewModule } from "./review/review.module";
 import { InfluencerModule } from "./influencer/influencer.module";
@@ -27,7 +26,6 @@ import { InfluencerModule } from "./influencer/influencer.module";
     AuthModule,
     EmailModule,
     LoggerModule,
-    WebsiteThemeModule,
     InstagramModule,
     ReviewModule,
     InfluencerModule

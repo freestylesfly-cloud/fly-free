@@ -1,6 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
+import { createClient } from "@supabase/supabase-js";
 import type { PrismaClient } from "@prisma/client";
 
 @Injectable()
@@ -489,7 +490,7 @@ export class AdminService {
       "Share your Fly Free review",
       `<p>Hi ${this.escape(order.user.name || "Customer")},</p>
        <p>${this.escape(message || "Please share your feedback for your recent order. It helps us improve and helps other customers choose better.")}</p>
-       <p><strong>Order:</strong> ${this.escape(order.id)}</p>
+       <p><strong>Order:</strong> ${this.escape(order.orderNumber || order.id)}</p>
        <p><a href="${this.escape(reviewLink)}" style="display:inline-block;background:#ff6b5b;color:#fff;padding:12px 18px;text-decoration:none;border-radius:6px;font-weight:700;">Write review</a></p>`
     );
 
@@ -965,8 +966,88 @@ export class AdminService {
       businessAddress: "",
       invoicePrefix: "INV",
       gstNumber: "",
+      // Delivery is the only charge added on top of the item total.
+      // Orders at or above the threshold ship free. Values are in rupees.
+      deliveryFee: 60,
+      freeDeliveryAbove: 1000,
       footerText: "Fly Free. Designed for comfort and self-expression.",
       socialLinks: {}
+    };
+  }
+
+  /**
+   * Store an image and return its public URL. Browser-side uploads are blocked
+   * by storage RLS, so the server does it with the service-role key.
+   */
+  async uploadImage(image: string, folder = "misc") {
+    const match = /^data:([a-z/+-]+);base64,(.+)$/i.exec(image || "");
+    if (!match) {
+      throw new BadRequestException("Image must be a base64 data URL");
+    }
+
+    const [, mimeType, base64] = match;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType.toLowerCase())) {
+      throw new BadRequestException(`Unsupported image type: ${mimeType}`);
+    }
+
+    const buffer = Buffer.from(base64, "base64");
+    if (buffer.byteLength > 12 * 1024 * 1024) {
+      throw new BadRequestException("Image must be under 12MB");
+    }
+
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) {
+      throw new BadRequestException("Image storage is not configured");
+    }
+
+    const storage = createClient(url, serviceKey);
+    const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
+    const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, "").replace(/^\/+|\/+$/g, "") || "misc";
+    const objectPath = `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
+
+    const { data, error } = await storage.storage
+      .from("product-images")
+      .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
+
+    if (error) {
+      this.logger.error(`Admin image upload failed: ${error.message}`);
+      throw new BadRequestException("Failed to upload image");
+    }
+
+    const { data: pub } = storage.storage.from("product-images").getPublicUrl(data.path);
+    return { url: pub.publicUrl };
+  }
+
+  /** Best-effort removal of a previously uploaded image. */
+  async deleteImage(url: string) {
+    const marker = "/storage/v1/object/public/product-images/";
+    const index = (url || "").indexOf(marker);
+    if (index === -1) return { removed: false };
+
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) return { removed: false };
+
+    const storage = createClient(supabaseUrl, serviceKey);
+    const { error } = await storage.storage
+      .from("product-images")
+      .remove([url.slice(index + marker.length)]);
+
+    if (error) {
+      this.logger.warn(`Could not remove image: ${error.message}`);
+      return { removed: false };
+    }
+
+    return { removed: true };
+  }
+
+  // Public delivery config, used by the cart and checkout to price shipping.
+  async getDeliverySettings() {
+    const settings = await this.getSettingsValue();
+    return {
+      deliveryFee: Number(settings.deliveryFee ?? 60),
+      freeDeliveryAbove: Number(settings.freeDeliveryAbove ?? 1000)
     };
   }
 

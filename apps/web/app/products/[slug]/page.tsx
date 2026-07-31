@@ -68,6 +68,8 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [selectedHamperId, setSelectedHamperId] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
+  const [isMagnifying, setIsMagnifying] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [notice, setNotice] = useState('');
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -105,7 +107,12 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const totalPrice = productPrice + hamperPrice;
   const discountPercent = product?.discountPercent || (productMrp > productPrice ? Math.round(((productMrp - productPrice) / productMrp) * 100) : 0);
   const reviewCount = product?.reviews?.length || 0;
-  const averageRating = Number(product?.averageRating || 0);
+  // The catalogue endpoint returns the approved reviews but not an aggregate,
+  // so derive the average here rather than trusting an absent field.
+  const averageRating =
+    reviewCount > 0
+      ? product.reviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0) / reviewCount
+      : 0;
 
   useEffect(() => {
     async function fetchProductFlow() {
@@ -279,7 +286,30 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           >
             {activeImage?.url && (
               <>
-                <img src={activeImage.url} alt={activeImage.alt || product.name} className="max-h-full max-w-full object-contain" />
+                {/* Hover magnifies around the cursor; the button opens the
+                    full-screen view for a closer look. */}
+                <div
+                  className="h-full w-full overflow-hidden"
+                  onMouseMove={(event) => {
+                    const box = event.currentTarget.getBoundingClientRect();
+                    setZoomOrigin({
+                      x: ((event.clientX - box.left) / box.width) * 100,
+                      y: ((event.clientY - box.top) / box.height) * 100
+                    });
+                  }}
+                  onMouseEnter={() => setIsMagnifying(true)}
+                  onMouseLeave={() => setIsMagnifying(false)}
+                >
+                  <img
+                    src={activeImage.url}
+                    alt={activeImage.alt || product.name}
+                    className="h-full w-full object-contain transition-transform duration-200"
+                    style={{
+                      transform: isMagnifying ? 'scale(2)' : 'scale(1)',
+                      transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                    }}
+                  />
+                </div>
                 <button
                   onClick={() => setShowZoom(true)}
                   className="absolute right-3 top-3 rounded-lg border p-2 transition hover:opacity-70"
@@ -485,8 +515,8 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           )}
 
           <div className="grid gap-3 border-t pt-5 text-sm" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-            <InfoRow icon={<Truck size={18} />} title="Delivery and GST" text="Cart shows subtotal, GST, shipping, hamper, and final total before checkout." />
-            <InfoRow icon={<PackageCheck size={18} />} title="Return Policy" text="Eligible items can be returned or exchanged under the configured return policy." />
+            <InfoRow icon={<Truck size={18} />} title="Delivery" text="Cart shows subtotal, delivery, hamper, and final total before checkout. No tax is added." />
+            <InfoRow icon={<PackageCheck size={18} />} title="Exchange Policy" text="Size or fit not right? Exchange within 30 days. We do not offer returns or refunds." />
             <InfoRow icon={<Heart size={18} />} title="Wishlist" text="Save products after login. Guest cart still works before login." />
             <InfoRow icon={<Share2 size={18} />} title="Share or influencer link" text="Referral and influencer links can be tracked when opened with a valid code." />
           </div>
@@ -692,7 +722,7 @@ function HamperOption({ active, onClick, hamper }: { active: boolean; onClick: (
           </span>
         )}
         <span className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-          {hamper.gstPercent ? <span>GST {hamper.gstPercent}%</span> : null}
+          {contents.length ? <span>Gift wrapped</span> : null}
           {contents.length ? <span>{contents.length} items</span> : null}
           {hamper.sizeNote ? <span>{hamper.sizeNote}</span> : null}
         </span>

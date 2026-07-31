@@ -60,9 +60,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         {slides.map((slide) => (
           <div key={slide.id} className="mo-slide relative flex-shrink-0 w-full" style={{ height: 'min(68vh, 680px)' }}>
             {slide.image ? (
-              <div className="grayscale absolute inset-0">
+              <div className="absolute inset-0">
                 <img src={slide.image} alt={slide.title || ''} className="h-full w-full object-cover" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.35), rgba(0,0,0,0) 55%)' }} />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.55), rgba(0,0,0,.1) 60%)' }} />
               </div>
             ) : (
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />

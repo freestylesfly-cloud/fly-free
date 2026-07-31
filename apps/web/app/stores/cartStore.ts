@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getApiBaseUrl } from '../lib/api';
 
 export interface CartItem {
   productId: string;
@@ -19,6 +20,9 @@ export interface CartItem {
 interface CartStore {
   items: CartItem[];
   loading: boolean;
+  /** Delivery pricing, managed by admin. Rupees. */
+  deliveryFee: number;
+  freeDeliveryAbove: number;
 
   // Cart operations
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
@@ -26,26 +30,27 @@ interface CartStore {
   updateQuantity: (productId: string, size: string, color: string, quantity: number, variantId?: string, hamperId?: string, offerCode?: string) => void;
   clearCart: () => void;
 
-  // Calculations
+  // Calculations — item total plus delivery. There is no tax line.
   getSubtotal: () => number;
-  getTax: () => number;
   getShippingFee: () => number;
+  getAmountToFreeDelivery: () => number;
   getTotal: () => number;
   getItemCount: () => number;
 
-  // Sync
-  syncWithServer: (token: string) => Promise<void>;
+  loadDeliverySettings: () => Promise<void>;
 }
 
 const CART_KEY = 'flyfree_cart';
-const TAX_RATE = 0.18; // 18% GST
-const SHIPPING_FEE = 0; // Free shipping
+const DEFAULT_DELIVERY_FEE = 60;
+const DEFAULT_FREE_ABOVE = 1000;
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
       loading: false,
+      deliveryFee: DEFAULT_DELIVERY_FEE,
+      freeDeliveryAbove: DEFAULT_FREE_ABOVE,
 
       addItem: (item) => {
         const items = get().items;
@@ -115,31 +120,38 @@ export const useCartStore = create<CartStore>()(
         }, 0);
       },
 
-      getTax: () => {
-        return Math.round(get().getSubtotal() * TAX_RATE);
+      getShippingFee: () => {
+        const { getSubtotal, deliveryFee, freeDeliveryAbove } = get();
+        if (getSubtotal() === 0) return 0;
+        return getSubtotal() >= freeDeliveryAbove ? 0 : deliveryFee;
       },
 
-      getShippingFee: () => {
-        return SHIPPING_FEE;
+      /** How much more the customer must spend to unlock free delivery. */
+      getAmountToFreeDelivery: () => {
+        const { getSubtotal, freeDeliveryAbove } = get();
+        const remaining = freeDeliveryAbove - getSubtotal();
+        return remaining > 0 ? remaining : 0;
       },
 
       getTotal: () => {
-        return get().getSubtotal() + get().getTax() + get().getShippingFee();
+        return get().getSubtotal() + get().getShippingFee();
       },
 
       getItemCount: () => {
         return get().items.reduce((sum, item) => sum + item.quantity, 0);
       },
 
-      syncWithServer: async (token: string) => {
-        set({ loading: true });
+      loadDeliverySettings: async () => {
         try {
-          // TODO: Implement server cart sync
-          // This would merge guest cart with user cart
-        } catch (error) {
-          console.error('Failed to sync cart:', error);
-        } finally {
-          set({ loading: false });
+          const response = await fetch(`${getApiBaseUrl()}/cms/settings/delivery`);
+          if (!response.ok) return;
+          const data = await response.json();
+          set({
+            deliveryFee: Number(data.deliveryFee ?? DEFAULT_DELIVERY_FEE),
+            freeDeliveryAbove: Number(data.freeDeliveryAbove ?? DEFAULT_FREE_ABOVE),
+          });
+        } catch {
+          // keep defaults
         }
       }
     }),

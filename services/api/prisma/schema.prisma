@@ -268,6 +268,8 @@ model Wishlist {
 
 model Order {
   id                  String               @id @default(cuid())
+  /// Human-facing reference, e.g. FF-2026-000123. Generated at checkout.
+  orderNumber         String?              @unique
   userId              String
   shippingName        String?
   shippingPhone       String?

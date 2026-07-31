@@ -12,9 +12,25 @@ export class CmsController {
     return this.cmsService.getHomePage();
   }
 
+  // Drives the site-wide CSS variables. ThemeProvider polls this on load.
+  @Get("website-theme")
+  async getActiveWebsiteTheme() {
+    return { data: await this.cmsService.getActiveWebsiteTheme() };
+  }
+
   @Get("settings/logo")
   getSettingsLogo() {
     return this.cmsService.getSettingsLogo();
+  }
+
+  @Get("settings/delivery")
+  getDeliverySettings() {
+    return this.cmsService.getDeliverySettings();
+  }
+
+  @Get("size-guides")
+  getSizeGuides() {
+    return this.cmsService.getSizeGuides();
   }
 
   @Get("announcements")

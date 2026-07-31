@@ -118,7 +118,8 @@ export default function HampersPage() {
         imageUrl: form.imageUrl || null,
         images: form.images ? form.images.split('\n').filter(Boolean) : [],
         sizeNote: form.sizeNote || null,
-        price: Number(form.price || 0),
+        // Stored in paise; the form collects rupees.
+        price: Math.round(Number(form.price || 0) * 100),
         gstPercent: Number(form.gstPercent || 5),
         isActive: form.isActive,
         priority: Number(form.priority || 0)
@@ -185,7 +186,7 @@ export default function HampersPage() {
       imageUrl: hamper.imageUrl || '',
       images: hamper.images.join('\n'),
       sizeNote: hamper.sizeNote || '',
-      price: String(hamper.price),
+      price: String(Math.round((hamper.price || 0) / 100)),
       gstPercent: String(hamper.gstPercent),
       isActive: hamper.isActive,
       priority: String(hamper.priority)
@@ -257,7 +258,7 @@ export default function HampersPage() {
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-black/60">
-                            <span className="font-bold text-ink">₹{hamper.price.toLocaleString()}</span>
+                            <span className="font-bold text-ink">₹{Math.round((hamper.price || 0) / 100).toLocaleString()}</span>
                             <span className="rounded-full border border-black/10 bg-black/5 px-2 py-1">Priority {hamper.priority}</span>
                             <span className={`rounded-full px-2 py-1 text-xs font-black ${hamper.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                               {hamper.isActive ? 'Active' : 'Inactive'}
@@ -377,7 +378,7 @@ export default function HampersPage() {
                       label="Cover image"
                       value={form.imageUrl}
                       onChange={(value) => setForm({ ...form, imageUrl: value })}
-                      bucket="product-hampers"
+                      bucket="product-images"
                       folder={form.name ? `hampers/${form.name.replace(/\s+/g, '-').toLowerCase()}` : 'hampers'}
                       aspect={1}
                       alt={form.name || 'Hamper cover image'}

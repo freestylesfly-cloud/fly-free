@@ -226,6 +226,18 @@ export class AdminController {
     return this.adminService.deleteAnnouncement(id);
   }
 
+  // ==================== MEDIA ====================
+  // Uploads go through the server because the anon key is blocked by storage RLS.
+  @Post("upload-image")
+  uploadImage(@Body() body: { image: string; folder?: string }) {
+    return this.adminService.uploadImage(body?.image, body?.folder);
+  }
+
+  @Post("delete-image")
+  deleteImage(@Body() body: { url: string }) {
+    return this.adminService.deleteImage(body?.url);
+  }
+
   // ==================== SETTINGS ====================
   @Get("settings")
   getSettings() {

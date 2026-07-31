@@ -12,7 +12,9 @@ export default function CheckoutPage() {
   const cartItems = useCartStore((state) => state.items);
   const getTotal = useCartStore((state) => state.getTotal);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
-  const getTax = useCartStore((state) => state.getTax);
+  const getShippingFee = useCartStore((state) => state.getShippingFee);
+  const getAmountToFreeDelivery = useCartStore((state) => state.getAmountToFreeDelivery);
+  const loadDeliverySettings = useCartStore((state) => state.loadDeliverySettings);
   const clearCart = useCartStore((state) => state.clearCart);
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
@@ -50,6 +52,7 @@ export default function CheckoutPage() {
       return;
     }
     loadAddresses();
+    void loadDeliverySettings();
   }, [user, token]);
 
   async function loadAddresses() {
@@ -120,7 +123,8 @@ export default function CheckoutPage() {
   // Calculate discount
   const subtotal = getSubtotal();
   const baseDiscount = appliedCoupon?.discountPercent ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) : 0;
-  const tax = getTax();
+  const shipping = getShippingFee();
+  const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal() - baseDiscount;
 
   async function handleCheckout() {
@@ -420,11 +424,16 @@ export default function CheckoutPage() {
                   <span>-₹{baseDiscount}</span>
                 </div>
               )}
-              {tax > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: 'var(--text-secondary)' }}>Tax & Fees</span>
-                  <span style={{ color: 'var(--text-primary)' }}>₹{tax}</span>
-                </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: 'var(--text-secondary)' }}>Delivery</span>
+                <span style={{ color: shipping === 0 ? 'var(--color-secondary)' : 'var(--text-primary)' }}>
+                  {shipping === 0 ? 'FREE' : `₹${shipping}`}
+                </span>
+              </div>
+              {toFreeDelivery > 0 && (
+                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  Add ₹{toFreeDelivery} more to get free delivery.
+                </p>
               )}
               <div className="flex justify-between text-lg font-black pt-3" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
                 <span style={{ color: 'var(--text-primary)' }}>Total</span>

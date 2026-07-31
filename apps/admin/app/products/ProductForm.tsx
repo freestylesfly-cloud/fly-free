@@ -266,7 +266,7 @@ export function ProductForm({ productId }: { productId?: string }) {
                 label="Product image"
                 value={image.url}
                 onChange={(url) => updateImage(index, { url })}
-                bucket="products"
+                bucket="product-images"
                 folder={form.slug || slugify(form.name || 'product')}
                 aspect={4 / 5}
                 alt={image.alt || form.name}

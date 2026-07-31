@@ -33,11 +33,12 @@ export function AdminHeader({ title, subtitle }: AdminHeaderProps) {
 
   return (
     <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-black/10">
-      <div className="flex items-center justify-between px-5 py-4 gap-4">
+      {/* pl-16 on mobile clears the fixed hamburger button in Sidebar. */}
+      <div className="flex items-center justify-between gap-3 py-4 pl-16 pr-4 md:px-5">
         {/* Left: Title */}
-        <div className="flex-1">
-          <p className="text-xs font-bold text-coral uppercase tracking-wider">{subtitle || 'Dashboard'}</p>
-          <h2 className="text-2xl font-black text-ink">{title}</h2>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-bold uppercase tracking-wider text-coral">{subtitle || 'Dashboard'}</p>
+          <h2 className="truncate text-lg font-black text-ink sm:text-2xl">{title}</h2>
         </div>
 
         {/* Right: Actions */}

@@ -171,6 +171,34 @@ function ProductsBrowser() {
         </div>
       </section>
 
+      {/* Mobile filter/sort bar — sticks directly under the header rather than
+          floating above the bottom navigation. */}
+      <div
+        className="sticky z-30 grid grid-cols-2 border-y lg:hidden"
+        style={{ top: '56px', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className="flex h-12 items-center justify-center gap-2 text-sm font-black"
+        >
+          <SlidersHorizontal size={16} /> Filters
+          {activeCount > 0 && (
+            <span className="rounded-full px-1.5 py-0.5 text-xs text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+              {activeCount}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterOpen(true)}
+          className="flex h-12 items-center justify-center gap-2 border-l text-sm font-black"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
+          <ListFilter size={16} /> Sort
+        </button>
+      </div>
+
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-24 rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
@@ -216,16 +244,6 @@ function ProductsBrowser() {
           )}
         </section>
       </section>
-
-      {/* Mobile Filter Bar - Above Bottom Navigation */}
-      <div className="fixed inset-x-0 z-30 grid grid-cols-2 border-t bg-white lg:hidden md:hidden" style={{ bottom: '112px', borderColor: 'var(--border-color)' }}>
-        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-12 items-center justify-center gap-2 text-sm font-black transition hover:bg-gray-50">
-          <SlidersHorizontal size={16} /> Filters {activeCount > 0 && <span className="rounded-full px-1.5 py-0.5 text-xs text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{activeCount}</span>}
-        </button>
-        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-12 items-center justify-center gap-2 border-l text-sm font-black transition hover:bg-gray-50" style={{ borderColor: 'var(--border-color)' }}>
-          <ListFilter size={16} /> Sort
-        </button>
-      </div>
 
       {filterOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
@@ -286,10 +304,12 @@ function FilterPanel(props: {
       </FilterGroup>
 
       <FilterGroup label="Price">
-        <div className="grid grid-cols-2 gap-2">
-          <input value={props.minPrice} onChange={(event) => props.setMinPrice(event.target.value)} type="number" min="0" placeholder="Min" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
-          <input value={props.maxPrice} onChange={(event) => props.setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max" className="w-full rounded border px-3 py-2 text-sm" style={fieldStyle} />
-        </div>
+        <PriceRangeSlider
+          minPrice={props.minPrice}
+          maxPrice={props.maxPrice}
+          setMinPrice={props.setMinPrice}
+          setMaxPrice={props.setMaxPrice}
+        />
       </FilterGroup>
 
       <FilterGroup label="Rating">
@@ -304,6 +324,112 @@ function FilterPanel(props: {
       <button type="button" onClick={props.clearFilters} className="hidden w-full rounded border px-4 py-3 text-sm font-black lg:block" style={{ borderColor: 'var(--border-color)' }}>
         Clear all filters
       </button>
+    </div>
+  );
+}
+
+const PRICE_FLOOR = 0;
+const PRICE_CEILING = 2000;
+
+/** Dual-thumb price range. Falls back to the full range when a bound is unset. */
+function PriceRangeSlider({
+  minPrice,
+  maxPrice,
+  setMinPrice,
+  setMaxPrice,
+}: {
+  minPrice: string;
+  maxPrice: string;
+  setMinPrice: (value: string) => void;
+  setMaxPrice: (value: string) => void;
+}) {
+  const low = minPrice === '' ? PRICE_FLOOR : Number(minPrice);
+  const high = maxPrice === '' ? PRICE_CEILING : Number(maxPrice);
+
+  const percent = (value: number) => ((value - PRICE_FLOOR) / (PRICE_CEILING - PRICE_FLOOR)) * 100;
+
+  return (
+    <div className="px-1">
+      <div className="mb-3 flex items-center justify-between text-sm font-black">
+        <span>{formatCurrency(low)}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>
+          {high >= PRICE_CEILING ? `${formatCurrency(PRICE_CEILING)}+` : formatCurrency(high)}
+        </span>
+      </div>
+
+      <div className="relative h-6">
+        {/* track */}
+        <div
+          className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded"
+          style={{ backgroundColor: 'var(--border-color)' }}
+        />
+        {/* selected span */}
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded"
+          style={{
+            left: `${percent(low)}%`,
+            width: `${Math.max(percent(high) - percent(low), 0)}%`,
+            backgroundColor: 'var(--color-primary)',
+          }}
+        />
+
+        <input
+          type="range"
+          aria-label="Minimum price"
+          min={PRICE_FLOOR}
+          max={PRICE_CEILING}
+          step={50}
+          value={low}
+          onChange={(event) => {
+            const next = Math.min(Number(event.target.value), high - 50);
+            setMinPrice(next <= PRICE_FLOOR ? '' : String(next));
+          }}
+          className="range-thumb absolute inset-x-0 top-0 h-6 w-full"
+        />
+        <input
+          type="range"
+          aria-label="Maximum price"
+          min={PRICE_FLOOR}
+          max={PRICE_CEILING}
+          step={50}
+          value={high}
+          onChange={(event) => {
+            const next = Math.max(Number(event.target.value), low + 50);
+            setMaxPrice(next >= PRICE_CEILING ? '' : String(next));
+          }}
+          className="range-thumb absolute inset-x-0 top-0 h-6 w-full"
+        />
+      </div>
+
+      <style jsx>{`
+        .range-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          pointer-events: none;
+        }
+        .range-thumb::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          pointer-events: auto;
+          height: 18px;
+          width: 18px;
+          border-radius: 50%;
+          background: var(--color-primary);
+          border: 2px solid #fff;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+          cursor: pointer;
+        }
+        .range-thumb::-moz-range-thumb {
+          pointer-events: auto;
+          height: 18px;
+          width: 18px;
+          border-radius: 50%;
+          background: var(--color-primary);
+          border: 2px solid #fff;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+          cursor: pointer;
+        }
+      `}</style>
     </div>
   );
 }

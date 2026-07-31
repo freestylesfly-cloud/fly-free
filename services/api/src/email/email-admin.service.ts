@@ -23,7 +23,7 @@ export class EmailAdminService {
     if (!order.user.email) throw new BadRequestException('Order user does not have an email address');
 
     const reviewLink = `${this.emailService.webUrl()}/orders/${orderId}/review`;
-    const orderNumber = order.id;
+    const orderNumber = order.orderNumber || order.id;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

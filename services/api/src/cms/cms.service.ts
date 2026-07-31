@@ -67,6 +67,24 @@ export class CmsService {
     };
   }
 
+  getSizeGuides() {
+    return this.prisma.sizeGuide.findMany({
+      where: { active: true },
+      orderBy: { priority: "asc" }
+    });
+  }
+
+  // Delivery is the only charge on top of the item total. Values in rupees.
+  async getDeliverySettings() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+
+    return {
+      deliveryFee: Number(value?.deliveryFee ?? 60),
+      freeDeliveryAbove: Number(value?.freeDeliveryAbove ?? 1000)
+    };
+  }
+
   getActiveThemes() {
     const now = new Date();
     return this.prisma.theme.findMany({

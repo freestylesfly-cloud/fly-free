@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Minus, Plus, ShieldCheck, ShoppingBag, ShoppingCart as CartIcon, Trash2, Truck } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
@@ -15,12 +16,20 @@ export default function CartPage() {
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
   const getSubtotal = useCartStore((state) => state.getSubtotal);
-  const getTax = useCartStore((state) => state.getTax);
+  const getShippingFee = useCartStore((state) => state.getShippingFee);
+  const getAmountToFreeDelivery = useCartStore((state) => state.getAmountToFreeDelivery);
   const getTotal = useCartStore((state) => state.getTotal);
+  const loadDeliverySettings = useCartStore((state) => state.loadDeliverySettings);
+  const freeDeliveryAbove = useCartStore((state) => state.freeDeliveryAbove);
   const subtotal = getSubtotal();
-  const tax = getTax();
+  const shipping = getShippingFee();
+  const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal();
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    void loadDeliverySettings();
+  }, [loadDeliverySettings]);
 
   if (items.length === 0) {
     return (
@@ -147,14 +156,28 @@ export default function CartPage() {
           <div className="sticky top-24 space-y-5 rounded-lg border p-5 shadow-sm" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
             <div>
               <h2 className="text-2xl font-black">Order summary</h2>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Taxes are calculated before checkout.</p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Item total plus delivery. No other charges.
+              </p>
             </div>
 
             <div className="space-y-3 border-y py-5" style={{ borderColor: 'var(--border-color)' }}>
               <SummaryRow label="Subtotal" value={formatCurrency(subtotal)} />
-              {tax > 0 && <SummaryRow label="Tax & Fees" value={formatCurrency(tax)} />}
-              <SummaryRow label="Shipping" value="FREE" highlight />
+              <SummaryRow
+                label="Delivery"
+                value={shipping === 0 ? 'FREE' : formatCurrency(shipping)}
+                highlight={shipping === 0}
+              />
             </div>
+
+            {toFreeDelivery > 0 && (
+              <p
+                className="rounded border px-3 py-2 text-sm font-bold"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+              >
+                Add {formatCurrency(toFreeDelivery)} more to get free delivery.
+              </p>
+            )}
 
             <div className="flex justify-between text-2xl font-black">
               <span>Total</span>
@@ -167,9 +190,9 @@ export default function CartPage() {
             </Link>
 
             <div className="grid gap-3 pt-2 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
-              <TrustRow icon={<Truck size={17} />} text="Free shipping on all orders" />
+              <TrustRow icon={<Truck size={17} />} text={`Free delivery over ${formatCurrency(freeDeliveryAbove)}`} />
               <TrustRow icon={<ShieldCheck size={17} />} text="Secure Razorpay checkout" />
-              <TrustRow icon={<BadgeCheck size={17} />} text="Offers and hampers stay attached" />
+              <TrustRow icon={<BadgeCheck size={17} />} text="30-day exchange on every order" />
             </div>
           </div>
         </aside>

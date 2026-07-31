@@ -133,11 +133,12 @@ export function InstagramFeedCarousel({ posts }: { posts: InstagramPost[] }) {
           ))}
         </div>
 
-        {/* Left Scroll Button */}
+        {/* Scroll buttons sit inside the track so they never push the page
+            wider than the viewport on small screens. */}
         {canScrollLeft && (
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 md:-translate-x-16 flex h-10 w-10 items-center justify-center rounded-full text-white transition hover:scale-110"
+            className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-white shadow-lg transition hover:scale-110"
             style={{ backgroundColor: 'var(--color-primary)' }}
             aria-label="Scroll left"
           >
@@ -145,11 +146,10 @@ export function InstagramFeedCarousel({ posts }: { posts: InstagramPost[] }) {
           </button>
         )}
 
-        {/* Right Scroll Button */}
         {canScrollRight && (
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 md:translate-x-16 flex h-10 w-10 items-center justify-center rounded-full text-white transition hover:scale-110"
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-white shadow-lg transition hover:scale-110"
             style={{ backgroundColor: 'var(--color-primary)' }}
             aria-label="Scroll right"
           >

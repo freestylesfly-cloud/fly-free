@@ -145,7 +145,7 @@ export function Footer() {
 
         <div className="flex flex-col gap-2 pb-6 text-xs uppercase tracking-wide sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text-tertiary)' }}>
           <span>&copy; {currentYear} Fly Free. All rights reserved.</span>
-          <span>Secure checkout &middot; 30-day return or exchange support</span>
+          <span>Secure checkout &middot; 30-day exchange support</span>
         </div>
       </div>
     </footer>

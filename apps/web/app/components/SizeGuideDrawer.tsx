@@ -1,51 +1,128 @@
-"use client";
+'use client';
 
-import React from "react";
+import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
+import { getApiBaseUrl } from '../lib/api';
 
-export default function SizeGuideDrawer({ open, onClose, content }: { open: boolean; onClose: () => void; content?: string }) {
+interface SizeRow {
+  id: string;
+  size: string;
+  chest: string;
+  shoulder: string;
+  length: string;
+  sleeve: string;
+}
+
+export default function SizeGuideDrawer({
+  open,
+  onClose,
+  content,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Optional prose shown above the table, managed via the CMS size-chart page. */
+  content?: string;
+}) {
+  const [rows, setRows] = useState<SizeRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Measurements live in the SizeGuide table so admin edits show up here.
+  useEffect(() => {
+    if (!open || rows.length > 0) return;
+
+    let cancelled = false;
+    setLoading(true);
+
+    fetch(`${getApiBaseUrl()}/cms/size-guides`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => {
+        if (cancelled) return;
+        setRows(Array.isArray(data) ? data : data?.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, rows.length]);
+
   if (!open) return null;
 
   return (
     <div>
       <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-      <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto" style={{ borderLeft: '1px solid var(--border-color)' }}>
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <h3 className="text-lg font-black">Size Guide (in inches)</h3>
-          <button onClick={onClose} className="font-black">Close</button>
+      <aside
+        className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto shadow-xl"
+        style={{ backgroundColor: 'var(--bg-primary)', borderLeft: '1px solid var(--border-color)' }}
+      >
+        <div
+          className="sticky top-0 flex items-center justify-between border-b p-4"
+          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
+        >
+          <h3 className="text-lg font-black" style={{ color: 'var(--text-primary)' }}>
+            Size guide (inches)
+          </h3>
+          <button onClick={onClose} aria-label="Close size guide" className="p-1">
+            <X size={20} />
+          </button>
         </div>
 
-        <div className="p-4 space-y-4">
-          {content ? (
-            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+        <div className="space-y-5 p-4">
+          {content && (
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              {content}
+            </p>
+          )}
+
+          {loading ? (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Loading measurements...
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Size measurements have not been published yet.
+            </p>
           ) : (
-            <div>
-              <table className="w-full table-fixed text-sm border" style={{ borderCollapse: 'collapse' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr className="bg-[#ff6b5b] text-white">
+                  <tr style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}>
                     <th className="p-2 text-left">Size</th>
-                    <th className="p-2">Chest</th>
-                    <th className="p-2">Shoulder</th>
-                    <th className="p-2">Length</th>
-                    <th className="p-2">Sleeve</th>
+                    <th className="p-2 text-right">Chest</th>
+                    <th className="p-2 text-right">Shoulder</th>
+                    <th className="p-2 text-right">Length</th>
+                    <th className="p-2 text-right">Sleeve</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t"><td className="p-2">S</td><td className="p-2">44"</td><td className="p-2">20.5"</td><td className="p-2">28"</td><td className="p-2">8.5"</td></tr>
-                  <tr className="border-t"><td className="p-2">M</td><td className="p-2">46"</td><td className="p-2">21.5"</td><td className="p-2">29"</td><td className="p-2">9"</td></tr>
-                  <tr className="border-t"><td className="p-2">L</td><td className="p-2">48"</td><td className="p-2">22.5"</td><td className="p-2">30"</td><td className="p-2">9.5"</td></tr>
-                  <tr className="border-t"><td className="p-2">XL</td><td className="p-2">51"</td><td className="p-2">23.5"</td><td className="p-2">30.5"</td><td className="p-2">10"</td></tr>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t" style={{ borderColor: 'var(--border-color)' }}>
+                      <td className="p-2 font-black" style={{ color: 'var(--text-primary)' }}>{row.size}</td>
+                      <td className="p-2 text-right" style={{ color: 'var(--text-secondary)' }}>{row.chest}</td>
+                      <td className="p-2 text-right" style={{ color: 'var(--text-secondary)' }}>{row.shoulder}</td>
+                      <td className="p-2 text-right" style={{ color: 'var(--text-secondary)' }}>{row.length}</td>
+                      <td className="p-2 text-right" style={{ color: 'var(--text-secondary)' }}>{row.sleeve}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-
-              <div className="mt-4">
-                <h4 className="font-black">How to measure</h4>
-                <ol className="list-decimal list-inside text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <li className="mt-2">Shoulder — Straight across the back from one shoulder seam to the other.</li>
-                  <li className="mt-2">Chest — Around the fullest part of your chest, tape level and parallel to the ground.</li>
-                </ol>
-              </div>
             </div>
           )}
+
+          <div>
+            <h4 className="font-black" style={{ color: 'var(--text-primary)' }}>How to measure</h4>
+            <ol className="mt-2 list-inside list-decimal space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <li>Chest — around the fullest part, tape level and parallel to the ground.</li>
+              <li>Shoulder — straight across the back, seam to seam.</li>
+              <li>Length — from the highest shoulder point down to the hem.</li>
+              <li>Sleeve — from the shoulder seam to the sleeve opening.</li>
+            </ol>
+          </div>
         </div>
       </aside>
     </div>

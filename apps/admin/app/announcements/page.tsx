@@ -215,7 +215,7 @@ export default function AnnouncementsPage() {
                   label="Optional banner image"
                   value={form.imageUrl}
                   onChange={(value) => setForm({ ...form, imageUrl: value })}
-                  bucket="banners"
+                  bucket="product-images"
                   folder="announcements"
                   aspect={16 / 5}
                   alt={form.title}
