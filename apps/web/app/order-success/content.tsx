@@ -132,7 +132,7 @@ export default function OrderSuccessContent() {
 
             <div className="space-y-3">
               <Link
-                href="/orders"
+                href="/profile/orders"
                 className="block w-full px-6 py-4 bg-primary text-white font-black rounded-lg hover:opacity-90 text-center"
               >
                 View All Orders
