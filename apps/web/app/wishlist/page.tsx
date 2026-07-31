@@ -73,7 +73,7 @@ export default function WishlistPage() {
 
   if (!hydrated || loading) {
     return (
-      <main className="min-h-screen px-5 py-10">
+      <main className="min-h-screen px-5 py-10 pb-28 lg:pb-0">
         <div className="mx-auto max-w-6xl space-y-4">
           <div className="h-10 w-52 animate-pulse rounded bg-black/10 dark:bg-white/10" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -86,7 +86,7 @@ export default function WishlistPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen px-5 py-16">
+      <main className="min-h-screen px-5 py-16 pb-28 lg:pb-0">
         <section className="mx-auto max-w-md rounded border p-6 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <Heart className="mx-auto text-coral" size={36} />
           <h1 className="mt-4 text-2xl font-black">Login to save favorites</h1>
@@ -98,7 +98,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <main className="min-h-screen px-5 py-10">
+    <main className="min-h-screen px-5 py-10 pb-28 lg:pb-0">
       <section className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

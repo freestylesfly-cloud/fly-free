@@ -38,7 +38,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
 
   if (!hydrated || !user) {
     return (
-      <main className="min-h-screen bg-[#f7f4ef] px-4 py-16">
+      <main className="min-h-screen bg-[#f7f4ef] px-4 py-16 pb-28 lg:pb-0">
         <div className="mx-auto flex min-h-[360px] max-w-md flex-col items-center justify-center rounded-lg border border-black/10 bg-white text-center shadow-sm">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-black text-white">
             <ShieldCheck size={22} />
@@ -51,7 +51,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f4ef]">
+    <main className="min-h-screen bg-[#f7f4ef] pb-28 lg:pb-0">
       <section className="border-b border-black/10 bg-white px-4 py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>

@@ -2,6 +2,12 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from './email.service';
 
+type MarketingRecipient = {
+  userId?: string;
+  subscriberId?: string;
+  email: string;
+};
+
 @Injectable()
 export class EmailAdminService {
   constructor(private prisma: PrismaService, private emailService: EmailService) {}
@@ -240,7 +246,7 @@ export class EmailAdminService {
     };
   }
 
-  private async getUserRecipients(userIds: string[]) {
+  private async getUserRecipients(userIds: string[]): Promise<MarketingRecipient[]> {
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds }, email: { not: null } },
       select: { id: true, email: true }
@@ -251,7 +257,7 @@ export class EmailAdminService {
       .map((user) => ({ userId: user.id, email: user.email }));
   }
 
-  private async getMarketingRecipients() {
+  private async getMarketingRecipients(): Promise<MarketingRecipient[]> {
     const [users, subscribers] = await Promise.all([
       this.prisma.user.findMany({
         where: { email: { not: null } },

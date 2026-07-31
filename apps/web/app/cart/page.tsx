@@ -24,7 +24,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5 py-16" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <main className="flex min-h-screen items-center justify-center px-5 py-16 pb-28 lg:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="max-w-md text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
             <CartIcon size={42} style={{ color: 'var(--text-secondary)' }} />
