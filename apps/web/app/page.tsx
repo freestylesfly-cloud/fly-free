@@ -1,8 +1,5 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronLeft, ChevronRight, Instagram, Share2, Shirt, Star } from 'lucide-react';
+import { ArrowRight, Instagram, Share2, Shirt, Star } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel, type HeroSlide } from './components/HeroCarousel';
 import { HorizontalSlider } from './components/HorizontalSlider';

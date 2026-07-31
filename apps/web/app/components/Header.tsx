@@ -309,7 +309,17 @@ export function Header() {
               }
             }}
           >
-            <nav className="flex-1 overflow-y-auto pb-4">
+            {/* Close Button - Top Right */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="absolute top-3 right-3 p-2 z-40"
+              aria-label="Close menu"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <X size={24} />
+            </button>
+
+            <nav className="flex-1 overflow-y-scroll pb-20 pt-2 scrollbar-hide">
               {/* Main Navigation Section */}
               <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
                 <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
@@ -419,56 +429,12 @@ export function Header() {
           active={isActive('/profile/wishlist') || isActive('/wishlist')}
           icon="❤️"
         />
-        <div className="relative">
-          <MobileTab
-            href="#"
-            label={user ? 'Profile' : 'Login'}
-            onClick={() => user ? setIsProfileOpen(!isProfileOpen) : router.push('/auth/login')}
-            active={isActive(user ? '/profile' : '/auth')}
-            icon={user ? '👤' : '🔓'}
-          />
-          {user && isProfileOpen && (
-            <div
-              className="absolute bottom-20 right-2 w-44 border-2 shadow-xl overflow-hidden rounded-lg"
-              style={{
-                borderColor: 'var(--border-color)',
-                backgroundColor: 'var(--bg-secondary)',
-                zIndex: 50,
-              }}
-            >
-              <Link
-                href="/profile"
-                onClick={() => setIsProfileOpen(false)}
-                className="block px-4 py-3 text-sm font-semibold border-b transition"
-                style={{ borderColor: 'var(--border-light)', color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                My Profile
-              </Link>
-              <Link
-                href="/profile/orders"
-                onClick={() => setIsProfileOpen(false)}
-                className="block px-4 py-3 text-sm font-semibold border-b transition"
-                style={{ borderColor: 'var(--border-light)', color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                My Orders
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-2 transition"
-                style={{ color: '#dc2626' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <LogOut size={14} />
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+        <MobileTab
+          href={user ? '/profile' : '/auth/login'}
+          label={user ? 'Profile' : 'Login'}
+          active={isActive(user ? '/profile' : '/auth')}
+          icon={user ? '👤' : '🔓'}
+        />
       </nav>
 
       {/* Login Prompt Modal */}

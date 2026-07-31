@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { AuthDrawerShell } from '../components/AuthDrawerShell';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,21 +29,24 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/user/reset-password', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() })
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await parseResponseError(res);
         const message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
         throw new Error(message || err.error || 'Failed to send reset email');
       }
 
       setSuccess(true);
+      setTimeout(() => {
+        router.push(`/auth/reset-password?email=${encodeURIComponent(email.trim())}`);
+      }, 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+      setError(err instanceof TypeError ? 'Could not reach the server. Please make sure the API is running on port 3001.' : err instanceof Error ? err.message : 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
@@ -53,7 +58,10 @@ export default function ForgotPasswordPage() {
         <div className="flex min-h-[360px] flex-col items-center justify-center text-center space-y-4">
           <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} />
           <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Check your email</h1>
-          <p className="mt-3 leading-7" style={{ color: 'var(--text-secondary)' }}>We sent password reset instructions to <strong>{email}</strong>.</p>
+          <p className="mt-3 leading-7" style={{ color: 'var(--text-secondary)' }}>Enter the 6-digit code sent to <strong>{email}</strong>.</p>
+          <Link href={`/auth/reset-password?email=${encodeURIComponent(email)}`} className="mt-4 inline-block rounded-lg px-5 py-3 text-sm font-black text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
+            Enter OTP Code
+          </Link>
           <Link href="/auth/login" className="mt-8 text-base font-semibold underline underline-offset-2 hover:opacity-80 transition" style={{ color: 'var(--color-primary)' }}>
             Back to login
           </Link>
@@ -106,4 +114,14 @@ export default function ForgotPasswordPage() {
       )}
     </AuthDrawerShell>
   );
+}
+
+async function parseResponseError(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return { error: text || `Request failed with status ${response.status}` };
 }

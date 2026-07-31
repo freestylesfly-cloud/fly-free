@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Check, ChevronDown, Grid3x3, List, Search, Shirt, SlidersHorizontal, Star, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ListFilter, Search, Shirt, SlidersHorizontal, Star, X } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
@@ -44,7 +44,6 @@ function ProductsBrowser() {
   const [maxPrice, setMaxPrice] = useState('');
   const [rating, setRating] = useState('');
   const [sort, setSort] = useState('newest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -166,8 +165,6 @@ function ProductsBrowser() {
             </div>
             <div className="hidden items-center gap-2 lg:flex">
               <SortSelect sort={sort} setSort={setSort} />
-              <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
-              <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
             </div>
           </div>
 
@@ -206,28 +203,25 @@ function ProductsBrowser() {
             <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               {loading ? 'Loading...' : `Showing ${products.length} item${products.length === 1 ? '' : 's'}`}
             </p>
-            <p className="text-xs font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>Hover cards to switch product view</p>
+            <p className="text-xs font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>Fresh fits, cleaner browsing</p>
           </div>
 
           {loading ? (
-            <ProductLoadingGrid viewMode={viewMode} />
+            <ProductLoadingGrid />
           ) : products.length > 0 ? (
-            <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4' : 'space-y-4'}>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
               {products.map((product) => (
-                viewMode === 'grid' ? (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={Math.round((product.price || 0) / 100)}
-                    slug={product.slug}
-                    image={product.images?.[0]?.url}
-                    hoverImage={product.images?.[1]?.url}
-                    tag={product.theme?.name || product.category?.name || 'New'}
-                  />
-                ) : (
-                  <ProductListRow key={product.id} product={product} />
-                )
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={Math.round((product.price || 0) / 100)}
+                  originalPrice={Math.round((product.mrp || 0) / 100)}
+                  slug={product.slug}
+                  image={product.images?.[0]?.url}
+                  hoverImage={product.images?.[1]?.url}
+                  tag={product.theme?.name || product.category?.name || 'New'}
+                />
               ))}
             </div>
           ) : (
@@ -248,7 +242,7 @@ function ProductsBrowser() {
           <SlidersHorizontal size={18} /> Filters
         </button>
         <button type="button" onClick={() => setFilterOpen(true)} className="flex h-14 items-center justify-center gap-2 border-l text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>
-          <List size={18} /> Sort by
+          <ListFilter size={18} /> Sort by
         </button>
       </div>
 
@@ -267,7 +261,6 @@ function ProductsBrowser() {
             </div>
             <div className="space-y-5 p-4">
               <SortSelect sort={sort} setSort={setSort} full />
-              <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
               {filterPanel}
             </div>
             <div className="sticky bottom-0 grid grid-cols-[1fr_1.5fr] gap-3 border-t bg-white p-4" style={{ borderColor: 'var(--border-color)' }}>
@@ -306,10 +299,6 @@ function FilterPanel(props: {
         <div className="flex items-center gap-2 font-black"><SlidersHorizontal size={18} /> Filters</div>
         {props.activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{props.activeCount}</span>}
       </div>
-
-      <FilterGroup label="Size">
-        {['S', 'M', 'L', 'XL', 'XXL'].map((size) => <CheckRow key={size} label={size} active={false} onClick={() => {}} />)}
-      </FilterGroup>
 
       <FilterGroup label="Category">
         <RadioRows value={props.category} onChange={props.setCategory} options={props.filters.categories} emptyLabel="All categories" />
@@ -381,15 +370,6 @@ function SortSelect({ sort, setSort, full }: { sort: string; setSort: (value: st
   );
 }
 
-function ViewToggle({ viewMode, setViewMode }: { viewMode: 'grid' | 'list'; setViewMode: (value: 'grid' | 'list') => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <IconButton active={viewMode === 'grid'} label="Grid view" onClick={() => setViewMode('grid')} icon={<Grid3x3 size={18} />} />
-      <IconButton active={viewMode === 'list'} label="List view" onClick={() => setViewMode('list')} icon={<List size={18} />} />
-    </div>
-  );
-}
-
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -429,28 +409,9 @@ const fieldStyle = {
   color: 'var(--text-primary)',
 };
 
-function IconButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: React.ReactNode; onClick: () => void }) {
+function ProductLoadingGrid() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-10 min-w-10 items-center justify-center rounded border px-3"
-      style={{
-        borderColor: active ? 'var(--color-primary)' : 'var(--border-color)',
-        backgroundColor: active ? 'var(--color-primary)' : 'var(--bg-primary)',
-        color: active ? 'white' : 'var(--text-primary)',
-      }}
-      aria-label={label}
-      title={label}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function ProductLoadingGrid({ viewMode }: { viewMode: 'grid' | 'list' }) {
-  return (
-    <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4' : 'space-y-4'}>
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
       {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
         <div key={item} className="rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <div className="aspect-[4/5] animate-pulse rounded bg-black/10" />

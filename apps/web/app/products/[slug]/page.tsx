@@ -3,7 +3,6 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  ChevronRight,
   Heart,
   Info,
   Maximize2,
@@ -14,13 +13,11 @@ import {
   Share2,
   Star,
   ShoppingCart,
-  Sparkles,
   Truck,
   X,
   Copy,
   MessageCircle,
-  Mail,
-  Instagram
+  Mail
 } from 'lucide-react';
 import SizeGuideDrawer from '../../components/SizeGuideDrawer';
 import { formatCurrency } from '../../lib/utils';
@@ -52,12 +49,6 @@ type Variant = {
 };
 
 
-type Offer = {
-  code: string;
-  label: string;
-  description: string;
-};
-
 const API_URL = getApiBaseUrl();
 
 export default function ProductDetailPage({ params }: ProductDetailProps) {
@@ -75,7 +66,6 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedImage, setSelectedImage] = useState<ProductImage | null>(null);
   const [selectedHamperId, setSelectedHamperId] = useState<string | null>(null);
-  const [selectedOfferCode, setSelectedOfferCode] = useState('');
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
   const [notice, setNotice] = useState('');
@@ -93,19 +83,29 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     }));
   }, [product]);
 
-  const colors = useMemo(() => uniqueValues(variants.map((v) => v.color)), [variants]);
   const sizes = useMemo(() => uniqueValues(variants.map((v) => v.size)), [variants]);
-  const offers = useMemo(() => buildOffers(product), [product]);
-  const activeImage = selectedImage || (product?.images?.[0] && normalizeImages(product.images, product.name)[0]);
-  const images = product ? normalizeImages(product.images, product.name) : [];
+  const images = useMemo(() => product ? normalizeImages(product.images, product.name) : [], [product]);
+  const selectedHamper = useMemo(() => hampers.find((hamper: any) => hamper.id === selectedHamperId), [hampers, selectedHamperId]);
+  const hamperImages = useMemo(() => normalizeHamperImages(selectedHamper), [selectedHamper]);
+  const galleryImages = useMemo(() => (hamperImages.length ? [...hamperImages, ...images] : images), [hamperImages, images]);
+  const activeImage = selectedImage || galleryImages[0];
 
   const selectedVariant = useMemo(
-    () => variants.find((v) => v.color === selectedColor && v.size === selectedSize),
-    [variants, selectedColor, selectedSize]
+    () =>
+      variants.find((v) => v.size === selectedSize && Number(v.inventory?.stock ?? 0) > 0) ||
+      variants.find((v) => v.size === selectedSize),
+    [variants, selectedSize]
   );
 
   const stock = selectedVariant?.inventory?.stock ?? 0;
-  const canAdd = Boolean(selectedColor && selectedSize && selectedVariant && stock > 0);
+  const canAdd = Boolean(selectedSize && selectedVariant && stock > 0);
+  const productPrice = selectedVariant?.price || product?.price || product?.basePrice || 0;
+  const productMrp = product?.mrp || product?.basePrice || productPrice;
+  const hamperPrice = selectedHamper?.price || 0;
+  const totalPrice = productPrice + hamperPrice;
+  const discountPercent = product?.discountPercent || (productMrp > productPrice ? Math.round(((productMrp - productPrice) / productMrp) * 100) : 0);
+  const reviewCount = product?.reviews?.length || 0;
+  const averageRating = Number(product?.averageRating || 0);
 
   useEffect(() => {
     async function fetchProductFlow() {
@@ -132,8 +132,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         }
 
         if (productData?.variants?.length > 0) {
-          const firstColor = uniqueValues(productData.variants.map((v: any) => v.color))[0];
-          if (firstColor) setSelectedColor(firstColor);
+          const firstAvailable = productData.variants.find((variant: any) => Number(variant.inventory?.stock ?? 0) > 0) || productData.variants[0];
+          if (firstAvailable?.size) setSelectedSize(firstAvailable.size);
+          if (firstAvailable?.color) setSelectedColor(firstAvailable.color);
         }
 
         if (productData?.hampers?.length > 0) {
@@ -161,13 +162,8 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }, [product?.id, token]);
 
   useEffect(() => {
-    if (selectedColor && images.length > 0) {
-      const colorImages = images.filter(img => !img.color || img.color.toLowerCase() === selectedColor.toLowerCase());
-      if (colorImages.length > 0) {
-        setSelectedImage(colorImages[0]);
-      }
-    }
-  }, [selectedColor, images]);
+    setSelectedImage(galleryImages[0] || null);
+  }, [galleryImages]);
 
   async function checkWishlistStatus() {
     if (!token) return;
@@ -192,13 +188,13 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       productName: product.name,
       variantId: selectedVariant?.id || '',
       quantity,
-      price: Math.round((selectedVariant?.price || product.price || product.basePrice || 0) / 100),
-      color: selectedColor,
+      price: Math.round(totalPrice / 100),
+      color: selectedVariant?.color || selectedColor || 'Default',
       size: selectedSize,
       image: activeImage?.url || '',
       hamperId: selectedHamperId || undefined,
-      hamperName: selectedHamperId ? hampers.find((h) => h.id === selectedHamperId)?.name : undefined,
-      offerCode: selectedOfferCode || undefined
+      hamperName: selectedHamper?.name,
+      offerCode: undefined
     });
     setNotice('Added to cart successfully!');
     setTimeout(() => setNotice(''), 3000);
@@ -248,6 +244,13 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
+  function shiftImage(direction: -1 | 1) {
+    if (galleryImages.length < 2) return;
+    const currentIndex = galleryImages.findIndex((image) => image.url === activeImage?.url);
+    const nextIndex = (currentIndex + direction + galleryImages.length) % galleryImages.length;
+    setSelectedImage(galleryImages[nextIndex]);
+  }
+
   if (loading) return <ProductSkeleton />;
 
   if (error || !product) {
@@ -289,9 +292,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             )}
           </div>
 
-          {images.length > 1 && (
+          {galleryImages.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {images.map((img, idx) => (
+              {galleryImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(img)}
@@ -323,34 +326,34 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <div className="flex items-center justify-between gap-4 border-t border-b py-3" style={{ borderColor: 'var(--border-color)' }}>
             <div>
               <p className="text-2xl font-black">
-                {(() => {
-                  const basePrice = selectedVariant?.price || product.basePrice || 0;
-                  const hamperPrice = selectedHamperId ? (hampers.find((h: any) => h.id === selectedHamperId)?.price || 0) : 0;
-                  const total = basePrice + hamperPrice;
-                  return formatCurrency(Math.round(total / 100));
-                })()}
+                {formatCurrency(Math.round(totalPrice / 100))}
               </p>
-              {product.basePrice && selectedVariant?.price && selectedVariant.price < product.basePrice && (
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  <span className="line-through">{formatCurrency(Math.round(product.basePrice / 100))}</span>
-                </p>
+              {productMrp > productPrice && (
+                <div className="mt-1 flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="line-through">{formatCurrency(Math.round(productMrp / 100))}</span>
+                  {discountPercent > 0 && <span className="rounded bg-green-50 px-2 py-0.5 text-green-700">{discountPercent}% off</span>}
+                </div>
               )}
-              {selectedHamperId && (
+              {selectedHamper && (
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Includes {hampers.find((h: any) => h.id === selectedHamperId)?.name}
+                  Includes {selectedHamper.name} hamper
                 </p>
               )}
             </div>
-            {product.reviews?.length > 0 && (
-              <div className="text-right">
+            <div className="text-right">
+              {averageRating > 0 ? (
+                <>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={16} fill={i < Math.round(product.averageRating || 4) ? 'currentColor' : 'none'} style={{ color: 'var(--accent-tertiary)' }} />
+                    <Star key={i} size={16} fill={i < Math.round(averageRating) ? 'currentColor' : 'none'} style={{ color: 'var(--accent-tertiary)' }} />
                   ))}
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>({product.reviews.length})</p>
-              </div>
-            )}
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>({reviewCount})</p>
+                </>
+              ) : (
+                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>No reviews yet</p>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -413,35 +416,13 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
           {/* Choices */}
           <ChoiceBlock
-            title="Color"
-            subtitle={selectedColor ? `${selectedColor} selected` : 'Choose a color'}
-          >
-            <div className="flex flex-wrap gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className="min-h-11 rounded px-4 text-sm font-black transition"
-                  style={{
-                    backgroundColor: selectedColor === color ? 'var(--color-primary)' : 'var(--bg-tertiary)',
-                    color: selectedColor === color ? 'white' : 'var(--text-primary)',
-                    border: `1px solid ${selectedColor === color ? 'var(--color-primary)' : 'var(--border-color)'}`
-                  }}
-                >
-                  {color}
-                </button>
-              ))}
-            </div>
-          </ChoiceBlock>
-
-          <ChoiceBlock
             title="Size"
-            subtitle={selectedVariant ? `${stock} in stock for selected option` : 'Choose a color to see available sizes.'}
+            subtitle={selectedVariant ? `${stock} in stock` : 'Choose an available size.'}
             action={<button onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 text-xs font-black" style={{ color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
           >
             <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
-                const variant = variants.find((item) => item.color === selectedColor && item.size === size);
+                const variant = variants.find((item) => item.size === size && Number(item.inventory?.stock ?? 0) > 0) || variants.find((item) => item.size === size);
                 const available = Number(variant?.inventory?.stock ?? 0) > 0;
                 return (
                   <button
@@ -463,16 +444,15 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           </ChoiceBlock>
 
           {hampers.length > 0 && (
-            <ChoiceBlock title="Hamper Options" subtitle="Add a hamper with your tee.">
-              <div className="grid gap-2">
-                <OptionButton active={!selectedHamperId} onClick={() => setSelectedHamperId(null)} title="Just the Tee" text="Ship as regular order." />
+            <ChoiceBlock title="Hamper Options" subtitle="Tap a hamper to preview its image and add it to the total.">
+              <div className="grid gap-3">
+                <OptionButton active={!selectedHamperId} onClick={() => setSelectedHamperId(null)} title="Just the Tee" text="Ship as a regular order." />
                 {hampers.map((hamper: any) => (
-                  <OptionButton
+                  <HamperOption
                     key={hamper.id}
+                    hamper={hamper}
                     active={selectedHamperId === hamper.id}
                     onClick={() => setSelectedHamperId(hamper.id)}
-                    title={`${hamper.name} + ${formatCurrency(Math.round(hamper.price / 100))}`}
-                    text={hamper.description || 'Hamper'}
                   />
                 ))}
               </div>
@@ -588,7 +568,36 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
       {showZoom && activeImage?.url && (
         <Modal title={product.name} onClose={() => setShowZoom(false)} wide>
-          <img src={activeImage.url} alt={activeImage.alt || product.name} className="max-h-[75vh] w-full rounded object-contain" />
+          <div className="space-y-4">
+            <div className="relative flex min-h-[60vh] items-center justify-center rounded border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+              {galleryImages.length > 1 && (
+                <>
+                  <button onClick={() => shiftImage(-1)} className="absolute left-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Previous image">
+                    <Minus size={18} />
+                  </button>
+                  <button onClick={() => shiftImage(1)} className="absolute right-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Next image">
+                    <Plus size={18} />
+                  </button>
+                </>
+              )}
+              <img src={activeImage.url} alt={activeImage.alt || product.name} className="max-h-[75vh] w-full rounded object-contain" />
+            </div>
+            {galleryImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {galleryImages.map((image, index) => (
+                  <button
+                    key={`${image.url}-${index}`}
+                    onClick={() => setSelectedImage(image)}
+                    className="h-16 w-16 flex-shrink-0 overflow-hidden rounded border-2"
+                    style={{ borderColor: activeImage?.url === image.url ? 'var(--color-primary)' : 'var(--border-color)' }}
+                    aria-label={`View image ${index + 1}`}
+                  >
+                    <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </Modal>
       )}
     </main>
@@ -626,6 +635,60 @@ function OptionButton({ active, onClick, title, text, icon }: { active: boolean;
       <span>
         <span className="block text-sm font-black" style={{ color: 'var(--text-primary)' }}>{title}</span>
         <span className="mt-1 block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{text}</span>
+      </span>
+    </button>
+  );
+}
+
+function HamperOption({ active, onClick, hamper }: { active: boolean; onClick: () => void; hamper: any }) {
+  const image = hamper.imageUrl || hamper.images?.[0];
+  const contents = Array.isArray(hamper.contents) ? hamper.contents : [];
+
+  return (
+    <button
+      onClick={onClick}
+      className="grid gap-3 rounded border p-3 text-left transition sm:grid-cols-[84px_1fr]"
+      style={{
+        borderColor: active ? 'var(--color-primary)' : 'var(--border-color)',
+        backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
+      }}
+    >
+      <span className="aspect-square overflow-hidden rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
+        {image ? (
+          <img src={image} alt={hamper.name} className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center" style={{ color: 'var(--color-primary)' }}>
+            <PackageCheck size={24} />
+          </span>
+        )}
+      </span>
+
+      <span className="min-w-0">
+        <span className="flex items-start justify-between gap-3">
+          <span className="font-black" style={{ color: 'var(--text-primary)' }}>{hamper.name}</span>
+          <span className="shrink-0 text-sm font-black" style={{ color: 'var(--color-primary)' }}>
+            +{formatCurrency(Math.round(Number(hamper.price || 0) / 100))}
+          </span>
+        </span>
+        {hamper.description && (
+          <span className="mt-1 block text-xs font-bold leading-5" style={{ color: 'var(--text-secondary)' }}>
+            {hamper.description}
+          </span>
+        )}
+        <span className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+          {hamper.gstPercent ? <span>GST {hamper.gstPercent}%</span> : null}
+          {contents.length ? <span>{contents.length} items</span> : null}
+          {hamper.sizeNote ? <span>{hamper.sizeNote}</span> : null}
+        </span>
+        {contents.length > 0 && (
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            {contents.slice(0, 4).map((item: string) => (
+              <span key={item} className="rounded border px-2 py-1 text-[11px] font-bold" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
+                {item}
+              </span>
+            ))}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -684,27 +747,20 @@ function normalizeImages(rawImages: ProductImage[] = [], productName: string): P
   }];
 }
 
-function uniqueValues(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.filter(Boolean).map((value) => String(value))));
+function normalizeHamperImages(hamper: any): ProductImage[] {
+  if (!hamper) return [];
+  const urls = [hamper.imageUrl, ...(Array.isArray(hamper.images) ? hamper.images : [])]
+    .filter(Boolean)
+    .map((url) => String(url));
+
+  return Array.from(new Set(urls)).map((url, index) => ({
+    url,
+    alt: `${hamper.name || 'Hamper'} image ${index + 1}`,
+    color: null,
+    priority: -100 + index
+  }));
 }
 
-function buildOffers(product: any): Offer[] {
-  const offers: Offer[] = [];
-  if (product?.discountPercent > 0) {
-    offers.push({
-      code: `PRODUCT-${product.discountPercent}`,
-      label: `${product.discountPercent}% product offer`,
-      description: 'Applied from the product discount configured in admin.'
-    });
-  }
-
-  if (product?.collection?.name) {
-    offers.push({
-      code: `COLLECTION-${product.collection.slug || product.collection.id}`,
-      label: `${product.collection.name} combo`,
-      description: 'Choose more items from this collection in cart to use combo pricing.'
-    });
-  }
-
-  return offers;
+function uniqueValues(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean).map((value) => String(value))));
 }

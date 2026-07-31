@@ -189,6 +189,16 @@ export class AuthController {
     }
   }
 
+  @Post("user/forgot-password")
+  async forgotPasswordUserAlias(@Body() body: { email: string }) {
+    return this.forgotPassword(body);
+  }
+
+  @Post("user/reset-password")
+  async forgotPasswordResetAlias(@Body() body: { email: string }) {
+    return this.forgotPassword(body);
+  }
+
   @Post("reset-password")
   async resetPassword(@Body() body: { email: string; code: string; newPassword: string }) {
     try {

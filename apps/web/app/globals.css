@@ -97,6 +97,16 @@ a {
 
 /* === PROFESSIONAL COMPONENT STYLES === */
 
+/* Hide scrollbar but keep scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .theme-surface {
   background-color: var(--bg-secondary);
   color: var(--text-primary);

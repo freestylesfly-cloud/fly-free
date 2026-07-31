@@ -3,6 +3,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  allowedDevOrigins: ["http://127.0.0.1:3000"],
   async rewrites() {
     return {
       beforeFiles: [
