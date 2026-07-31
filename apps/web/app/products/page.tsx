@@ -148,7 +148,7 @@ function ProductsBrowser() {
   );
 
   return (
-    <main className="min-h-screen pb-24 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <main className="min-h-screen pb-28 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <section className="border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-7">
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -237,19 +237,20 @@ function ProductsBrowser() {
         </section>
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t bg-white lg:hidden" style={{ borderColor: 'var(--border-color)' }}>
-        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-14 items-center justify-center gap-2 text-sm font-black">
-          <SlidersHorizontal size={18} /> Filters
+      {/* Mobile Filter Bar - Above Bottom Navigation */}
+      <div className="fixed inset-x-0 z-30 grid grid-cols-2 border-t bg-white lg:hidden md:hidden" style={{ bottom: '112px', borderColor: 'var(--border-color)' }}>
+        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-12 items-center justify-center gap-2 text-sm font-black transition hover:bg-gray-50">
+          <SlidersHorizontal size={16} /> Filters {activeCount > 0 && <span className="rounded-full px-1.5 py-0.5 text-xs text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{activeCount}</span>}
         </button>
-        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-14 items-center justify-center gap-2 border-l text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>
-          <ListFilter size={18} /> Sort by
+        <button type="button" onClick={() => setFilterOpen(true)} className="flex h-12 items-center justify-center gap-2 border-l text-sm font-black transition hover:bg-gray-50" style={{ borderColor: 'var(--border-color)' }}>
+          <ListFilter size={16} /> Sort
         </button>
       </div>
 
       {filterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" style={{ top: 0, bottom: '120px' }}>
           <button type="button" aria-label="Close filters" className="absolute inset-0 bg-black/50" onClick={() => setFilterOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-white shadow-2xl" style={{ color: 'var(--text-primary)' }}>
+          <div className="absolute inset-x-0 bottom-0 max-h-[calc(100vh-120px)] overflow-y-auto rounded-t-2xl bg-white shadow-2xl" style={{ color: 'var(--text-primary)' }}>
             <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4" style={{ borderColor: 'var(--border-color)' }}>
               <div>
                 <h2 className="text-lg font-black">Filter products</h2>

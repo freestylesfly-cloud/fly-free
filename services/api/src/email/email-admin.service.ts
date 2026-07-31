@@ -56,10 +56,7 @@ export class EmailAdminService {
 
   // Send broadcast message to all users
   async sendBroadcastMessage(title: string, message: string, subject: string) {
-    const users = await this.prisma.user.findMany({
-      where: { email: { not: null } },
-      select: { id: true, name: true, email: true }
-    });
+    const recipients = await this.getMarketingRecipients();
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -78,19 +75,17 @@ export class EmailAdminService {
     `;
 
     const results = [];
-    for (const user of users) {
-      if (!user.email) continue;
-
+    for (const recipient of recipients) {
       try {
-        const result = await this.emailService.sendEmail(user.email, subject, html);
-        results.push({ userId: user.id, email: user.email, status: 'sent', messageId: result.messageId });
+        const result = await this.emailService.sendEmail(recipient.email, subject, html);
+        results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'sent', messageId: result.messageId });
       } catch (error: any) {
-        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message || 'Failed to send email' });
+        results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'failed', error: error.message || 'Failed to send email' });
       }
     }
 
     return {
-      totalUsers: users.length,
+      totalRecipients: recipients.length,
       sent: results.filter(r => r.status === 'sent').length,
       failed: results.filter(r => r.status === 'failed').length,
       details: results
@@ -167,9 +162,9 @@ export class EmailAdminService {
 
   // Send promotional email to segment of users
   async sendPromotionalEmail(userIds: string[] | undefined, title: string, message: string, promoCode?: string, discount?: number) {
-    const users = await this.prisma.user.findMany({
-      where: Array.isArray(userIds) && userIds.length > 0 ? { id: { in: userIds } } : { email: { not: null } }
-    });
+    const recipients = Array.isArray(userIds) && userIds.length > 0
+      ? await this.getUserRecipients(userIds)
+      : await this.getMarketingRecipients();
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -206,19 +201,17 @@ export class EmailAdminService {
     `;
 
     const results = [];
-    for (const user of users) {
-      if (!user.email) continue;
-
+    for (const recipient of recipients) {
       try {
-        const result = await this.emailService.sendEmail(user.email, title, html);
-        results.push({ userId: user.id, email: user.email, status: 'sent' });
+        await this.emailService.sendEmail(recipient.email, title, html);
+        results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'sent' });
       } catch (error: any) {
-        results.push({ userId: user.id, email: user.email, status: 'failed', error: error.message || 'Failed to send email' });
+        results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'failed', error: error.message || 'Failed to send email' });
       }
     }
 
     return {
-      totalUsers: users.length,
+      totalRecipients: recipients.length,
       sent: results.filter(r => r.status === 'sent').length,
       failed: results.filter(r => r.status === 'failed').length
     };
@@ -226,20 +219,61 @@ export class EmailAdminService {
 
   // Get email statistics
   async getEmailStats() {
-    const [totalUsers, totalOrders, deliveredOrders, invoices] = await Promise.all([
+    const [totalUsers, totalOrders, deliveredOrders, invoices, subscribers, activeSubscribers] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.order.count(),
       this.prisma.order.count({ where: { status: 'DELIVERED' } }),
-      this.prisma.invoice.count({ where: { sentAt: { not: null } } })
+      this.prisma.invoice.count({ where: { sentAt: { not: null } } }),
+      this.prisma.newsletterSubscriber.count(),
+      this.prisma.newsletterSubscriber.count({ where: { isActive: true } })
     ]);
 
     return {
       totalUsers,
+      subscribers,
+      activeSubscribers,
       totalOrders,
       deliveredOrders,
       invoicesSent: invoices,
       estimatedEmailsSent: totalOrders + deliveredOrders + invoices,
       lastUpdated: new Date()
     };
+  }
+
+  private async getUserRecipients(userIds: string[]) {
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, email: { not: null } },
+      select: { id: true, email: true }
+    });
+
+    return users
+      .filter((user): user is { id: string; email: string } => Boolean(user.email))
+      .map((user) => ({ userId: user.id, email: user.email }));
+  }
+
+  private async getMarketingRecipients() {
+    const [users, subscribers] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { email: { not: null } },
+        select: { id: true, email: true }
+      }),
+      this.prisma.newsletterSubscriber.findMany({
+        where: { isActive: true },
+        select: { id: true, email: true }
+      })
+    ]);
+
+    const recipients = new Map<string, { userId?: string; subscriberId?: string; email: string }>();
+
+    for (const user of users) {
+      if (user.email) recipients.set(user.email.toLowerCase(), { userId: user.id, email: user.email });
+    }
+
+    for (const subscriber of subscribers) {
+      const key = subscriber.email.toLowerCase();
+      recipients.set(key, { ...recipients.get(key), subscriberId: subscriber.id, email: subscriber.email });
+    }
+
+    return Array.from(recipients.values());
   }
 }
