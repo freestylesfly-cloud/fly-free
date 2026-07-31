@@ -27,6 +27,11 @@ export class CmsController {
     return this.cmsService.getActiveThemes();
   }
 
+  @Get("hampers")
+  getHampers() {
+    return this.cmsService.getVisibleHampers();
+  }
+
   @Get("themes/:slug")
   getTheme(@Param("slug") slug: string) {
     return this.cmsService.getTheme(slug);

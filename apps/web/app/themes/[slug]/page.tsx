@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
-import { Shirt } from "lucide-react";
-import { formatCurrency } from "../../lib/utils";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
+import { ThemeProductGrid } from "./ThemeProductGrid";
 
 const API_BASE = getApiBaseUrl();
 
@@ -19,41 +20,74 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
   if (!response.ok) notFound();
 
   const theme = await response.json();
-  if (!theme) notFound();
+  if (!theme?.id) notFound();
+
+  const products = theme.products || [];
 
   return (
-    <main>
+    <main style={{ backgroundColor: "var(--bg-primary)" }}>
+      {/* THEME BANNER HERO */}
       <section
-        className="text-white"
-        style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})`, fontFamily: theme.fontFamily }}
+        className="relative flex min-h-[420px] items-end overflow-hidden md:min-h-[520px]"
+        style={{
+          backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
+          backgroundColor: theme.primaryColor || "var(--color-primary)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
-        <div className="mx-auto max-w-7xl px-5 py-20">
-          <p className="text-sm font-black uppercase tracking-widest opacity-80">Fly Free theme drop</p>
-          <h1 className="mt-3 text-5xl font-black md:text-7xl">{theme.name}</h1>
-          <p className="mt-5 max-w-3xl text-lg leading-8 opacity-85">{theme.story || theme.description}</p>
+        <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,.15) 70%)" }} />
+
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-14">
+          <nav className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
+            <Link href="/" className="hover:text-white">Home</Link>
+            <span>/</span>
+            <Link href="/products" className="hover:text-white">Themes</Link>
+            <span>/</span>
+            <span className="text-white">{theme.name}</span>
+          </nav>
+
+          <h1 className="text-5xl font-black uppercase leading-none text-white md:text-7xl">{theme.name}</h1>
+
+          {(theme.story || theme.description) && (
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/85 md:text-lg">
+              {theme.story || theme.description}
+            </p>
+          )}
+
+          <a
+            href="#collection"
+            className="mt-8 inline-flex items-center gap-2 rounded-lg px-7 py-4 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
+            style={{ backgroundColor: "var(--color-primary)" }}
+          >
+            Explore Collection <ArrowRight size={18} />
+          </a>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-14">
-        <h2 className="mb-6 text-3xl font-black">Products in this theme</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {theme.products?.map((product: any) => (
-            <article key={product.id} className="rounded border border-black/10 bg-white p-4">
-              <div className="mb-4 flex aspect-[4/5] items-center justify-center overflow-hidden rounded bg-paper">
-                {product.images?.[0]?.url ? (
-                  <img src={product.images[0].url} alt={product.images[0].alt || product.name} className="h-full w-full object-cover" />
-                ) : (
-                  <Shirt size={54} strokeWidth={1.5} />
-                )}
-              </div>
-              <h3 className="font-black">{product.name}</h3>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="font-black">{formatCurrency(Math.round((product.price || 0) / 100))}</span>
-                <a href={`/products/${product.slug}`} className="rounded bg-ink px-3 py-2 text-sm font-bold text-white">View</a>
-              </div>
-            </article>
-          ))}
-        </div>
+      {/* PRODUCTS */}
+      <section id="collection" className="mx-auto max-w-7xl px-5 py-14 md:py-20">
+        <h2 className="mb-8 text-3xl font-black uppercase" style={{ color: "var(--text-primary)" }}>
+          Products in this theme
+        </h2>
+
+        {products.length === 0 ? (
+          <div
+            className="rounded-lg border p-12 text-center"
+            style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}
+          >
+            <p className="font-bold" style={{ color: "var(--text-primary)" }}>No products in this theme yet</p>
+            <Link
+              href="/products"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-black text-white"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              Browse all products <ArrowRight size={16} />
+            </Link>
+          </div>
+        ) : (
+          <ThemeProductGrid products={products} />
+        )}
       </section>
     </main>
   );

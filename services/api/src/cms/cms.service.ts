@@ -88,6 +88,14 @@ export class CmsService {
     });
   }
 
+  getVisibleHampers() {
+    return this.prisma.productHamper.findMany({
+      where: { isActive: true },
+      orderBy: [{ priority: "asc" }, { name: "asc" }],
+      include: { product: { include: { images: { take: 1, orderBy: { priority: "asc" } } } } }
+    });
+  }
+
   getTheme(slug: string) {
     return this.prisma.theme.findUnique({
       where: { slug },

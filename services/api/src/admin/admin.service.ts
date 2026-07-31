@@ -484,7 +484,7 @@ export class AdminService {
       throw new Error("Order customer has no email address");
     }
 
-    const reviewLink = `${process.env.WEB_URL || "http://localhost:3000"}/orders/${order.id}/review`;
+    const reviewLink = `${this.emailService.webUrl()}/orders/${order.id}/review`;
     const html = this.wrapAdminEmail(
       "Share your Fly Free review",
       `<p>Hi ${this.escape(order.user.name || "Customer")},</p>

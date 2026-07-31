@@ -1,18 +1,22 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { createClient } from "@supabase/supabase-js";
+import * as jwt from "jsonwebtoken";
 
 @Injectable()
 export class ReviewService {
-  private readonly logger = new Logger(ReviewService.name);
-  private supabase: any;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private readonly prisma: PrismaService) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-    if (supabaseUrl && supabaseKey) {
-      this.supabase = createClient(supabaseUrl, supabaseKey);
+  private extractUserId(authHeader?: string): string {
+    if (!authHeader) {
+      throw new UnauthorizedException("Login required to submit a review");
+    }
+    try {
+      const secret = process.env.JWT_SECRET || "dev-secret-key";
+      const decoded = jwt.verify(authHeader.replace("Bearer ", ""), secret) as any;
+      if (!decoded.userId) throw new Error("Missing userId");
+      return decoded.userId;
+    } catch {
+      throw new UnauthorizedException("Invalid login session");
     }
   }
 
@@ -63,15 +67,56 @@ export class ReviewService {
   }
 
   // Create review
-  async createReview(productId: string, userId: string, data: any) {
+  async createReview(data: any, authHeader?: string) {
+    const userId = this.extractUserId(authHeader);
+
+    const productId = data.productId;
+    if (!productId) {
+      throw new BadRequestException("productId is required");
+    }
+
+    const rating = Number(data.rating);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      throw new BadRequestException("Rating must be between 1 and 5");
+    }
+
+    const title = String(data.title || "").trim();
+    const body = String(data.body || data.message || data.comment || "").trim();
+    if (!title) throw new BadRequestException("Review title is required");
+    if (!body) throw new BadRequestException("Review message is required");
+
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new BadRequestException("Product not found");
+    }
+
+    const mediaUrls: string[] = Array.isArray(data.mediaUrls)
+      ? data.mediaUrls
+      : Array.isArray(data.images)
+        ? data.images
+        : [];
+
+    const existing = await this.prisma.review.findFirst({
+      where: { productId, userId },
+    });
+
+    if (existing) {
+      return await this.prisma.review.update({
+        where: { id: existing.id },
+        data: { rating, title, body, mediaUrls, status: "PENDING" },
+        include: { user: { select: { name: true, image: true } } },
+      });
+    }
+
     return await this.prisma.review.create({
       data: {
         productId,
         userId,
-        rating: data.rating,
-        title: data.title,
-        body: data.body || data.comment,
-        mediaUrls: data.mediaUrls || [],
+        orderId: data.orderId || null,
+        rating,
+        title,
+        body,
+        mediaUrls,
         status: "PENDING",
       },
       include: {
@@ -83,6 +128,21 @@ export class ReviewService {
         },
       },
     });
+  }
+
+  // Latest approved reviews for homepage
+  async getLatestReviews(limit: number = 8) {
+    const reviews = await this.prisma.review.findMany({
+      where: { status: "APPROVED" },
+      include: {
+        user: { select: { id: true, name: true, image: true } },
+        product: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return { data: reviews, total: reviews.length };
   }
 
   // Update review
@@ -154,53 +214,4 @@ export class ReviewService {
     });
   }
 
-  // Upload review images to Supabase
-  async uploadImages(files: Express.Multer.File[]) {
-    if (!this.supabase) {
-      this.logger.warn("Supabase not configured, returning empty URLs");
-      return { data: { urls: [] } };
-    }
-
-    const urls: string[] = [];
-    const bucket = "products"; // Use existing bucket
-
-    for (const file of files) {
-      try {
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(7);
-        const fileName = `reviews/${timestamp}-${random}-${file.originalname}`;
-
-        // Upload file to Supabase
-        const { data, error } = await this.supabase.storage
-          .from(bucket)
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
-            upsert: false,
-          });
-
-        if (error) {
-          this.logger.warn(`Failed to upload ${file.originalname}: ${error.message}`);
-          continue;
-        }
-
-        // Get public URL
-        const { data: publicUrl } = this.supabase.storage
-          .from(bucket)
-          .getPublicUrl(data.path);
-
-        if (publicUrl?.publicUrl) {
-          urls.push(publicUrl.publicUrl);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        this.logger.warn(`Error uploading file: ${message}`);
-        continue;
-      }
-    }
-
-    return {
-      data: { urls },
-      message: `Uploaded ${urls.length} of ${files.length} images`
-    };
-  }
 }

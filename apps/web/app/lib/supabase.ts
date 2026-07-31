@@ -20,6 +20,39 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export { supabase, supabaseError };
 
+export async function uploadImage(bucket: string, file: File, folder = ''): Promise<string> {
+  if (!supabase) {
+    throw supabaseError ?? new Error('Supabase is not configured');
+  }
+
+  const extension = file.name.split('.').pop() || 'jpg';
+  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
+  const path = folder ? `${folder}/${safeName}` : safeName;
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteImage(bucket: string, url: string): Promise<void> {
+  if (!supabase) {
+    throw supabaseError ?? new Error('Supabase is not configured');
+  }
+
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return;
+
+  const path = url.slice(index + marker.length);
+  const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) throw error;
+}
+
 // Auth functions
 export async function signUpWithEmail(
   email: string,

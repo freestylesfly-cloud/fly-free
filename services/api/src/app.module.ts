@@ -9,6 +9,8 @@ import { AuthModule } from "./auth/auth.module";
 import { EmailModule } from "./email/email.module";
 import { LoggerModule } from "./logger/logger.module";
 import { WebsiteThemeModule } from "./theme/website-theme.module";
+import { InstagramModule } from "./instagram/instagram.module";
+import { ReviewModule } from "./review/review.module";
 
 @Module({
   imports: [
@@ -24,7 +26,9 @@ import { WebsiteThemeModule } from "./theme/website-theme.module";
     AuthModule,
     EmailModule,
     LoggerModule,
-    WebsiteThemeModule
+    WebsiteThemeModule,
+    InstagramModule,
+    ReviewModule
   ]
 })
 export class AppModule {}

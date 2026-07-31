@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Package, Star, Send } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { getApiBaseUrl } from '../../../lib/api';
+import { uploadImage } from '../../../lib/supabase';
 
 const API_BASE = getApiBaseUrl();
 
@@ -13,8 +14,9 @@ interface OrderItem {
   id?: string;
   productId: string;
   name: string;
-  slug: string;
-  image?: string;
+  productName?: string;
+  productSlug?: string;
+  productImage?: string;
   quantity: number;
   price: number;
 }
@@ -160,28 +162,12 @@ export default function OrderReviewPage() {
     setSuccess('');
 
     try {
-      // Upload images first if any
+      // Upload images to Supabase storage first
       let imageUrls: string[] = [];
       if (review.images && review.images.length > 0) {
-        const formData = new FormData();
-        review.images.forEach((file) => {
-          formData.append('files', file);
-        });
-
-        const uploadRes = await fetch(`${API_BASE}/reviews/upload-images`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          imageUrls = uploadData.data?.urls || uploadData.urls || [];
-        } else {
-          console.warn('Image upload failed, continuing without images');
-        }
+        imageUrls = await Promise.all(
+          review.images.map((file) => uploadImage('products', file, 'reviews'))
+        );
       }
 
       // Submit review with image URLs
@@ -311,12 +297,12 @@ export default function OrderReviewPage() {
           {order.items.map((item: OrderItem) => (
             <div key={item.productId} className="rounded-lg border p-6" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <div className="mb-4 flex gap-4">
-                {item.image && (
-                  <img src={item.image} alt={item.name} className="h-24 w-24 rounded object-cover" />
+                {item.productImage && (
+                  <img src={item.productImage} alt={item.name} className="h-24 w-24 rounded object-cover" />
                 )}
                 <div className="flex-1">
-                  <Link href={`/products/${item.slug}`} className="font-black text-lg hover:opacity-70" style={{ color: 'var(--text-primary)' }}>
-                    {item.name}
+                  <Link href={item.productSlug ? `/products/${item.productSlug}` : '#'} className="font-black text-lg hover:opacity-70" style={{ color: 'var(--text-primary)' }}>
+                    {item.name || item.productName}
                   </Link>
                   <p style={{ color: 'var(--text-secondary)' }}>Quantity: {item.quantity}</p>
                   <p className="font-bold" style={{ color: 'var(--color-primary)' }}>₹{item.price}</p>

@@ -262,8 +262,12 @@ export class EmailService {
     return new Date(value as string).toLocaleDateString("en-IN");
   }
 
-  private webUrl() {
-    return this.configService.get<string>("WEB_URL") || "http://localhost:3000";
+  webUrl() {
+    return (
+      this.configService.get<string>("WEB_URL") ||
+      this.configService.get<string>("NEXT_PUBLIC_APP_URL") ||
+      "http://localhost:3000"
+    ).replace(/\/$/, "");
   }
 
   private escape(value: string) {

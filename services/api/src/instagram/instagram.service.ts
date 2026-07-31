@@ -148,11 +148,7 @@ export class InstagramService {
   // Helper functions
   private isValidInstagramUrl(url: string): boolean {
     try {
-      const urlObj = new URL(url);
-      return (
-        urlObj.hostname.includes('instagram.com') &&
-        (urlObj.pathname.includes('/p/') || urlObj.pathname.includes('/reel/'))
-      );
+      return new URL(url).hostname.includes('instagram.com');
     } catch {
       return false;
     }

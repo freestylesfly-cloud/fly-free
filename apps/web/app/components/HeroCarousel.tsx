@@ -28,6 +28,17 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(() => {
+      const el = trackRef.current;
+      if (!el) return;
+      const next = Math.round(el.scrollLeft / el.clientWidth) + 1;
+      el.scrollTo({ left: next >= slides.length ? 0 : next * el.clientWidth, behavior: 'smooth' });
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
   const goto = (idx: number) => {
     const el = trackRef.current;
     if (!el) return;

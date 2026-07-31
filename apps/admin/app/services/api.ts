@@ -489,26 +489,28 @@ class ApiService {
   }
 
   // ============ INSTAGRAM FEED ============
-  async getInstagramPosts() {
-    return this.request('/api/admin/instagram-posts');
+  async getInstagramPosts<T = any>(): Promise<T[]> {
+    const response = await this.request<{ data?: T[] } | T[]>('/api/instagram-posts');
+    if (Array.isArray(response)) return response;
+    return response?.data ?? [];
   }
 
   async createInstagramPost(data: any) {
-    return this.request('/api/admin/instagram-posts', {
+    return this.request<any>('/api/instagram-posts', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateInstagramPost(id: string, data: any) {
-    return this.request(`/api/admin/instagram-posts/${id}`, {
+    return this.request<any>(`/api/instagram-posts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteInstagramPost(id: string) {
-    return this.request(`/api/admin/instagram-posts/${id}`, {
+    return this.request<any>(`/api/instagram-posts/${id}`, {
       method: 'DELETE',
     });
   }

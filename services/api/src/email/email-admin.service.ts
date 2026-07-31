@@ -22,7 +22,7 @@ export class EmailAdminService {
     if (!order) throw new BadRequestException('Order not found');
     if (!order.user.email) throw new BadRequestException('Order user does not have an email address');
 
-    const reviewLink = `${process.env.WEB_URL}/orders/${orderId}/review`;
+    const reviewLink = `${this.emailService.webUrl()}/orders/${orderId}/review`;
     const orderNumber = order.id;
 
     const html = `
@@ -135,7 +135,7 @@ export class EmailAdminService {
   async sendInviteEmail(email: string, message: string) {
     if (!email) throw new BadRequestException('Email is required');
 
-    const inviteLink = `${process.env.WEB_URL}/invite?email=${encodeURIComponent(email)}`;
+    const inviteLink = `${this.emailService.webUrl()}/invite?email=${encodeURIComponent(email)}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -197,7 +197,7 @@ export class EmailAdminService {
           ` : ''}
 
           <div style="text-align: center;">
-            <a href="${process.env.WEB_URL}"
+            <a href="${this.emailService.webUrl()}"
                style="background: #6BCB77; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: bold;">
               Shop Now
             </a>
@@ -288,7 +288,7 @@ export class EmailAdminService {
   }
 
   private withUnsubscribeLink(html: string, email: string) {
-    const baseUrl = process.env.WEB_URL || 'http://localhost:3000';
+    const baseUrl = this.emailService.webUrl();
     const unsubscribeUrl = `${baseUrl}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
     const footer = `<p style="text-align:center;color:#777;font-size:12px;margin-top:24px;">No longer want drop and offer emails? <a href="${unsubscribeUrl}" style="color:#FF6B5B;">Unsubscribe</a></p>`;
 

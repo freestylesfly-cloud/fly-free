@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ArrowRight, Instagram, Mail, Star, Zap } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HorizontalSlider } from './components/HorizontalSlider';
+import { InstagramFeedCarousel } from './components/InstagramFeedCarousel';
+import { HeroCarousel } from './components/HeroCarousel';
 import { getApiBaseUrl } from './lib/api';
 
 const API_BASE = getApiBaseUrl();
@@ -61,14 +63,14 @@ async function getHomeData() {
     const [themesRes, productsRes, reviewsRes, hampersRes, instagramRes] = await Promise.all([
       fetch(`${API_BASE}/cms/themes?limit=20`, { cache: 'no-store' }),
       fetch(`${API_BASE}/catalog/products?limit=50`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/reviews?limit=50`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/hampers?limit=12`, { cache: 'no-store' }).catch(() => null),
-      fetch(`${API_BASE}/cms/instagram-posts?limit=12`, { cache: 'no-store' }).catch(() => null),
+      fetch(`${API_BASE}/reviews/latest?limit=12`, { cache: 'no-store' }).catch(() => null),
+      fetch(`${API_BASE}/cms/hampers?limit=12`, { cache: 'no-store' }).catch(() => null),
+      fetch(`${API_BASE}/instagram-posts?limit=12`, { cache: 'no-store' }).catch(() => null),
     ]);
 
     const themes = themesRes.ok ? await themesRes.json() : { data: [] };
     const products = productsRes.ok ? await productsRes.json() : { data: [] };
-    const reviews = reviewsRes.ok ? await reviewsRes.json() : { data: [] };
+    const reviews = reviewsRes?.ok ? await reviewsRes.json() : { data: [] };
     const hampers = hampersRes?.ok ? await hampersRes.json() : { data: [] };
     const instagram = instagramRes?.ok ? await instagramRes.json() : { data: [] };
 
@@ -94,7 +96,16 @@ async function getHomeData() {
 export default async function HomePage() {
   const { themes, products, reviews, hampers, instagram } = await getHomeData();
 
-  const activeTheme = themes.find((t: Theme) => t.isActive) || themes[0];
+  const heroThemes = themes.filter((t: Theme) => t.bannerImageUrl).slice(0, 5);
+  const heroSlides = (heroThemes.length > 0 ? heroThemes : themes.slice(0, 3)).map((theme: Theme) => ({
+    id: theme.id,
+    image: theme.bannerImageUrl,
+    tag: 'New Drop',
+    title: theme.name,
+    subtitle: theme.description,
+    ctaLabel: `Shop ${theme.name}`,
+    ctaHref: `/themes/${theme.slug}`,
+  }));
   const featuredProducts = products.filter((p: Product) => p.isFeatured || p.isTrending).slice(0, 8);
   const bestSellers = products.slice(0, 8);
   const avgRating =
@@ -104,38 +115,8 @@ export default async function HomePage() {
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* HERO BANNER - From Active Theme */}
-      <section
-        className="relative min-h-screen md:min-h-[600px] flex items-center justify-center overflow-hidden"
-        style={{
-          backgroundImage: activeTheme?.bannerImageUrl ? `url('${activeTheme.bannerImageUrl}')` : undefined,
-          backgroundColor: activeTheme?.primaryColor || 'var(--color-primary)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black/30" />
-
-        {/* Content */}
-        <div className="relative z-10 mx-auto max-w-2xl px-5 text-center text-white">
-          <span className="mb-4 inline-block px-4 py-2 rounded-full text-xs font-black uppercase" style={{ backgroundColor: 'var(--color-accent)' }}>
-            🆕 New Drop
-          </span>
-
-          <h1 className="mb-4 text-5xl md:text-6xl font-black leading-tight">{activeTheme?.name || 'Fly Free'}</h1>
-
-          <p className="mb-8 text-lg md:text-xl opacity-90">{activeTheme?.description || 'Explore our latest collection'}</p>
-
-          <Link
-            href={`/themes/${activeTheme?.slug || 'all'}`}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-lg text-white font-black uppercase transition hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            Shop Collection <ArrowRight size={20} />
-          </Link>
-        </div>
-      </section>
+      {/* HERO BANNER - Auto-sliding theme carousel */}
+      <HeroCarousel slides={heroSlides} />
 
       {/* FEATURED PRODUCTS - New Drops */}
       {featuredProducts.length > 0 && (
@@ -240,29 +221,34 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <HorizontalSlider
+            title=""
+            action={
+              <Link href="/themes" className="inline-flex items-center gap-2 text-sm font-bold uppercase" style={{ color: 'var(--color-primary)' }}>
+                View All <ArrowRight size={16} />
+              </Link>
+            }
+          >
             {themes.map((theme: Theme) => (
               <Link
                 key={theme.id}
                 href={`/themes/${theme.slug}`}
-                className="group relative overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
-                style={{ borderColor: 'var(--border-color)' }}
+                className="mo-slide group relative flex-shrink-0 overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
+                style={{ width: '320px', borderColor: 'var(--border-color)' }}
               >
                 <div
-                  className="aspect-video bg-gradient-to-br flex items-end justify-start p-6 text-white"
+                  className="aspect-video flex items-end justify-start p-6 text-white"
                   style={{
                     backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
-                    backgroundColor: theme.primaryColor,
+                    backgroundColor: theme.primaryColor || 'var(--color-primary)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   }}
                 >
-                  <div>
-                    <h3 className="text-2xl md:text-3xl font-black leading-tight">{theme.name}</h3>
-                  </div>
+                  <h3 className="text-2xl font-black leading-tight drop-shadow">{theme.name}</h3>
                 </div>
 
-                <div className="p-6" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="p-5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                   <p className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
                     {theme.description}
                   </p>
@@ -272,7 +258,7 @@ export default async function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </HorizontalSlider>
         </section>
       )}
 
@@ -409,77 +395,8 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* INSTAGRAM FEED */}
-      {instagram.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <Instagram size={20} />
-              <span className="text-sm font-black uppercase">Follow Us</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              @flyfree_styles
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              See how our community styles Fly Free pieces
-            </p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {instagram.slice(0, 6).map((post: InstagramPost) => (
-              <a
-                key={post.id}
-                href={post.instagramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative overflow-hidden rounded-xl border-2 aspect-square bg-gray-100 transition hover:shadow-lg"
-                style={{ borderColor: 'var(--border-color)' }}
-              >
-                {/* Background Image or Video Thumbnail */}
-                {post.imageUrl && (
-                  <img
-                    src={post.imageUrl}
-                    alt={post.caption}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                  />
-                )}
-                {post.videoUrl && !post.imageUrl && (
-                  <video
-                    src={post.videoUrl}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                  />
-                )}
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition text-white text-center">
-                    <Instagram size={32} className="mx-auto mb-2" />
-                    <p className="text-sm font-bold">View on Instagram</p>
-                  </div>
-                </div>
-
-                {/* Caption at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition">
-                  <p className="text-xs line-clamp-2">{post.caption}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <a
-              href="https://instagram.com/flyfree_styles"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              <Instagram size={18} />
-              Follow on Instagram <ArrowRight size={18} />
-            </a>
-          </div>
-        </section>
-      )}
+      {/* INSTAGRAM FEED - Auto-scrolling single row */}
+      <InstagramFeedCarousel posts={instagram} />
 
       {/* NEWSLETTER */}
       <section
@@ -514,42 +431,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* INSTAGRAM FEED - Placeholder */}
-      <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-t" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="mb-12 flex items-center justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <Instagram size={20} />
-              <span className="text-sm font-black uppercase">Follow Us</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              @flyfree_styles
-            </h2>
-          </div>
-
-          <Link
-            href="https://instagram.com/flyfree_styles"
-            target="_blank"
-            className="hidden sm:inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            Follow <Instagram size={18} />
-          </Link>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="aspect-square rounded-lg bg-gradient-to-br"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                backgroundImage: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)',
-              }}
-            />
-          ))}
-        </div>
-      </section>
     </main>
   );
 }
