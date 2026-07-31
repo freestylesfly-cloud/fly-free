@@ -285,16 +285,16 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white py-8 px-4">
+    <main className="min-h-screen py-8 px-4 pb-28 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-black mb-8">Checkout</h1>
+        <h1 className="text-3xl font-black mb-8" style={{ color: 'var(--text-primary)' }}>Checkout</h1>
 
         <div className="grid md:grid-cols-[2fr_1fr] gap-8">
           {/* Left: Address & Summary */}
           <div className="space-y-6">
             {/* Address Section */}
-            <div className="border border-slate-200 rounded-xl p-6">
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <MapPin size={20} />
                 Delivery Address
               </h2>
@@ -305,7 +305,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
               ) : addresses.length === 0 && !showAddressForm ? (
                 <div className="text-center py-8">
-                  <p className="text-slate-600 mb-4">No addresses saved</p>
+                  <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>No addresses saved</p>
                   <button
                     onClick={() => setShowAddressForm(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg"
@@ -338,15 +338,15 @@ export default function CheckoutPage() {
                     <div key={addr.id} className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedAddress === addr.id ? 'border-primary bg-primary/5' : 'border-slate-200'}`} onClick={() => setSelectedAddress(addr.id)}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-bold text-sm">{addr.fullName}</p>
-                          <p className="text-xs text-slate-600 mt-1">{addr.line1}, {addr.city} {addr.postalCode}</p>
-                          <p className="text-xs text-slate-600">📞 {addr.phone}</p>
+                          <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{addr.fullName}</p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{addr.line1}, {addr.city} {addr.postalCode}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>📞 {addr.phone}</p>
                         </div>
                         {selectedAddress === addr.id && <Check size={20} className="text-primary" />}
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setShowAddressForm(true)} className="w-full px-4 py-2 border-2 border-dashed border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">
+                  <button onClick={() => setShowAddressForm(true)} className="w-full px-4 py-2 border-2 border-dashed rounded-lg text-sm font-bold hover:opacity-80" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)', backgroundColor: 'transparent' }}>
                     + Add Another
                   </button>
                 </div>
@@ -354,8 +354,8 @@ export default function CheckoutPage() {
             </div>
 
             {/* Coupon Section */}
-            <div className="border border-slate-200 rounded-xl p-6">
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2">
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Tag size={20} />
                 Promo Code
               </h2>
@@ -396,36 +396,36 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right: Order Summary */}
-          <div className="border border-slate-200 rounded-xl p-6 h-fit sticky top-8">
-            <h2 className="text-lg font-black mb-4">Order Summary</h2>
+          <div className="rounded-xl p-6 h-fit sticky top-8" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+            <h2 className="text-lg font-black mb-4" style={{ color: 'var(--text-primary)' }}>Order Summary</h2>
 
-            <div className="space-y-3 mb-6 pb-6 border-b border-slate-200">
+            <div className="space-y-3 mb-6 pb-6" style={{ borderBottomColor: 'var(--border-color)', borderBottomWidth: '1px' }}>
               {cartItems.map((item) => (
                 <div key={item.productId} className="flex justify-between text-sm">
-                  <span className="text-slate-600">{item.productName} x {item.quantity}</span>
-                  <span className="font-bold">₹{item.price * item.quantity}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{item.productName} x {item.quantity}</span>
+                  <span className="font-bold" style={{ color: 'var(--text-primary)' }}>₹{item.price * item.quantity}</span>
                 </div>
               ))}
             </div>
 
             <div className="space-y-2 mb-6">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Subtotal</span>
-                <span>₹{subtotal}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
+                <span style={{ color: 'var(--text-primary)' }}>₹{subtotal}</span>
               </div>
               {baseDiscount > 0 && (
-                <div className="flex justify-between text-sm text-green-700 font-bold">
+                <div className="flex justify-between text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
                   <span>Discount ({appliedCoupon?.discountPercent}%)</span>
                   <span>-₹{baseDiscount}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">GST (18%)</span>
-                <span>₹{tax}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>GST (18%)</span>
+                <span style={{ color: 'var(--text-primary)' }}>₹{tax}</span>
               </div>
-              <div className="flex justify-between text-lg font-black border-t border-slate-200 pt-3">
-                <span>Total</span>
-                <span className="text-primary">₹{total}</span>
+              <div className="flex justify-between text-lg font-black pt-3" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
+                <span style={{ color: 'var(--text-primary)' }}>Total</span>
+                <span style={{ color: 'var(--color-primary)' }}>₹{total}</span>
               </div>
             </div>
 

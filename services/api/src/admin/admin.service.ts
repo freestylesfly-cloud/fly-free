@@ -91,7 +91,7 @@ export class AdminService {
         slug: data.slug || this.slugify(data.name),
         sku: data.sku || `SKU-${Date.now()}`,
         description: data.description || "",
-        gender: data.gender || "UNISEX",
+        gender: "UNISEX",
         tags: data.tags || [],
         material: data.material,
         washCare: data.washCare,
@@ -159,7 +159,7 @@ export class AdminService {
           slug: data.slug,
           sku: data.sku,
           description: data.description,
-          gender: data.gender,
+          gender: "UNISEX",
           tags: data.tags,
           material: data.material,
           washCare: data.washCare,
@@ -245,9 +245,9 @@ export class AdminService {
 
   private async ensureDefaultCategory() {
     return this.prisma.category.upsert({
-      where: { slug: "uncategorized" },
+      where: { slug: "regular" },
       update: {},
-      create: { name: "Uncategorized", slug: "uncategorized" }
+      create: { name: "Regular", slug: "regular", priority: 1 }
     });
   }
 

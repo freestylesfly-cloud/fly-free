@@ -13,7 +13,6 @@ type ProductFormData = {
   slug: string;
   sku: string;
   description: string;
-  gender: 'MEN' | 'WOMEN' | 'UNISEX';
   categoryId: string;
   themeId: string;
   price: number;
@@ -34,7 +33,6 @@ type ProductFormData = {
 type ImageRow = { color: string; url: string; alt: string; priority: number };
 type VariantRow = {
   sku: string;
-  color: string;
   size: string;
   price: number | '';
   stock: number;
@@ -60,7 +58,6 @@ const emptyForm: ProductFormData = {
   slug: '',
   sku: '',
   description: '',
-  gender: 'UNISEX',
   categoryId: '',
   themeId: '',
   price: 0,
@@ -81,7 +78,6 @@ const emptyForm: ProductFormData = {
 const emptyImage: ImageRow = { color: '', url: '', alt: '', priority: 0 };
 const emptyVariant: VariantRow = {
   sku: '',
-  color: '',
   size: 'M',
   price: '',
   stock: 0,
@@ -124,7 +120,6 @@ export function ProductForm({ productId }: { productId?: string }) {
         slug: product.slug || '',
         sku: product.sku || '',
         description: product.description || '',
-        gender: product.gender || 'UNISEX',
         categoryId: product.categoryId || '',
         themeId: product.themeId || '',
         price: product.price || 0,
@@ -149,7 +144,6 @@ export function ProductForm({ productId }: { productId?: string }) {
       })));
       setVariants((product.variants || []).map((variant: any) => ({
         sku: variant.sku || '',
-        color: variant.color || '',
         size: variant.size || '',
         price: variant.price || '',
         stock: variant.inventory?.stock || 0,
@@ -187,8 +181,8 @@ export function ProductForm({ productId }: { productId?: string }) {
         categoryId: form.categoryId || undefined,
         themeId: form.themeId || null,
         tags: form.tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
-        images: images.filter((image) => image.url.trim()).map((image, index) => ({ ...image, priority: image.priority || index })),
-        variants: variants.filter((variant) => variant.sku && variant.color && variant.size)
+        images: images.filter((image) => image.url.trim()).map((image, index) => ({ ...image, color: 'Default', priority: image.priority || index })),
+        variants: variants.filter((variant) => variant.sku && variant.size).map((variant) => ({ ...variant, color: 'Default' }))
       };
 
       if (productId) {
@@ -259,14 +253,13 @@ export function ProductForm({ productId }: { productId?: string }) {
 
       <section className="rounded border border-black/10 bg-white p-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-black">Color Images</h3>
+          <h3 className="text-lg font-black">Product Images</h3>
           <button type="button" onClick={() => setImages([...images, { ...emptyImage }])} className="inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-bold text-white"><Plus size={16} /> Add image</button>
         </div>
         <div className="mt-5 grid gap-3">
           {images.map((image, index) => (
             <div key={index} className="grid gap-3 rounded border border-black/10 p-3 lg:grid-cols-[1fr_2fr_auto]">
               <div className="grid gap-3">
-                <Field label="Color" value={image.color} onChange={(value) => updateImage(index, { color: value })} />
                 <Field label="Alt" value={image.alt} onChange={(value) => updateImage(index, { alt: value })} />
               </div>
               <ImageUploadField
@@ -293,7 +286,6 @@ export function ProductForm({ productId }: { productId?: string }) {
           {variants.map((variant, index) => (
             <div key={index} className="grid gap-3 rounded border border-black/10 p-3 md:grid-cols-4">
               <Field label="Variant SKU" value={variant.sku} onChange={(value) => updateVariant(index, { sku: value })} />
-              <Field label="Color" value={variant.color} onChange={(value) => updateVariant(index, { color: value })} />
               <Field label="Size" value={variant.size} onChange={(value) => updateVariant(index, { size: value })} />
               <NumberField label="Stock" value={variant.stock} onChange={(value) => updateVariant(index, { stock: value })} />
               <NumberField label="Offer Price Override" value={variant.price || 0} onChange={(value) => updateVariant(index, { price: value || '' })} />

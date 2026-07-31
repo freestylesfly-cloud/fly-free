@@ -78,17 +78,17 @@ export default function CategoriesPage() {
 
       if (editingId) {
         await apiService.updateCategory(editingId, payload);
-        setNotice('Category updated. Product forms will load this immediately.');
+        setNotice('Fit/type updated. Product forms will load this immediately.');
       } else {
         await apiService.createCategory(payload);
-        setNotice('Category created. You can assign products to it now.');
+        setNotice('Fit/type created. You can assign products to it now.');
       }
 
       setForm(emptyForm);
       setEditingId(null);
       await loadCategories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save category');
+      setError(err instanceof Error ? err.message : 'Failed to save fit/type');
     } finally {
       setSaving(false);
     }
@@ -99,10 +99,10 @@ export default function CategoriesPage() {
       setError('');
       setNotice('');
       await apiService.deleteCategory(id);
-      setNotice('Category deleted.');
+      setNotice('Fit/type deleted.');
       await loadCategories();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete category');
+      setError(err instanceof Error ? err.message : 'Failed to delete fit/type');
     }
   }
 
@@ -118,7 +118,7 @@ export default function CategoriesPage() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout title="Categories" subtitle="Product type buckets for the user shop">
+      <DashboardLayout title="Fits & types" subtitle="Regular, oversized, jerseys, polos, hoodies, combo, and gifting buckets">
         <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
           <section className="space-y-4">
             <div className="rounded border border-black/10 bg-white p-4">
@@ -127,7 +127,7 @@ export default function CategoriesPage() {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search categories..."
+                  placeholder="Search fits and types..."
                   className="w-full rounded border border-black/10 py-2 pl-10 pr-3"
                 />
               </div>
@@ -137,13 +137,13 @@ export default function CategoriesPage() {
             {notice && <div className="rounded border border-green-200 bg-green-50 p-4 font-bold text-green-800">{notice}</div>}
 
             <div className="overflow-hidden rounded border border-black/10 bg-white">
-              <div className="border-b border-black/10 p-4 font-black">Database categories</div>
+              <div className="border-b border-black/10 p-4 font-black">Storefront fits and types</div>
               {loading ? (
                 <div className="space-y-3 p-4">
                   {[1, 2, 3].map((item) => <div key={item} className="h-16 animate-pulse rounded bg-black/5" />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <p className="p-6 text-sm font-bold text-black/50">No categories found.</p>
+                <p className="p-6 text-sm font-bold text-black/50">No fits or product types found.</p>
               ) : (
                 <div className="divide-y divide-black/5">
                   {filtered.map((category) => (
@@ -179,7 +179,7 @@ export default function CategoriesPage() {
           <form onSubmit={saveCategory} className="h-fit rounded border border-black/10 bg-white p-5">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-black">{editingId ? 'Edit category' : 'Create category'}</h2>
+                <h2 className="font-black">{editingId ? 'Edit fit/type' : 'Create fit/type'}</h2>
                 <p className="text-sm text-black/55">Use for product fits and types: Regular, Oversized, Jerseys, Polos, Hoodies, Combo, or gifting buckets.</p>
               </div>
               {editingId && (
@@ -204,7 +204,7 @@ export default function CategoriesPage() {
               </label>
               <button disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded bg-coral px-4 py-3 font-black text-white disabled:opacity-50">
                 {editingId ? <Save size={18} /> : <Plus size={18} />}
-                {saving ? 'Saving...' : editingId ? 'Save category' : 'Create category'}
+                {saving ? 'Saving...' : editingId ? 'Save fit/type' : 'Create fit/type'}
               </button>
             </div>
           </form>
