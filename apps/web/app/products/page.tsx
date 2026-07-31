@@ -248,9 +248,9 @@ function ProductsBrowser() {
       </div>
 
       {filterOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" style={{ top: 0, bottom: '120px' }}>
-          <button type="button" aria-label="Close filters" className="absolute inset-0 bg-black/50" onClick={() => setFilterOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 max-h-[calc(100vh-120px)] overflow-y-auto rounded-t-2xl bg-white shadow-2xl" style={{ color: 'var(--text-primary)' }}>
+        <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
+          <button type="button" aria-label="Close filters" className="absolute inset-0 bg-black/40" onClick={() => setFilterOpen(false)} />
+          <div className="relative max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl" style={{ color: 'var(--text-primary)' }}>
             <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4" style={{ borderColor: 'var(--border-color)' }}>
               <div>
                 <h2 className="text-lg font-black">Filter products</h2>

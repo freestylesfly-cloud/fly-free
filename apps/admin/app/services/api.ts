@@ -252,6 +252,14 @@ class ApiService {
     return this.request('/api/admin/email/stats');
   }
 
+  async getNewsletterStats() {
+    return this.request('/api/admin/newsletter/stats');
+  }
+
+  async getNewsletterSubscribers(activeOnly = false) {
+    return this.request(`/api/admin/newsletter/subscribers?activeOnly=${activeOnly}`);
+  }
+
   async sendBroadcast(data: { title: string; subject: string; message: string }) {
     return this.request('/api/admin/email/send-broadcast', {
       method: 'POST',

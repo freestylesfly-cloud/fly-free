@@ -8,7 +8,7 @@ import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
 
 export default function EmailManagementPage() {
-  const [activeTab, setActiveTab] = useState<'broadcast' | 'promotional' | 'review' | 'invite' | 'message' | 'stats'>('broadcast');
+  const [activeTab, setActiveTab] = useState<'broadcast' | 'promotional' | 'review' | 'invite' | 'message' | 'subscribers' | 'stats'>('broadcast');
 
   return (
     <ProtectedRoute>
@@ -47,6 +47,12 @@ export default function EmailManagementPage() {
               label="Custom Message"
             />
             <TabButton
+              active={activeTab === 'subscribers'}
+              onClick={() => setActiveTab('subscribers')}
+              icon={<Users size={18} />}
+              label="Subscribers"
+            />
+            <TabButton
               active={activeTab === 'stats'}
               onClick={() => setActiveTab('stats')}
               icon={<Send size={18} />}
@@ -61,6 +67,7 @@ export default function EmailManagementPage() {
             {activeTab === 'review' && <ReviewRequestForm />}
             {activeTab === 'invite' && <InviteForm />}
             {activeTab === 'message' && <CustomMessageForm />}
+            {activeTab === 'subscribers' && <SubscribersPanel />}
             {activeTab === 'stats' && <EmailStats />}
           </div>
         </div>
@@ -456,13 +463,73 @@ function EmailStats() {
       <div className="grid grid-cols-3 gap-4">
         <StatCard label="Estimated Emails Sent" value={loading ? '...' : String(stats.estimatedEmailsSent || 0)} />
         <StatCard label="Total Users" value={loading ? '...' : String(stats.totalUsers || 0)} />
+        <StatCard label="Active Subscribers" value={loading ? '...' : String(stats.activeSubscribers || 0)} />
         <StatCard label="Invoices Sent" value={loading ? '...' : String(stats.invoicesSent || 0)} />
       </div>
 
       <div className="bg-black/5 p-4 rounded-lg">
         <p className="text-sm text-black/60">
-          Email statistics are loaded from the API and calculated from users, orders, delivered orders, and sent invoices.
+          Broadcast and promotional emails are sent to registered users plus active newsletter subscribers, deduped by email.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function SubscribersPanel() {
+  const { data: statsData, loading: statsLoading } = useFetch<any>(() => apiService.getNewsletterStats(), { skip: false });
+  const { data, loading, error } = useFetch<any>(() => apiService.getNewsletterSubscribers(false), { skip: false });
+  const subscribers = Array.isArray(data) ? data : [];
+  const stats = statsData || {};
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-lg font-bold">Newsletter Subscribers</h3>
+        <p className="mt-1 text-sm text-black/60">
+          These people joined from the storefront footer and receive new drops, restocks, and promotional campaigns.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total Subscribers" value={statsLoading ? '...' : String(stats.total || 0)} />
+        <StatCard label="Active" value={statsLoading ? '...' : String(stats.active || 0)} />
+        <StatCard label="Unsubscribed" value={statsLoading ? '...' : String(stats.unsubscribed || 0)} />
+      </div>
+
+      {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
+
+      <div className="overflow-hidden rounded-lg border border-black/10">
+        <table className="w-full text-sm">
+          <thead className="bg-black/5 text-left">
+            <tr>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Source</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Subscribed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td className="px-4 py-6 text-black/60" colSpan={4}>Loading subscribers...</td></tr>
+            ) : subscribers.length === 0 ? (
+              <tr><td className="px-4 py-6 text-black/60" colSpan={4}>No subscribers yet.</td></tr>
+            ) : (
+              subscribers.map((subscriber: any) => (
+                <tr key={subscriber.id} className="border-t border-black/10">
+                  <td className="px-4 py-3 font-bold">{subscriber.email}</td>
+                  <td className="px-4 py-3 text-black/60">{subscriber.source || 'footer'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded px-2 py-1 text-xs font-black ${subscriber.isActive ? 'bg-green-100 text-green-700' : 'bg-black/10 text-black/60'}`}>
+                      {subscriber.isActive ? 'Active' : 'Unsubscribed'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-black/60">{subscriber.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleDateString('en-IN') : '-'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
