@@ -272,11 +272,11 @@ export default function CheckoutPage() {
 
   if (cartItems.length === 0) {
     return (
-      <main className="min-h-screen flex items-center justify-center px-4">
+      <main className="min-h-screen flex items-center justify-center px-4 pb-28 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="text-center">
-          <ShoppingBag size={48} className="mx-auto mb-4 opacity-30" />
-          <h1 className="text-2xl font-black mb-4">Cart is empty</h1>
-          <Link href="/products" className="inline-block px-6 py-3 bg-primary text-white font-bold rounded-lg hover:opacity-90">
+          <ShoppingBag size={48} className="mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
+          <h1 className="text-2xl font-black mb-4" style={{ color: 'var(--text-primary)' }}>Cart is empty</h1>
+          <Link href="/products" className="inline-block px-6 py-3 text-white font-bold rounded-lg hover:opacity-90 transition" style={{ backgroundColor: 'var(--color-primary)' }}>
             Continue Shopping
           </Link>
         </div>
@@ -308,7 +308,8 @@ export default function CheckoutPage() {
                   <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>No addresses saved</p>
                   <button
                     onClick={() => setShowAddressForm(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-lg hover:opacity-90 transition"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
                   >
                     <Plus size={18} />
                     Add Address
@@ -326,10 +327,10 @@ export default function CheckoutPage() {
                     <input type="text" placeholder="Pincode" value={addressForm.postalCode} onChange={(e) => setAddressForm({...addressForm, postalCode: e.target.value})} className="px-4 py-2 border border-slate-300 rounded-lg text-sm" />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={handleAddAddress} disabled={addingAddress} className="flex-1 px-4 py-2 bg-primary text-white font-bold rounded-lg text-sm hover:opacity-90">
+                    <button onClick={handleAddAddress} disabled={addingAddress} className="flex-1 px-4 py-3 text-white font-bold rounded-lg text-sm hover:opacity-90 disabled:opacity-60 transition" style={{ backgroundColor: 'var(--color-primary)' }}>
                       {addingAddress ? <Loader2 size={16} className="inline animate-spin" /> : 'Save'}
                     </button>
-                    <button onClick={() => setShowAddressForm(false)} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm">Cancel</button>
+                    <button onClick={() => setShowAddressForm(false)} className="flex-1 px-4 py-3 font-bold rounded-lg text-sm hover:opacity-80 transition" style={{ borderColor: 'var(--border-color)', borderWidth: '1px', color: 'var(--text-primary)' }}>Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -377,7 +378,7 @@ export default function CheckoutPage() {
                   {couponLoading ? <Loader2 size={16} className="inline animate-spin" /> : 'Apply'}
                 </button>
                 {couponValid && (
-                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); }} className="px-4 py-2 text-red-600 border border-red-300 rounded-lg text-sm hover:bg-red-50">
+                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); }} className="px-4 py-2 border rounded-lg text-sm hover:opacity-80 transition" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
                     Remove
                   </button>
                 )}
@@ -432,7 +433,8 @@ export default function CheckoutPage() {
             <button
               onClick={handleCheckout}
               disabled={processing || !selectedAddress}
-              className="w-full px-6 py-3 bg-primary text-white font-black rounded-lg hover:opacity-90 disabled:opacity-50 text-sm"
+              className="w-full px-6 py-4 text-white font-black rounded-lg text-base hover:opacity-90 disabled:opacity-50 transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}
             >
               {processing ? <Loader2 size={18} className="inline animate-spin mr-2" /> : ''}
               {processing ? 'Processing...' : 'Proceed to Payment'}
