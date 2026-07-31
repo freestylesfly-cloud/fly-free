@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Edit, Eye, Plus, Search, Trash2 } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { formatRupees } from '../lib/money';
 import { apiService } from '../services/api';
 
 type Product = {
@@ -134,8 +135,10 @@ export default function ProductsPage() {
                         <td className="px-5 py-4 text-sm font-bold">{product.category?.name || 'Regular'}</td>
                         <td className="px-5 py-4 text-sm">{product.sku}</td>
                         <td className="px-5 py-4">
-                          <p className="font-bold">Rs {product.price}</p>
-                          <p className="text-xs text-black/45 line-through">Rs {product.mrp}</p>
+                          <p className="font-bold">{formatRupees(product.price)}</p>
+                          {product.mrp > product.price && (
+                            <p className="text-xs text-black/45 line-through">{formatRupees(product.mrp)}</p>
+                          )}
                         </td>
                         <td className="px-5 py-4">{product.variants?.length || 0}</td>
                         <td className="px-5 py-4">

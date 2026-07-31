@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Save, Search, Trash2 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { toPaise, toRupees } from '../lib/money';
 
 type Category = { id: string; name: string; slug: string };
 type Theme = { id: string; name: string; slug: string; active?: boolean };
@@ -122,8 +123,8 @@ export function ProductForm({ productId }: { productId?: string }) {
         description: product.description || '',
         categoryId: product.categoryId || '',
         themeId: product.themeId || '',
-        price: product.price || 0,
-        mrp: product.mrp || 0,
+        price: toRupees(product.price),
+        mrp: toRupees(product.mrp),
         discountPercent: product.discountPercent || 0,
         gstPercent: product.gstPercent || 5,
         material: product.material || '',
@@ -145,7 +146,7 @@ export function ProductForm({ productId }: { productId?: string }) {
       setVariants((product.variants || []).map((variant: any) => ({
         sku: variant.sku || '',
         size: variant.size || '',
-        price: variant.price || '',
+        price: variant.price ? toRupees(variant.price) : '',
         stock: variant.inventory?.stock || 0,
         lowStockAlert: variant.inventory?.lowStockAlert || 5,
         warehouse: variant.inventory?.warehouse || '',
@@ -157,7 +158,7 @@ export function ProductForm({ productId }: { productId?: string }) {
         contentsText: Array.isArray(hamper.contents) ? hamper.contents.join(', ') : String(hamper.contents || ''),
         imageUrl: hamper.imageUrl || '',
         sizeNote: hamper.sizeNote || '',
-        price: hamper.price || 0,
+        price: toRupees(hamper.price),
         gstPercent: hamper.gstPercent ?? 5,
         isActive: hamper.isActive ?? true,
         priority: hamper.priority || 0
@@ -175,14 +176,23 @@ export function ProductForm({ productId }: { productId?: string }) {
     setSaving(true);
 
     try {
+      // The form collects rupees; the API stores paise.
       const payload = {
         ...form,
         slug: form.slug || slugify(form.name),
         categoryId: form.categoryId || undefined,
         themeId: form.themeId || null,
+        price: toPaise(form.price),
+        mrp: toPaise(form.mrp),
         tags: form.tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
         images: images.filter((image) => image.url.trim()).map((image, index) => ({ ...image, color: 'Default', priority: image.priority || index })),
-        variants: variants.filter((variant) => variant.sku && variant.size).map((variant) => ({ ...variant, color: 'Default' }))
+        variants: variants
+          .filter((variant) => variant.sku && variant.size)
+          .map((variant) => ({
+            ...variant,
+            color: 'Default',
+            price: variant.price === '' ? null : toPaise(variant.price)
+          }))
       };
 
       if (productId) {

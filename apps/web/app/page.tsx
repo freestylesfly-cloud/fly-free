@@ -311,10 +311,11 @@ export default async function HomePage() {
 
           <AutoSlider ariaLabel="Customer reviews">
             {reviews.map((review) => (
-              <article
+              <Link
                 key={review.id}
                 data-slide
-                className="flex-shrink-0 rounded-lg border-2 p-6"
+                href={review.product?.slug ? `/products/${review.product.slug}#reviews` : '/products'}
+                className="flex-shrink-0 rounded-lg border-2 p-6 transition hover:shadow-lg"
                 style={{
                   width: '340px',
                   scrollSnapAlign: 'start',
@@ -360,7 +361,7 @@ export default async function HomePage() {
                   {review.user?.name || 'Verified customer'}
                   {review.product?.name ? ` · ${review.product.name}` : ''}
                 </p>
-              </article>
+              </Link>
             ))}
           </AutoSlider>
         </Section>

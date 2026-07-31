@@ -715,17 +715,25 @@ export class AdminService {
   }
 
   // ==================== PRODUCT THEMES ====================
+  // Everything the theme editor needs, so an edit round-trips without loss.
+  private readonly productThemeSelect = {
+    id: true,
+    name: true,
+    slug: true,
+    description: true,
+    story: true,
+    imageUrl: true,
+    bannerImageUrl: true,
+    primaryColor: true,
+    secondaryColor: true,
+    accentColor: true,
+    priority: true,
+    active: true
+  };
+
   async listProductThemes() {
     return this.prisma.theme.findMany({
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        priority: true,
-        active: true,
-        _count: { select: { products: true } }
-      },
+      select: { ...this.productThemeSelect, _count: { select: { products: true } } },
       orderBy: [{ priority: "asc" }, { name: "asc" }]
     });
   }
@@ -736,47 +744,44 @@ export class AdminService {
         name: data.name,
         slug: data.slug || this.slugify(data.name),
         description: data.description || "",
-        priority: data.priority === undefined ? 0 : Number(data.priority),
-        active: data.active !== false,
-        // Don't set these fields for product themes
-        story: "",
-        imageUrl: "",
-        bannerImageUrl: "",
-        primaryColor: "#111827",
-        secondaryColor: "#ff6b5b",
-        accentColor: "#4ecdc4",
+        story: data.story || "",
+        imageUrl: data.imageUrl || "",
+        bannerImageUrl: data.bannerImageUrl || "",
+        primaryColor: data.primaryColor || "#111827",
+        secondaryColor: data.secondaryColor || "#FF4A4E",
+        accentColor: data.accentColor || "#FFB703",
         fontFamily: "Inter, Arial, sans-serif",
-        animationStyle: "fade"
+        animationStyle: "fade",
+        priority: data.priority === undefined ? 0 : Number(data.priority),
+        active: data.active !== false
       },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        priority: true,
-        active: true
-      }
+      select: this.productThemeSelect
     });
   }
 
   async updateProductTheme(id: string, data: any) {
+    // Only touch the keys the editor actually sent.
+    const patch: any = {};
+    for (const key of [
+      "name",
+      "slug",
+      "description",
+      "story",
+      "imageUrl",
+      "bannerImageUrl",
+      "primaryColor",
+      "secondaryColor",
+      "accentColor"
+    ]) {
+      if (data[key] !== undefined) patch[key] = data[key];
+    }
+    if (data.priority !== undefined) patch.priority = Number(data.priority);
+    if (data.active !== undefined) patch.active = data.active;
+
     return this.prisma.theme.update({
       where: { id },
-      data: {
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        priority: data.priority === undefined ? undefined : Number(data.priority),
-        active: data.active
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        description: true,
-        priority: true,
-        active: true
-      }
+      data: patch,
+      select: this.productThemeSelect
     });
   }
 

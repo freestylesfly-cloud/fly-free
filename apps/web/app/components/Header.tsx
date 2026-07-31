@@ -350,19 +350,16 @@ export function Header() {
         {isOpen && (
           <div
             onClick={() => setIsOpen(false)}
-            className="md:hidden fixed inset-0 bg-black/40 z-30"
-            style={{ top: '56px' }}
+            className="md:hidden fixed inset-0 z-40 bg-black/40"
           />
         )}
 
         {/* Mobile Menu Drawer - Professional Sidebar */}
         <div
-          className="md:hidden fixed flex flex-col overflow-hidden z-40"
+          className="md:hidden fixed inset-y-0 left-0 flex flex-col overflow-hidden z-50"
           style={{
-            left: 0,
-            top: '56px',
-            width: '260px',
-            height: 'calc(100vh - 56px)',
+            width: '280px',
+            maxWidth: '85vw',
             backgroundColor: 'var(--bg-secondary)',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

@@ -8,6 +8,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
+import { formatRupees, toPaise, toRupees } from '../lib/money';
 
 type Hamper = {
   id: string;
@@ -119,7 +120,7 @@ export default function HampersPage() {
         images: form.images ? form.images.split('\n').filter(Boolean) : [],
         sizeNote: form.sizeNote || null,
         // Stored in paise; the form collects rupees.
-        price: Math.round(Number(form.price || 0) * 100),
+        price: toPaise(form.price),
         gstPercent: Number(form.gstPercent || 5),
         isActive: form.isActive,
         priority: Number(form.priority || 0)
@@ -186,7 +187,7 @@ export default function HampersPage() {
       imageUrl: hamper.imageUrl || '',
       images: hamper.images.join('\n'),
       sizeNote: hamper.sizeNote || '',
-      price: String(Math.round((hamper.price || 0) / 100)),
+      price: String(toRupees(hamper.price)),
       gstPercent: String(hamper.gstPercent),
       isActive: hamper.isActive,
       priority: String(hamper.priority)
@@ -258,7 +259,7 @@ export default function HampersPage() {
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-black/60">
-                            <span className="font-bold text-ink">₹{Math.round((hamper.price || 0) / 100).toLocaleString()}</span>
+                            <span className="font-bold text-ink">{formatRupees(hamper.price)}</span>
                             <span className="rounded-full border border-black/10 bg-black/5 px-2 py-1">Priority {hamper.priority}</span>
                             <span className={`rounded-full px-2 py-1 text-xs font-black ${hamper.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                               {hamper.isActive ? 'Active' : 'Inactive'}

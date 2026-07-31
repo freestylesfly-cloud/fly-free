@@ -538,7 +538,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           {product.description && <p className="mt-5 leading-7" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>}
         </article>
 
-        <article className="rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+        <article id="reviews" className="scroll-mt-24 rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <h2 className="text-2xl font-black">Customer Reviews</h2>
           <div className="mt-5 grid gap-4">
             {(product.reviews || []).length > 0 ? (

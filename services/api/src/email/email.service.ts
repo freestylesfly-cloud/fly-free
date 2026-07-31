@@ -61,14 +61,22 @@ export class EmailService {
         ${this.summaryBlock([
           ["Order #", order.orderNumber || order.id],
           ["Date", this.formatDate(order.createdAt)],
-          ["Amount", `Rs ${this.money(order.total)}`],
           ["Status", order.status || "PLACED"]
         ])}
         <h3>Items Ordered</h3>
         <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+        ${this.summaryBlock([
+          ["Subtotal", `Rs ${this.money(order.subtotal ?? order.total)}`],
+          ...(Number(order.discount) > 0
+            ? [["Discount", `- Rs ${this.money(order.discount)}`] as [string, string]]
+            : []),
+          ["Delivery", Number(order.shippingFee) > 0 ? `Rs ${this.money(order.shippingFee)}` : "FREE"],
+          ["Total paid", `Rs ${this.money(order.total)}`]
+        ])}
         <p><strong>Shipping Address:</strong></p>
         <p>${this.escape(address.street || address.line1 || "")}<br/>${this.escape(address.city || "")}, ${this.escape(address.state || "")} ${this.escape(address.zip || address.postalCode || "")}</p>
         ${this.button(`${this.webUrl()}/orders/${order.id}`, "Track Your Order")}
+        <p style="color:#666;font-size:13px;">Wrong size? You can exchange within 30 days of delivery.</p>
       `
     );
 
