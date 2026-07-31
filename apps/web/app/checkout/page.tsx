@@ -371,7 +371,8 @@ export default function CheckoutPage() {
                 <button
                   onClick={validateCoupon}
                   disabled={couponLoading || couponValid}
-                  className="px-4 py-2 bg-slate-700 text-white font-bold rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+                  className="px-4 py-2 text-white font-bold rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
                 >
                   {couponLoading ? <Loader2 size={16} className="inline animate-spin" /> : 'Apply'}
                 </button>

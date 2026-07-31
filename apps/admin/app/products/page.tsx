@@ -18,7 +18,6 @@ type Product = {
   discountPercent: number;
   category?: { name: string };
   theme?: { name: string; active?: boolean } | null;
-  gender: 'MEN' | 'WOMEN' | 'UNISEX';
   variants?: Array<{ inventory?: { stock: number } | null }>;
   images?: Array<{ url: string; color?: string | null }>;
   isFeatured: boolean;
@@ -101,7 +100,7 @@ export default function ProductsPage() {
                   <tr>
                     <th className="px-5 py-3 text-left">Product</th>
                     <th className="px-5 py-3 text-left">Theme</th>
-                    <th className="px-5 py-3 text-left">Type</th>
+                    <th className="px-5 py-3 text-left">Fit / Type</th>
                     <th className="px-5 py-3 text-left">SKU</th>
                     <th className="px-5 py-3 text-left">Price</th>
                     <th className="px-5 py-3 text-left">Variants</th>
@@ -132,7 +131,7 @@ export default function ProductsPage() {
                             <span className="text-sm text-black/45">No campaign</span>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-sm font-bold">{product.gender || 'UNISEX'}</td>
+                        <td className="px-5 py-4 text-sm font-bold">{product.category?.name || 'Regular'}</td>
                         <td className="px-5 py-4 text-sm">{product.sku}</td>
                         <td className="px-5 py-4">
                           <p className="font-bold">Rs {product.price}</p>

@@ -90,9 +90,11 @@ export function Footer() {
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/products" style={linkStyle}>All products</Link></li>
               <li><Link href="/search" style={linkStyle}>Search</Link></li>
-              <li><Link href="/products?gender=MEN" style={linkStyle}>Men</Link></li>
-              <li><Link href="/products?gender=WOMEN" style={linkStyle}>Women</Link></li>
-              <li><Link href="/products?gender=UNISEX" style={linkStyle}>Unisex</Link></li>
+              <li><Link href="/products?category=regular" style={linkStyle}>Regular</Link></li>
+              <li><Link href="/products?category=oversized" style={linkStyle}>Oversized</Link></li>
+              <li><Link href="/products?category=jerseys" style={linkStyle}>Jerseys</Link></li>
+              <li><Link href="/products?category=polos" style={linkStyle}>Polos</Link></li>
+              <li><Link href="/products?category=hoodies" style={linkStyle}>Hoodies</Link></li>
             </ul>
           </div>
 

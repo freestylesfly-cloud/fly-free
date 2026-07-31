@@ -180,7 +180,7 @@ export default function CategoriesPage() {
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-black">{editingId ? 'Edit category' : 'Create category'}</h2>
-                <p className="text-sm text-black/55">Use for Men, Women, Unisex, Gift Packs, Combos, or new product buckets.</p>
+                <p className="text-sm text-black/55">Use for product fits and types: Regular, Oversized, Jerseys, Polos, Hoodies, Combo, or gifting buckets.</p>
               </div>
               {editingId && (
                 <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }} className="rounded p-2 hover:bg-black/5" aria-label="Cancel edit">

@@ -498,9 +498,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <div className="mt-5 grid gap-3 text-sm">
             <DetailRow label="Brand" value={product.brand || 'Fly Free'} />
             <DetailRow label="Material" value={product.material || 'Premium cotton blend'} />
-            <DetailRow label="Fit" value={product.gender || 'UNISEX'} />
+            <DetailRow label="Fit / Type" value={product.category?.name || 'Regular'} />
             <DetailRow label="Wash care" value={product.washCare || 'Gentle machine wash. Do not bleach.'} />
-            <DetailRow label="Category" value={product.category?.name || 'Apparel'} />
+            <DetailRow label="Wearer" value="Unisex" />
             <DetailRow label="Theme" value={product.theme?.name || 'Fly Free'} />
           </div>
           {product.description && <p className="mt-5 leading-7" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>}

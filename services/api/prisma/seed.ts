@@ -1,4 +1,4 @@
-import { PrismaClient, Gender, OrderStatus, PaymentStatus, ReviewStatus } from '@prisma/client';
+import { PrismaClient, OrderStatus, PaymentStatus, ReviewStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -34,32 +34,61 @@ async function main() {
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
   await prisma.notification.deleteMany();
+  await prisma.newsletterSubscriber.deleteMany();
   await prisma.page.deleteMany();
   await prisma.appSetting.deleteMany();
   await prisma.websiteTheme.deleteMany();
   await prisma.sizeGuide.deleteMany();
 
-  // Create Categories
+  // Create fit/type categories. Fly Free is primarily unisex apparel, so
+  // category means product fit/type instead of Men/Women segmentation.
   const categories = await Promise.all([
     prisma.category.create({
       data: {
-        name: 'Men',
-        slug: 'men',
+        name: 'Regular',
+        slug: 'regular',
         priority: 1,
+        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop',
       },
     }),
     prisma.category.create({
       data: {
-        name: 'Women',
-        slug: 'women',
+        name: 'Oversized',
+        slug: 'oversized',
         priority: 2,
+        imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=900&h=1100&fit=crop',
       },
     }),
     prisma.category.create({
       data: {
-        name: 'Unisex',
-        slug: 'unisex',
+        name: 'Jerseys',
+        slug: 'jerseys',
         priority: 3,
+        imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=900&h=1100&fit=crop',
+      },
+    }),
+    prisma.category.create({
+      data: {
+        name: 'Polos',
+        slug: 'polos',
+        priority: 4,
+        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=900&h=1100&fit=crop',
+      },
+    }),
+    prisma.category.create({
+      data: {
+        name: 'Hoodies',
+        slug: 'hoodies',
+        priority: 5,
+        imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=900&h=1100&fit=crop',
+      },
+    }),
+    prisma.category.create({
+      data: {
+        name: 'Combo',
+        slug: 'combo',
+        priority: 6,
+        imageUrl: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=900&h=1100&fit=crop',
       },
     }),
   ]);

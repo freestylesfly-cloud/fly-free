@@ -52,9 +52,12 @@ export default async function HomePage() {
   // Fallback categories if none exist
   if (categories.length === 0) {
     categories = [
-      { id: '1', name: 'Men', slug: 'men' },
-      { id: '2', name: 'Women', slug: 'women' },
-      { id: '3', name: 'Unisex', slug: 'unisex' }
+      { id: '1', name: 'Regular', slug: 'regular' },
+      { id: '2', name: 'Oversized', slug: 'oversized' },
+      { id: '3', name: 'Jerseys', slug: 'jerseys' },
+      { id: '4', name: 'Polos', slug: 'polos' },
+      { id: '5', name: 'Hoodies', slug: 'hoodies' },
+      { id: '6', name: 'Combo', slug: 'combo' }
     ];
   }
 
@@ -156,7 +159,7 @@ export default async function HomePage() {
       {/* Browse by fit / category */}
       <section className="px-5 py-16 md:py-20" style={{ backgroundColor: 'var(--bg-tertiary)', borderBottom: '2px solid var(--border-color)' }}>
         <div className="mx-auto max-w-7xl">
-          <h3 className="mb-8 text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>Browse by category</h3>
+          <h3 className="mb-8 text-2xl font-black uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>Browse by fit</h3>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category: any) => (
               <Link

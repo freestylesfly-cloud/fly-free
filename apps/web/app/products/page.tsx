@@ -17,12 +17,6 @@ type FilterData = {
   collections: any[];
 };
 
-const genderOptions = [
-  { slug: 'MEN', name: 'Men' },
-  { slug: 'WOMEN', name: 'Women' },
-  { slug: 'UNISEX', name: 'Unisex' },
-];
-
 export default function ProductsPage() {
   return (
     <Suspense fallback={<ProductsSkeleton />}>
@@ -39,7 +33,6 @@ function ProductsBrowser() {
   const [theme, setTheme] = useState('');
   const [collection, setCollection] = useState('');
   const [query, setQuery] = useState('');
-  const [gender, setGender] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [rating, setRating] = useState('');
@@ -52,7 +45,6 @@ function ProductsBrowser() {
     setTheme(searchParams.get('theme') || '');
     setCollection(searchParams.get('collection') || '');
     setQuery(searchParams.get('q') || '');
-    setGender(searchParams.get('gender') || '');
     setMinPrice(searchParams.get('minPrice') || '');
     setMaxPrice(searchParams.get('maxPrice') || '');
     setRating(searchParams.get('rating') || '');
@@ -68,7 +60,6 @@ function ProductsBrowser() {
         if (theme) params.set('theme', theme);
         if (collection) params.set('collection', collection);
         if (query) params.set('q', query);
-        if (gender) params.set('gender', gender);
         if (minPrice) params.set('minPrice', minPrice);
         if (maxPrice) params.set('maxPrice', maxPrice);
         if (rating) params.set('rating', rating);
@@ -92,11 +83,11 @@ function ProductsBrowser() {
 
     const timer = window.setTimeout(fetchData, 220);
     return () => window.clearTimeout(timer);
-  }, [category, theme, collection, query, gender, minPrice, maxPrice, rating, sort]);
+  }, [category, theme, collection, query, minPrice, maxPrice, rating, sort]);
 
   const activeCount = useMemo(
-    () => [category, theme, collection, query, gender, minPrice, maxPrice, rating].filter(Boolean).length,
-    [category, theme, collection, query, gender, minPrice, maxPrice, rating]
+    () => [category, theme, collection, query, minPrice, maxPrice, rating].filter(Boolean).length,
+    [category, theme, collection, query, minPrice, maxPrice, rating]
   );
 
   const activeLabels = useMemo(() => {
@@ -105,20 +96,18 @@ function ProductsBrowser() {
       category && labelFor(filters.categories, category),
       theme && labelFor(filters.themes, theme),
       collection && labelFor(filters.collections, collection),
-      gender && labelFor(genderOptions, gender),
       query && `"${query}"`,
       minPrice && `From ${formatCurrency(Number(minPrice))}`,
       maxPrice && `To ${formatCurrency(Number(maxPrice))}`,
       rating && `${rating}+ stars`,
     ].filter(Boolean) as string[];
-  }, [category, collection, filters, gender, maxPrice, minPrice, query, rating, theme]);
+  }, [category, collection, filters, maxPrice, minPrice, query, rating, theme]);
 
   function clearFilters() {
     setCategory('');
     setTheme('');
     setCollection('');
     setQuery('');
-    setGender('');
     setMinPrice('');
     setMaxPrice('');
     setRating('');
@@ -130,8 +119,6 @@ function ProductsBrowser() {
       filters={filters}
       category={category}
       setCategory={setCategory}
-      gender={gender}
-      setGender={setGender}
       theme={theme}
       setTheme={setTheme}
       collection={collection}
@@ -279,8 +266,6 @@ function FilterPanel(props: {
   filters: FilterData;
   category: string;
   setCategory: (value: string) => void;
-  gender: string;
-  setGender: (value: string) => void;
   theme: string;
   setTheme: (value: string) => void;
   collection: string;
@@ -301,12 +286,8 @@ function FilterPanel(props: {
         {props.activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{props.activeCount}</span>}
       </div>
 
-      <FilterGroup label="Category">
-        <RadioRows value={props.category} onChange={props.setCategory} options={props.filters.categories} emptyLabel="All categories" />
-      </FilterGroup>
-
-      <FilterGroup label="Product type">
-        <RadioRows value={props.gender} onChange={props.setGender} options={genderOptions} emptyLabel="All types" />
+      <FilterGroup label="Fit / Type">
+        <RadioRows value={props.category} onChange={props.setCategory} options={props.filters.categories} emptyLabel="All fits" />
       </FilterGroup>
 
       <FilterGroup label="Shop theme">
@@ -448,7 +429,6 @@ function ProductListRow({ product }: { product: any }) {
         <div className="flex flex-wrap gap-2">
           {product.theme?.name && <span className="rounded-full px-3 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{product.theme.name}</span>}
           {product.category?.name && <span className="rounded-full px-3 py-1 text-xs font-black" style={{ backgroundColor: 'var(--bg-tertiary)' }}>{product.category.name}</span>}
-          {product.gender && <span className="rounded-full px-3 py-1 text-xs font-black" style={{ backgroundColor: 'var(--bg-tertiary)' }}>{product.gender}</span>}
         </div>
         <h2 className="mt-3 text-xl font-black">{product.name}</h2>
         <p className="mt-2 line-clamp-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>

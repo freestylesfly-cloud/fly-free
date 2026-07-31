@@ -220,21 +220,17 @@ export function ProductForm({ productId }: { productId?: string }) {
           <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="auto-generated if empty" />
           <Field label="SKU" value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} required />
           <SearchableSelect
-            label="Product category"
+            label="Product fit / type"
             value={form.categoryId}
-            placeholder="Search Men, Women, Unisex..."
+            placeholder="Search Regular, Oversized, Jerseys..."
             emptyLabel="Auto / Uncategorized"
             options={categories.map((category) => ({ value: category.id, label: category.name, hint: category.slug }))}
             onChange={(value) => setForm({ ...form, categoryId: value })}
           />
-          <label className="grid gap-2 text-sm font-bold">
-            Product type
-            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value as ProductFormData['gender'] })} className="rounded border border-black/10 px-3 py-2">
-              <option value="UNISEX">Unisex</option>
-              <option value="MEN">Men</option>
-              <option value="WOMEN">Women</option>
-            </select>
-          </label>
+          <div className="rounded border border-black/10 bg-black/[0.03] px-3 py-2 text-sm">
+            <p className="font-black">Wearer</p>
+            <p className="mt-1 text-black/55">All storefront products are treated as unisex. Use fit/type for Regular, Oversized, Jerseys, Polos, Hoodies, and Combo.</p>
+          </div>
           <SearchableSelect
             label="Shop-by-theme campaign"
             value={form.themeId}
