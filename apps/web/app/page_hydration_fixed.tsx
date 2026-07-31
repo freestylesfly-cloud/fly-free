@@ -25,8 +25,7 @@ interface Theme {
   slug: string;
   description: string;
   primaryColor: string;
-  bannerImageUrl?: string;
-  imageUrl?: string;
+  heroDesktopImageUrl?: string;
   isActive?: boolean;
 }
 
@@ -39,45 +38,22 @@ interface Review {
   product?: { name: string };
 }
 
-interface Hamper {
-  id: string;
-  name: string;
-  description: string;
-  basePrice: number;
-  images?: Array<{ url: string }>;
-  isVisible?: boolean;
-}
-
-interface InstagramPost {
-  id: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  caption: string;
-  instagramLink: string;
-}
-
 async function getHomeData() {
   try {
-    const [themesRes, productsRes, reviewsRes, hampersRes, instagramRes] = await Promise.all([
+    const [themesRes, productsRes, reviewsRes] = await Promise.all([
       fetch(`${API_BASE}/cms/themes?limit=20`, { cache: 'no-store' }),
       fetch(`${API_BASE}/catalog/products?limit=50`, { cache: 'no-store' }),
       fetch(`${API_BASE}/reviews?limit=50`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/hampers?limit=12`, { cache: 'no-store' }).catch(() => null),
-      fetch(`${API_BASE}/cms/instagram-posts?limit=12`, { cache: 'no-store' }).catch(() => null),
     ]);
 
-    const themes = themesRes.ok ? await themesRes.json() : { data: [] };
-    const products = productsRes.ok ? await productsRes.json() : { data: [] };
-    const reviews = reviewsRes.ok ? await reviewsRes.json() : { data: [] };
-    const hampers = hampersRes?.ok ? await hampersRes.json() : { data: [] };
-    const instagram = instagramRes?.ok ? await instagramRes.json() : { data: [] };
+    const themes = themesRes.ok ? await themesRes.json() : [];
+    const products = productsRes.ok ? await productsRes.json() : [];
+    const reviews = reviewsRes.ok ? await reviewsRes.json() : [];
 
     return {
       themes: (Array.isArray(themes) ? themes : themes.data || []).filter(Boolean),
       products: (Array.isArray(products) ? products : products.data || []).filter((p: Product) => p.isVisible !== false),
       reviews: (Array.isArray(reviews) ? reviews : reviews.data || []).filter(Boolean),
-      hampers: (Array.isArray(hampers) ? hampers : hampers.data || []).filter((h: Hamper) => h.isVisible !== false),
-      instagram: Array.isArray(instagram) ? instagram : instagram.data || [],
     };
   } catch (error) {
     console.error('Failed to load home data:', error);
@@ -85,14 +61,12 @@ async function getHomeData() {
       themes: [],
       products: [],
       reviews: [],
-      hampers: [],
-      instagram: [],
     };
   }
 }
 
 export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram } = await getHomeData();
+  const { themes, products, reviews } = await getHomeData();
 
   const activeTheme = themes.find((t: Theme) => t.isActive) || themes[0];
   const featuredProducts = products.filter((p: Product) => p.isFeatured || p.isTrending).slice(0, 8);
@@ -108,7 +82,7 @@ export default async function HomePage() {
       <section
         className="relative min-h-screen md:min-h-[600px] flex items-center justify-center overflow-hidden"
         style={{
-          backgroundImage: activeTheme?.bannerImageUrl ? `url('${activeTheme.bannerImageUrl}')` : undefined,
+          backgroundImage: activeTheme?.heroDesktopImageUrl ? `url('${activeTheme.heroDesktopImageUrl}')` : undefined,
           backgroundColor: activeTheme?.primaryColor || 'var(--color-primary)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -161,7 +135,7 @@ export default async function HomePage() {
               </Link>
             }
           >
-            {featuredProducts.map((product: Product) => (
+            {featuredProducts.map((product: any) => (
               <div key={product.id} className="mo-slide flex-shrink-0" style={{ width: '280px' }}>
                 <ProductCard
                   id={product.id}
@@ -211,7 +185,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {bestSellers.slice(0, 8).map((product: Product) => (
+            {bestSellers.slice(0, 8).map((product: any) => (
               <div key={product.id}>
                 <ProductCard
                   id={product.id}
@@ -251,7 +225,7 @@ export default async function HomePage() {
                 <div
                   className="aspect-video bg-gradient-to-br flex items-end justify-start p-6 text-white"
                   style={{
-                    backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
+                    backgroundImage: theme.heroDesktopImageUrl ? `url('${theme.heroDesktopImageUrl}')` : undefined,
                     backgroundColor: theme.primaryColor,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
@@ -338,145 +312,6 @@ export default async function HomePage() {
             >
               See All Reviews <ArrowRight size={18} />
             </Link>
-          </div>
-        </section>
-      )}
-
-      {/* HAMPER SHOWCASE - Gift Collections */}
-      {hampers.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <span className="text-2xl">🎁</span>
-              <span className="text-sm font-black uppercase">Gift Collections</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              Perfect Hampers for Every Occasion
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Curated gift sets and bundles for your loved ones
-            </p>
-          </div>
-
-          <HorizontalSlider
-            title=""
-            action={
-              <Link href="/hampers" className="inline-flex items-center gap-2 text-sm font-bold uppercase" style={{ color: 'var(--color-primary)' }}>
-                View All <ArrowRight size={16} />
-              </Link>
-            }
-          >
-            {hampers.slice(0, 6).map((hamper: Hamper) => (
-              <Link
-                key={hamper.id}
-                href={`/hampers/${hamper.id}`}
-                className="mo-slide flex-shrink-0 group overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
-                style={{ width: '280px', borderColor: 'var(--border-color)' }}
-              >
-                <div
-                  className="aspect-square bg-gray-200 overflow-hidden flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--bg-secondary)' }}
-                >
-                  {hamper.images?.[0]?.url ? (
-                    <img
-                      src={hamper.images[0].url}
-                      alt={hamper.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                    />
-                  ) : (
-                    <span className="text-4xl">🎁</span>
-                  )}
-                </div>
-                <div className="p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                  <h3 className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>
-                    {hamper.name}
-                  </h3>
-                  <p className="text-sm mt-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                    {hamper.description}
-                  </p>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="font-black text-lg" style={{ color: 'var(--color-primary)' }}>
-                      ₹{Math.round((hamper.basePrice || 0) / 100)}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold uppercase transition group-hover:gap-2" style={{ color: 'var(--color-primary)' }}>
-                      View <ArrowRight size={14} />
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </HorizontalSlider>
-        </section>
-      )}
-
-      {/* INSTAGRAM FEED */}
-      {instagram.length > 0 && (
-        <section className="mx-auto max-w-7xl px-5 py-16 md:py-20 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-2 mb-3" style={{ color: 'var(--color-primary)' }}>
-              <Instagram size={20} />
-              <span className="text-sm font-black uppercase">Follow Us</span>
-            </div>
-            <h2 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>
-              @flyfree_styles
-            </h2>
-            <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
-              See how our community styles Fly Free pieces
-            </p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {instagram.slice(0, 6).map((post: InstagramPost) => (
-              <a
-                key={post.id}
-                href={post.instagramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative overflow-hidden rounded-xl border-2 aspect-square bg-gray-100 transition hover:shadow-lg"
-                style={{ borderColor: 'var(--border-color)' }}
-              >
-                {/* Background Image or Video Thumbnail */}
-                {post.imageUrl && (
-                  <img
-                    src={post.imageUrl}
-                    alt={post.caption}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                  />
-                )}
-                {post.videoUrl && !post.imageUrl && (
-                  <video
-                    src={post.videoUrl}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                  />
-                )}
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition text-white text-center">
-                    <Instagram size={32} className="mx-auto mb-2" />
-                    <p className="text-sm font-bold">View on Instagram</p>
-                  </div>
-                </div>
-
-                {/* Caption at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 text-white opacity-0 group-hover:opacity-100 transition">
-                  <p className="text-xs line-clamp-2">{post.caption}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <a
-              href="https://instagram.com/flyfree_styles"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-white"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              <Instagram size={18} />
-              Follow on Instagram <ArrowRight size={18} />
-            </a>
           </div>
         </section>
       )}

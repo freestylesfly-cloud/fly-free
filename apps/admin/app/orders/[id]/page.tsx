@@ -98,6 +98,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     </select>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Link href={`/invoices/${order.id}`} className="inline-flex items-center gap-2 rounded bg-black/5 px-4 py-2 font-bold text-ink hover:bg-black/10 border border-black/10">
+                      <ReceiptText size={16} /> View invoice
+                    </Link>
                     <a href={apiService.generateInvoice(order.id)} target="_blank" className="inline-flex items-center gap-2 rounded bg-ink px-4 py-2 font-bold text-white">
                       <Download size={16} /> Download invoice
                     </a>

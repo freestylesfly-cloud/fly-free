@@ -42,9 +42,11 @@ class ApiService {
 
     try {
       const headers = new Headers(options.headers);
-      if (options.body !== undefined && options.body !== null) {
-        Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
-      }
+
+      // Always set default headers (Content-Type, etc)
+      Object.entries(this.defaultHeaders).forEach(([key, value]) => headers.set(key, value));
+
+      // Add auth headers
       Object.entries(this.authHeaders()).forEach(([key, value]) => headers.set(key, value));
 
       const response = await fetch(url, {
@@ -482,6 +484,31 @@ class ApiService {
 
   async deleteProductTheme(themeId: string) {
     return this.request(`/api/admin/product-themes/${themeId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============ INSTAGRAM FEED ============
+  async getInstagramPosts() {
+    return this.request('/api/admin/instagram-posts');
+  }
+
+  async createInstagramPost(data: any) {
+    return this.request('/api/admin/instagram-posts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateInstagramPost(id: string, data: any) {
+    return this.request(`/api/admin/instagram-posts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteInstagramPost(id: string) {
+    return this.request(`/api/admin/instagram-posts/${id}`, {
       method: 'DELETE',
     });
   }

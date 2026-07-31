@@ -68,7 +68,7 @@ export class EmailService {
         <table style="width: 100%; border-collapse: collapse;">${rows}</table>
         <p><strong>Shipping Address:</strong></p>
         <p>${this.escape(address.street || address.line1 || "")}<br/>${this.escape(address.city || "")}, ${this.escape(address.state || "")} ${this.escape(address.zip || address.postalCode || "")}</p>
-        ${this.button(`${this.webUrl()}/orders/${order.id}/track`, "Track Your Order")}
+        ${this.button(`${this.webUrl()}/orders/${order.id}`, "Track Your Order")}
       `
     );
 
@@ -96,7 +96,7 @@ export class EmailService {
           ["Tracking #", order.trackingNumber],
           ["Expected Delivery", order.expectedDelivery ? this.formatDate(order.expectedDelivery) : undefined]
         ])}
-        ${this.button(`${this.webUrl()}/orders/${order.id}/track`, "View Order Details")}
+        ${this.button(`${this.webUrl()}/orders/${order.id}`, "View Order Details")}
       `
     );
 

@@ -166,7 +166,7 @@ export function Header() {
             <DesktopNavLink href="/products" label="Shop" active={isActive('/products')} />
             <DesktopNavLink href="/about" label="About" active={isActive('/about')} />
             <DesktopNavLink href="/influencers" label="Influencers" active={isActive('/influencers')} />
-            <DesktopNavLink href="/#reviews" label="Reviews" active={false} />
+            <DesktopNavLink href="/reviews" label="Reviews" active={isActive('/reviews')} />
           </nav>
 
           {/* Right: Actions */}
@@ -339,7 +339,7 @@ export function Header() {
                 <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon="🛍️" />
                 <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon="ℹ️" />
                 <MobileDrawerLink href="/influencers" label="Influencers" active={isActive('/influencers')} onClick={() => setIsOpen(false)} icon="⭐" />
-                <MobileDrawerLink href="/#reviews" label="Reviews" active={false} onClick={() => setIsOpen(false)} icon="⭐" />
+                <MobileDrawerLink href="/reviews" label="Reviews" active={isActive('/reviews')} onClick={() => setIsOpen(false)} icon="⭐" />
               </div>
 
               {/* Account Section */}

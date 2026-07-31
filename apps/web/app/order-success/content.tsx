@@ -186,7 +186,7 @@ export default function OrderSuccessContent() {
             </div>
 
             {/* Info Box */}
-            <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-secondary)', backgroundOpacity: '0.1' }}>
+            <div className="rounded-lg p-4" style={{ backgroundColor: 'color-mix(in srgb, var(--color-secondary) 10%, transparent)' }}>
               <p className="text-sm text-center" style={{ color: 'var(--text-primary)' }}>
                 A confirmation email has been sent to your email address. You can track your order from your account dashboard.
               </p>

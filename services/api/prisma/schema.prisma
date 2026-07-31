@@ -536,3 +536,16 @@ model SizeGuide {
   @@index([active])
 }
 
+model InstagramPost {
+  id            String   @id @default(cuid())
+  imageUrl      String?
+  videoUrl      String?
+  caption       String
+  instagramLink String
+  displayOrder  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([displayOrder])
+}
+

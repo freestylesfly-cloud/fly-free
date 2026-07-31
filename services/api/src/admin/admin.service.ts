@@ -313,54 +313,82 @@ export class AdminService {
       throw new Error("Order not found");
     }
 
-    const order = await this.prisma.$transaction(async (tx: any) => {
-      const updated = await tx.order.update({
+    try {
+      // Simple update without includes first
+      const order = await this.prisma.order.update({
         where: { id },
-        data: { status: normalizedStatus as any },
-        include: { user: true, items: { include: { product: true } }, shippingAddress: true, payment: true, invoice: true }
+        data: { status: normalizedStatus as any }
       });
 
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: id,
-          fromStatus: existing.status as any,
-          toStatus: normalizedStatus as any,
-          note: note || undefined,
-          changedBy
+      // Fetch full order data after update
+      const fullOrder = await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: { include: { product: true } },
+          payment: true,
+          invoice: true,
+          reviews: { include: { user: true, product: true } },
+          referrals: { include: { influencer: true } },
+          statusHistory: true
         }
       });
 
-      await tx.notification.create({
-        data: {
-          channel: "ADMIN",
-          type: "ORDER_STATUS_CHANGED",
-          entityType: "Order",
-          entityId: id,
-          title: "Order status updated",
-          body: `Order ${id} changed from ${existing.status} to ${normalizedStatus}${note ? `: ${note}` : ""}`,
-          status: "PENDING"
-        }
-      });
-
-      return updated;
-    });
-
-    if (order.user?.email) {
+      // Create status history (non-critical)
       try {
-        await this.emailService.sendOrderStatusUpdate(order.user.email, {
-          id: order.id,
-          orderNumber: order.id,
-          customerName: order.user.name || order.user.email,
-          status: order.status,
-          expectedDelivery: undefined
+        await this.prisma.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            fromStatus: existing.status as any,
+            toStatus: normalizedStatus as any,
+            note: note || undefined,
+            changedBy
+          }
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown email error";
-        this.logger.warn(`Order ${order.id} status updated, but status email was not sent: ${message}`);
+        this.logger.warn(`Failed to create status history for order ${id}:`, error);
       }
-    }
 
-    return order;
+      // Create notification (non-critical)
+      try {
+        await this.prisma.notification.create({
+          data: {
+            channel: "ADMIN",
+            type: "ORDER_STATUS_CHANGED",
+            entityType: "Order",
+            entityId: id,
+            title: "Order status updated",
+            body: `Order ${id} changed from ${existing.status} to ${normalizedStatus}${note ? `: ${note}` : ""}`,
+            status: "PENDING"
+          }
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to create notification for order ${id}:`, error);
+      }
+
+      // Send email (non-critical) - Get user from database
+      if (order.userId) {
+        try {
+          const user = await this.prisma.user.findUnique({ where: { id: order.userId } });
+          if (user?.email) {
+            await this.emailService.sendOrderStatusUpdate(user.email, {
+              id: order.id,
+              orderNumber: order.id,
+              customerName: user.name || user.email,
+              status: order.status,
+              expectedDelivery: undefined
+            });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown email error";
+          this.logger.warn(`Order ${order.id} status updated, but status email was not sent: ${message}`);
+        }
+      }
+
+      return fullOrder || order;
+    } catch (error) {
+      this.logger.error(`Failed to update order status for ${id}:`, error);
+      throw error;
+    }
   }
 
   async generateInvoicePdf(id: string) {

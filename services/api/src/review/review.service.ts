@@ -1,9 +1,20 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { createClient } from "@supabase/supabase-js";
 
 @Injectable()
 export class ReviewService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ReviewService.name);
+  private supabase: any;
+
+  constructor(private readonly prisma: PrismaService) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+    if (supabaseUrl && supabaseKey) {
+      this.supabase = createClient(supabaseUrl, supabaseKey);
+    }
+  }
 
   // Get reviews for a product
   async getProductReviews(productId: string, page: number = 1) {
@@ -141,5 +152,55 @@ export class ReviewService {
       where: { id },
       data: { status: "REJECTED" },
     });
+  }
+
+  // Upload review images to Supabase
+  async uploadImages(files: Express.Multer.File[]) {
+    if (!this.supabase) {
+      this.logger.warn("Supabase not configured, returning empty URLs");
+      return { data: { urls: [] } };
+    }
+
+    const urls: string[] = [];
+    const bucket = "products"; // Use existing bucket
+
+    for (const file of files) {
+      try {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const fileName = `reviews/${timestamp}-${random}-${file.originalname}`;
+
+        // Upload file to Supabase
+        const { data, error } = await this.supabase.storage
+          .from(bucket)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+
+        if (error) {
+          this.logger.warn(`Failed to upload ${file.originalname}: ${error.message}`);
+          continue;
+        }
+
+        // Get public URL
+        const { data: publicUrl } = this.supabase.storage
+          .from(bucket)
+          .getPublicUrl(data.path);
+
+        if (publicUrl?.publicUrl) {
+          urls.push(publicUrl.publicUrl);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        this.logger.warn(`Error uploading file: ${message}`);
+        continue;
+      }
+    }
+
+    return {
+      data: { urls },
+      message: `Uploaded ${urls.length} of ${files.length} images`
+    };
   }
 }

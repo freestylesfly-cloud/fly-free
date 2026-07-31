@@ -1255,6 +1255,35 @@ You can contact Fly Free support for privacy questions, account help, or communi
     }),
   ]);
 
+  // Instagram posts
+  console.log('📸 Creating Instagram posts...');
+  await Promise.all([
+    prisma.instagramPost.create({
+      data: {
+        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=500&fit=crop',
+        caption: 'Bihu drop is live! 🎉 Wear Northeast stories with our new collection. Link in bio.',
+        instagramLink: 'https://instagram.com/flyfree',
+        displayOrder: 1,
+      },
+    }),
+    prisma.instagramPost.create({
+      data: {
+        imageUrl: 'https://images.unsplash.com/photo-1503341455253-b2b723bb12d5?w=400&h=500&fit=crop',
+        caption: 'Puja gifting open 🎁 Schedule gift-ready tees and custom cards for Puja season. Shop now!',
+        instagramLink: 'https://instagram.com/flyfree',
+        displayOrder: 2,
+      },
+    }),
+    prisma.instagramPost.create({
+      data: {
+        imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=500&fit=crop',
+        caption: 'Spider-Man collection dropping soon 🕷️ Who\'s excited? Pre-order coming this week.',
+        instagramLink: 'https://instagram.com/flyfree',
+        displayOrder: 3,
+      },
+    }),
+  ]);
+
   // Gift options removed - using hampers instead
 
   await Promise.all([

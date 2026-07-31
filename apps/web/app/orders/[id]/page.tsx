@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Package, ReceiptText } from 'lucide-react';
+import { ArrowLeft, Loader2, Package, ReceiptText, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
 type OrderDetail = {
@@ -173,6 +173,22 @@ export default function OrderDetailPage() {
                 {order.shippingAddress.phone && <p className="mt-2 font-bold" style={{ color: 'var(--text-secondary)' }}>{order.shippingAddress.phone}</p>}
               </article>
             )}
+
+            <article className="rounded-lg border p-5 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div className="mb-3 flex justify-center">
+                <MessageSquare size={24} style={{ color: 'var(--color-primary)' }} />
+              </div>
+              <h2 className="mb-2 text-lg font-black">Share Your Review</h2>
+              <p className="mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>Help other customers discover great products</p>
+              <Link
+                href={`/orders/${order.id}/review`}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 font-bold text-white transition hover:opacity-90"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                <MessageSquare size={18} />
+                Write a Review
+              </Link>
+            </article>
           </aside>
         </div>
       </section>

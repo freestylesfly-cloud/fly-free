@@ -1,0 +1,268 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check } from 'lucide-react';
+import { DashboardLayout } from '../components/DashboardLayout';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useFetch } from '../hooks/useFetch';
+import { apiService } from '../services/api';
+
+interface InstagramPost {
+  id: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  caption: string;
+  instagramLink: string;
+  displayOrder: number;
+  createdAt: string;
+}
+
+export default function InstagramPage() {
+  const { data: posts, loading, refetch } = useFetch<InstagramPost[]>(
+    () => apiService.getInstagramPosts(),
+    { skip: false }
+  );
+
+  const [formData, setFormData] = useState({
+    imageUrl: '',
+    videoUrl: '',
+    caption: '',
+    instagramLink: '',
+    displayOrder: 1
+  });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setMessage('');
+
+    try {
+      if (editingId) {
+        await apiService.updateInstagramPost(editingId, formData);
+        setMessage('Post updated successfully');
+      } else {
+        await apiService.createInstagramPost(formData);
+        setMessage('Post created successfully');
+      }
+
+      setFormData({
+        imageUrl: '',
+        videoUrl: '',
+        caption: '',
+        instagramLink: '',
+        displayOrder: 1
+      });
+      setEditingId(null);
+      refetch();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to save post');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this post?')) return;
+
+    try {
+      await apiService.deleteInstagramPost(id);
+      setMessage('Post deleted successfully');
+      refetch();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete post');
+    }
+  }
+
+  function handleEdit(post: InstagramPost) {
+    setFormData({
+      imageUrl: post.imageUrl || '',
+      videoUrl: post.videoUrl || '',
+      caption: post.caption,
+      instagramLink: post.instagramLink,
+      displayOrder: post.displayOrder || 1
+    });
+    setEditingId(post.id);
+  }
+
+  function handleCopy(text: string, id: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  return (
+    <ProtectedRoute>
+      <DashboardLayout title="Instagram Feed Manager" subtitle="Manage posts displayed on homepage">
+        <div className="space-y-5">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-bold text-black/60 hover:text-ink">
+            <ArrowLeft size={16} /> Back to dashboard
+          </Link>
+
+          {message && (
+            <div className={`rounded border ${message.includes('success') ? 'bg-mint/15 text-ink' : 'bg-red-50 text-red-700'} border-black/10 p-4`}>
+              {message}
+            </div>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Form */}
+            <section className="rounded border border-black/10 bg-white p-5 lg:col-span-1">
+              <h2 className="mb-4 text-lg font-black">{editingId ? 'Edit Post' : 'Add New Post'}</h2>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase">Image URL</label>
+                  <input
+                    type="url"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-black/60">JPG, PNG (3:4 aspect ratio recommended)</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase">Video URL (optional)</label>
+                  <input
+                    type="url"
+                    value={formData.videoUrl}
+                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-black/60">MP4, WebM</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase">Caption</label>
+                  <textarea
+                    value={formData.caption}
+                    onChange={(e) => setFormData({ ...formData, caption: e.target.value })}
+                    placeholder="Post caption / description"
+                    rows={3}
+                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase">Instagram Post Link</label>
+                  <input
+                    type="url"
+                    value={formData.instagramLink}
+                    onChange={(e) => setFormData({ ...formData, instagramLink: e.target.value })}
+                    placeholder="https://instagram.com/p/..."
+                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase">Display Order</label>
+                  <input
+                    type="number"
+                    value={formData.displayOrder}
+                    onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
+                    min="1"
+                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 rounded bg-ink px-4 py-2 font-bold text-white disabled:opacity-50"
+                  >
+                    <Plus size={16} className="inline mr-2" />
+                    {editingId ? 'Update Post' : 'Add Post'}
+                  </button>
+
+                  {editingId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setFormData({
+                          imageUrl: '',
+                          videoUrl: '',
+                          caption: '',
+                          instagramLink: '',
+                          displayOrder: 1
+                        });
+                      }}
+                      className="rounded border border-black/10 px-4 py-2 font-bold hover:bg-black/5"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </section>
+
+            {/* Posts List */}
+            <section className="rounded border border-black/10 bg-white p-5 lg:col-span-2">
+              <h2 className="mb-4 text-lg font-black">
+                Posts ({posts?.length || 0})
+              </h2>
+
+              {loading ? (
+                <p className="text-black/60">Loading...</p>
+              ) : !posts || posts.length === 0 ? (
+                <p className="text-black/60">No posts yet. Add your first Instagram post above.</p>
+              ) : (
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {posts.map((post) => (
+                    <div key={post.id} className="flex gap-3 rounded border border-black/10 p-3 hover:bg-black/5">
+                      {post.imageUrl && (
+                        <img
+                          src={post.imageUrl}
+                          alt={post.caption}
+                          className="h-16 w-16 rounded object-cover"
+                        />
+                      )}
+
+                      <div className="flex-1">
+                        <p className="line-clamp-2 font-bold text-sm">{post.caption}</p>
+                        <p className="mt-1 text-xs text-black/60">Order: {post.displayOrder}</p>
+                        <p className="mt-1 text-xs text-black/60 font-mono break-all">{post.instagramLink}</p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => handleCopy(post.instagramLink, post.id)}
+                          className="flex items-center gap-1 rounded border border-black/10 px-2 py-1 text-xs font-bold hover:bg-black/5"
+                        >
+                          {copied === post.id ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleEdit(post)}
+                          className="flex items-center gap-1 rounded border border-black/10 px-2 py-1 text-xs font-bold text-ink hover:bg-black/5"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(post.id)}
+                          className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from "@nestjs/common";
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseInterceptors, UploadedFiles } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { FilesInterceptor } from "@nestjs/platform-express";
 import { ReviewService } from "./review.service";
 
 @Controller("reviews")
@@ -56,5 +57,13 @@ export class ReviewController {
   @Put("admin/:id/reject")
   async rejectReview(@Param("id") id: string) {
     return await this.reviewService.rejectReview(id);
+  }
+
+  // Upload review images
+  @ApiTags("⭐ Reviews")
+  @Post("upload-images")
+  @UseInterceptors(FilesInterceptor("files", 5))
+  async uploadImages(@UploadedFiles() files: Express.Multer.File[]) {
+    return await this.reviewService.uploadImages(files);
   }
 }
