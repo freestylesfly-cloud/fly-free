@@ -420,10 +420,12 @@ export default function CheckoutPage() {
                   <span>-₹{baseDiscount}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span style={{ color: 'var(--text-secondary)' }}>GST (18%)</span>
-                <span style={{ color: 'var(--text-primary)' }}>₹{tax}</span>
-              </div>
+              {tax > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: 'var(--text-secondary)' }}>Tax & Fees</span>
+                  <span style={{ color: 'var(--text-primary)' }}>₹{tax}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-black pt-3" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
                 <span style={{ color: 'var(--text-primary)' }}>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>₹{total}</span>

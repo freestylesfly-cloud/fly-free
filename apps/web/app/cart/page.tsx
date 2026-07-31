@@ -152,7 +152,7 @@ export default function CartPage() {
 
             <div className="space-y-3 border-y py-5" style={{ borderColor: 'var(--border-color)' }}>
               <SummaryRow label="Subtotal" value={formatCurrency(subtotal)} />
-              <SummaryRow label="GST (18%)" value={formatCurrency(tax)} />
+              {tax > 0 && <SummaryRow label="Tax & Fees" value={formatCurrency(tax)} />}
               <SummaryRow label="Shipping" value="FREE" highlight />
             </div>
 
