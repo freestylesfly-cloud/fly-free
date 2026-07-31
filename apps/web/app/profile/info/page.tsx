@@ -9,11 +9,16 @@ export default function ProfileInfoPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
+  const fetchProfile = useAuthStore((state) => state.fetchProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
+
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
   useEffect(() => {
     if (user) {

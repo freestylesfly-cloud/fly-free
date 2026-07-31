@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException, ConflictException } from "@nestjs/common";
+import { Injectable, Logger, BadRequestException, UnauthorizedException, ConflictException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
@@ -7,6 +7,7 @@ import * as jwt from "jsonwebtoken";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly saltRounds = 10;
 
   constructor(
@@ -17,7 +18,18 @@ export class AuthService {
 
   // ==================== USER AUTHENTICATION ====================
 
-  async signupUser(email: string, password: string, name: string, phone?: string) {
+  /**
+   * Emails arrive from forms with stray whitespace and mixed case. Normalising
+   * on the way in keeps one account per address and stops a trailing space from
+   * silently locking someone out of their own login.
+   */
+  private normalizeEmail(email: string) {
+    return (email || "").trim().toLowerCase();
+  }
+
+  async signupUser(rawEmail: string, password: string, name: string, phone?: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     if (!email || !password || !name) {
       throw new BadRequestException("Email, password, and name are required");
     }
@@ -79,7 +91,9 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(email: string, code: string) {
+  async verifyEmail(rawEmail: string, code: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     if (!email || !code) {
       throw new BadRequestException("Email and verification code are required");
     }
@@ -110,7 +124,9 @@ export class AuthService {
     return { message: "Email verified successfully" };
   }
 
-  async resendVerificationEmail(email: string) {
+  async resendVerificationEmail(rawEmail: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     if (!email) {
       throw new BadRequestException("Email is required");
     }
@@ -144,7 +160,9 @@ export class AuthService {
     return { message: "Verification email sent. Check your inbox." };
   }
 
-  async loginUser(email: string, password: string) {
+  async loginUser(rawEmail: string, password: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     if (!email || !password) {
       throw new BadRequestException("Email and password are required");
     }
@@ -275,10 +293,10 @@ export class AuthService {
 
   // ==================== ADMIN AUTHENTICATION ====================
 
-  async loginAdmin(email: string, password: string) {
+  async loginAdmin(rawEmail: string, password: string) {
     try {
       const admin = await this.prisma.adminUser.findUnique({
-        where: { email },
+        where: { email: this.normalizeEmail(rawEmail) },
         include: { role: { include: { permissions: true } } }
       });
 
@@ -318,9 +336,14 @@ export class AuthService {
 
   // ==================== PASSWORD RESET ====================
 
-  async sendPasswordResetEmail(email: string) {
+  async sendPasswordResetEmail(rawEmail: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
+      // Deliberately vague so the endpoint cannot be used to enumerate accounts,
+      // but log it so a genuine delivery problem is still diagnosable.
+      this.logger.warn(`Password reset requested for unknown address: ${email}`);
       return { message: "If user exists, password reset email sent" };
     }
 
@@ -344,7 +367,9 @@ export class AuthService {
     return { message: "Password reset email sent" };
   }
 
-  async resetPassword(email: string, code: string, newPassword: string) {
+  async resetPassword(rawEmail: string, code: string, newPassword: string) {
+    const email = this.normalizeEmail(rawEmail);
+
     if (!email || !code || !newPassword) {
       return { error: "Email, code, and new password are required", status: 400 };
     }

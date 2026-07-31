@@ -11,6 +11,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   const user = useAuthStore((state) => state.user);
   const hydrated = useAuthStore((state) => state.hydrated);
   const logout = useAuthStore((state) => state.logout);
+  const fetchProfile = useAuthStore((state) => state.fetchProfile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -18,6 +19,12 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
       router.replace(`/auth/login?next=${encodeURIComponent(pathname || '/profile/info')}`);
     }
   }, [hydrated, pathname, router, user]);
+
+  // Refresh from the API so the sidebar shows the real name, not a login snapshot.
+  useEffect(() => {
+    if (user) void fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleLogout = async () => {
     if (confirm('Logout from your account?')) {

@@ -404,6 +404,23 @@ class ApiService {
   }
 
   // ============ NOTIFICATIONS ============
+  async getActivityLogs(params?: { level?: string; status?: string; search?: string; page?: number; limit?: number }) {
+    const query = new URLSearchParams();
+    if (params?.level && params.level !== 'ALL') query.append('level', params.level);
+    if (params?.status && params.status !== 'all') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    query.append('page', String(params?.page ?? 1));
+    query.append('limit', String(params?.limit ?? 50));
+
+    return this.request<{ data: any[]; total: number; page: number; pages: number }>(
+      `/api/admin/activity-logs?${query.toString()}`
+    );
+  }
+
+  async getActivityLogStats() {
+    return this.request<any>('/api/admin/activity-logs/stats');
+  }
+
   async getNotifications() {
     return this.request('/api/admin/notifications');
   }

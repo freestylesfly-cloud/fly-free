@@ -2,63 +2,94 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
+import { AlertTriangle, Home, RotateCcw, ShoppingBag } from 'lucide-react';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error('Error:', error);
+    console.error('Unhandled error:', error);
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ink via-ink to-coral/10 px-5">
-      <div className="w-full max-w-lg text-center space-y-6">
-        {/* Icon */}
+    <main
+      className="flex min-h-[70vh] items-center justify-center px-5 py-16"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+    >
+      <div className="w-full max-w-xl text-center">
         <div className="flex justify-center">
-          <AlertTriangle size={80} className="text-red-500 animate-pulse" />
+          <span
+            className="flex h-16 w-16 items-center justify-center rounded-full"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)' }}
+          >
+            <AlertTriangle size={30} style={{ color: 'var(--color-primary)' }} />
+          </span>
         </div>
 
-        {/* Content */}
-        <div className="space-y-4">
-          <h1 className="text-4xl font-black text-white">Something Went Wrong</h1>
-          <p className="text-white/70 leading-relaxed">
-            We encountered an error while processing your request. Our team has been notified. Please try again.
-          </p>
+        <p
+          className="mt-6 text-sm font-black uppercase tracking-[0.3em]"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          Something broke
+        </p>
 
-          {/* Error Details (Dev Only) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-left mt-4">
-              <p className="text-xs font-mono text-red-400 break-all">{error.message}</p>
-              {error.digest && <p className="text-xs text-white/40 mt-2">Digest: {error.digest}</p>}
-            </div>
-          )}
-        </div>
+        <h1
+          className="mt-3 text-3xl font-black leading-tight sm:text-4xl"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          That didn&apos;t load properly
+        </h1>
 
-        {/* Actions */}
-        <div className="flex gap-4 flex-col sm:flex-row">
+        <p className="mx-auto mt-4 max-w-md leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          This is on us, not you. Nothing in your cart or account has changed. Try again, or head back
+          and pick up where you left off.
+        </p>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="flex-1 bg-gradient-to-r from-coral to-mint text-white font-bold py-3 rounded-lg hover:shadow-lg hover:shadow-coral/50 flex items-center justify-center gap-2 transition"
+            className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-black text-white transition hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
-            <RotateCcw size={20} />
-            Try Again
+            <RotateCcw size={18} /> Try again
           </button>
           <Link
             href="/"
-            className="flex-1 border-2 border-white/20 text-white font-bold py-3 rounded-lg hover:border-coral hover:text-coral flex items-center justify-center gap-2 transition"
+            className="inline-flex items-center gap-2 rounded-lg border-2 px-6 py-3 font-black transition hover:opacity-70"
+            style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
           >
-            <Home size={20} />
-            Home
+            <Home size={18} /> Home
+          </Link>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 rounded-lg border-2 px-6 py-3 font-black transition hover:opacity-70"
+            style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+          >
+            <ShoppingBag size={18} /> Shop
           </Link>
         </div>
 
-        {/* Footer */}
-        <p className="text-xs text-white/40 pt-4">
-          Error ID: {error.digest || 'unknown'} | Need help?{' '}
-          <Link href="/contact" className="text-coral hover:underline">
-            Contact support
-          </Link>
-        </p>
+        {/* The message is only useful while developing; production shows the digest. */}
+        {process.env.NODE_ENV === 'development' && (
+          <pre
+            className="mt-8 overflow-x-auto rounded-lg border p-4 text-left text-xs"
+            style={{
+              borderColor: 'var(--border-color)',
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {error.message}
+          </pre>
+        )}
+
+        {error.digest && (
+          <p className="mt-6 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            Reference: {error.digest} ·{' '}
+            <Link href="/contact" className="underline" style={{ color: 'var(--color-primary)' }}>
+              Contact support
+            </Link>
+          </p>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

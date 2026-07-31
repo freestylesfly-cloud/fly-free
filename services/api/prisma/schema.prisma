@@ -551,3 +551,27 @@ model InstagramPost {
   @@index([displayOrder])
 }
 
+/// Every API request outcome, so admins can see live and historical activity
+/// without shelling into the server. Written asynchronously off the response path.
+model ActivityLog {
+  id         String   @id @default(cuid())
+  level      String   // INFO | WARN | ERROR
+  method     String
+  path       String
+  statusCode Int
+  durationMs Int
+  userId     String?
+  userEmail  String?
+  ip         String?
+  userAgent  String?
+  message    String?
+  /// Stack trace or error payload, only populated for failures.
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([level])
+  @@index([statusCode])
+  @@index([userId])
+}
+

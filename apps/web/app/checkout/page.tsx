@@ -250,6 +250,7 @@ export default function CheckoutPage() {
     }
 
     setAddingAddress(true);
+    setError('');
     try {
       const res = await fetch(`/api/ecommerce/addresses`, {
         method: 'POST',
@@ -260,15 +261,25 @@ export default function CheckoutPage() {
         body: JSON.stringify(addressForm)
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setAddresses([...addresses, data.data || data]);
-        setSelectedAddress((data.data || data).id);
-        setShowAddressForm(false);
-        setAddressForm({ fullName: '', phone: '', line1: '', line2: '', city: '', state: '', postalCode: '', country: 'India' });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Your session expired. Please login again.');
       }
+
+      // Never fail silently here: the customer is mid-checkout and needs to
+      // know the address was not stored.
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || body?.error || 'Could not save the address. Please try again.');
+      }
+
+      const data = await res.json();
+      const saved = data.data || data;
+      setAddresses([...addresses, saved]);
+      setSelectedAddress(saved.id);
+      setShowAddressForm(false);
+      setAddressForm({ fullName: '', phone: '', line1: '', line2: '', city: '', state: '', postalCode: '', country: 'India' });
     } catch (err) {
-      console.error('Error:', err);
+      setError(err instanceof Error ? err.message : 'Could not save the address. Please try again.');
     } finally {
       setAddingAddress(false);
     }

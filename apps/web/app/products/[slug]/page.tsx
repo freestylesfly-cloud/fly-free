@@ -221,13 +221,23 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (response.ok) {
-        setIsWishlisted(!isWishlisted);
-        setNotice(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
-        setTimeout(() => setNotice(''), 2000);
+      if (response.status === 401 || response.status === 403) {
+        setNotice('Your session expired. Please login again.');
+        return;
       }
+
+      // A failed request must say so rather than looking like nothing happened.
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || body?.error || 'Could not update wishlist');
+      }
+
+      setIsWishlisted(!isWishlisted);
+      setNotice(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+      setTimeout(() => setNotice(''), 2000);
     } catch (err) {
-      setNotice('Failed to update wishlist');
+      setNotice(err instanceof Error ? err.message : 'Could not update wishlist');
+      setTimeout(() => setNotice(''), 4000);
     } finally {
       setWishlistLoading(false);
     }
@@ -286,15 +296,18 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           >
             {activeImage?.url && (
               <>
-                {/* Hover magnifies around the cursor; the button opens the
-                    full-screen view for a closer look. */}
+                {/* Marketplace-style zoom: a lens follows the cursor over the
+                    image and the magnified crop renders in a panel beside it.
+                    Touch devices skip the lens and use the full-screen view. */}
                 <div
-                  className="h-full w-full overflow-hidden"
+                  className="relative h-full w-full cursor-crosshair"
                   onMouseMove={(event) => {
                     const box = event.currentTarget.getBoundingClientRect();
+                    const x = ((event.clientX - box.left) / box.width) * 100;
+                    const y = ((event.clientY - box.top) / box.height) * 100;
                     setZoomOrigin({
-                      x: ((event.clientX - box.left) / box.width) * 100,
-                      y: ((event.clientY - box.top) / box.height) * 100
+                      x: Math.min(Math.max(x, 0), 100),
+                      y: Math.min(Math.max(y, 0), 100)
                     });
                   }}
                   onMouseEnter={() => setIsMagnifying(true)}
@@ -303,13 +316,39 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   <img
                     src={activeImage.url}
                     alt={activeImage.alt || product.name}
-                    className="h-full w-full object-contain transition-transform duration-200"
+                    className="h-full w-full object-contain"
+                  />
+
+                  {isMagnifying && (
+                    <span
+                      className="pointer-events-none absolute hidden border-2 lg:block"
+                      style={{
+                        width: '140px',
+                        height: '140px',
+                        left: `calc(${zoomOrigin.x}% - 70px)`,
+                        top: `calc(${zoomOrigin.y}% - 70px)`,
+                        borderColor: 'var(--color-primary)',
+                        backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
+                      }}
+                    />
+                  )}
+                </div>
+
+                {isMagnifying && (
+                  <div
+                    className="pointer-events-none absolute left-full top-0 z-30 ml-4 hidden overflow-hidden rounded-lg border-2 shadow-2xl lg:block"
                     style={{
-                      transform: isMagnifying ? 'scale(2)' : 'scale(1)',
-                      transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                      width: '420px',
+                      height: '420px',
+                      borderColor: 'var(--border-color)',
+                      backgroundColor: 'var(--bg-primary)',
+                      backgroundImage: `url('${activeImage.url}')`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundSize: '250%',
+                      backgroundPosition: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                     }}
                   />
-                </div>
+                )}
                 <button
                   onClick={() => setShowZoom(true)}
                   className="absolute right-3 top-3 rounded-lg border p-2 transition hover:opacity-70"
@@ -613,7 +652,15 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} content={sizeChart} />
 
       {showZoom && activeImage?.url && (
-        <Modal title={product.name} onClose={() => setShowZoom(false)} wide>
+        <Modal
+          title={product.name}
+          onClose={() => {
+            setShowZoom(false);
+            setIsMagnifying(false);
+            setZoomOrigin({ x: 50, y: 50 });
+          }}
+          wide
+        >
           <div className="space-y-4">
             <div className="relative flex min-h-[60vh] items-center justify-center rounded border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
               {galleryImages.length > 1 && (
@@ -626,7 +673,32 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   </button>
                 </>
               )}
-              <img src={activeImage.url} alt={activeImage.alt || product.name} className="max-h-[75vh] w-full rounded object-contain" />
+              {/* Click toggles a 2.5x zoom; then drag the pointer to pan. */}
+              <img
+                src={activeImage.url}
+                alt={activeImage.alt || product.name}
+                onClick={() => setIsMagnifying((value) => !value)}
+                onMouseMove={(event) => {
+                  if (!isMagnifying) return;
+                  const box = event.currentTarget.getBoundingClientRect();
+                  setZoomOrigin({
+                    x: ((event.clientX - box.left) / box.width) * 100,
+                    y: ((event.clientY - box.top) / box.height) * 100
+                  });
+                }}
+                className="max-h-[75vh] w-full rounded object-contain transition-transform duration-200"
+                style={{
+                  cursor: isMagnifying ? 'zoom-out' : 'zoom-in',
+                  transform: isMagnifying ? 'scale(2.5)' : 'scale(1)',
+                  transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                }}
+              />
+              <span
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold"
+                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+              >
+                {isMagnifying ? 'Click to zoom out · move to pan' : 'Click image to zoom'}
+              </span>
             </div>
             {galleryImages.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1">

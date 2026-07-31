@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, Instagram, LayoutGrid, Mail, Package, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift, BarChart3 } from 'lucide-react';
+import { Bell, FileText, Instagram, LayoutGrid, Mail, Package, ScrollText, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -37,6 +37,7 @@ const menuItems = [
       { label: 'Announcements', href: '/announcements', icon: Bell },
       { label: 'Pages', href: '/pages', icon: FileText },
       { label: 'Appearance', href: '/website-themes', icon: Sparkles },
+      { label: 'Activity Logs', href: '/activity-logs', icon: ScrollText },
       { label: 'Settings', href: '/settings', icon: Sliders },
     ],
   },

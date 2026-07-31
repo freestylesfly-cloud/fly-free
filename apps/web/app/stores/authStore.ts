@@ -23,6 +23,8 @@ interface AuthStore {
   logout: () => Promise<void>;
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
   checkAuth: () => Promise<void>;
+  /** Re-read the account from the API so profile pages never show a stale login snapshot. */
+  fetchProfile: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string; image?: string }) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   setUser: (user: User | null) => void;
@@ -53,12 +55,15 @@ const useAuthStore = create<AuthStore>()(
 
           const data = await res.json();
 
+          // The API nests the account under `user`; older responses were flat.
+          const profile = data.user ?? data;
           const user: User = {
-            id: data.userId || data.user?.id,
-            email: data.email,
-            name: data.name,
-            phone: data.phone,
-            emailVerified: data.emailVerified
+            id: profile.id || data.userId,
+            email: profile.email,
+            name: profile.name,
+            phone: profile.phone,
+            image: profile.image,
+            emailVerified: profile.emailVerified ?? data.emailVerified
           };
 
           const token = data.token || data.access_token;
@@ -138,6 +143,36 @@ const useAuthStore = create<AuthStore>()(
           localStorage.removeItem('flyfree_auth_token');
           localStorage.removeItem('flyfree_user_data');
           set({ user: null, token: null, loading: false, hydrated: true });
+        }
+      },
+
+      fetchProfile: async () => {
+        const token = get().token;
+        if (!token) return;
+
+        try {
+          const res = await fetch(`/api/auth/user/profile`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const profile = data.user ?? data.data ?? data;
+          if (!profile?.id) return;
+
+          const user: User = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            phone: profile.phone,
+            image: profile.image,
+            emailVerified: profile.emailVerified
+          };
+
+          set({ user });
+          localStorage.setItem('flyfree_user_data', JSON.stringify(user));
+        } catch {
+          // keep whatever is already in the store
         }
       },
 
