@@ -296,30 +296,40 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu Drawer - Professional Navigation */}
+        {/* Overlay */}
         {isOpen && (
           <div
-            className="md:hidden fixed inset-0 top-20 z-30 flex flex-col overflow-hidden"
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setIsOpen(false);
-              }
-            }}
-          >
-            {/* Close Button - Top Right */}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute top-3 right-3 p-2 z-40"
-              aria-label="Close menu"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <X size={24} />
-            </button>
+            onClick={() => setIsOpen(false)}
+            className="md:hidden fixed inset-0 bg-black/40 z-30"
+            style={{ top: '56px' }}
+          />
+        )}
 
-            <nav className="flex-1 overflow-y-scroll pb-20 pt-2 scrollbar-hide">
+        {/* Mobile Menu Drawer - Professional Sidebar */}
+        <div
+          className="md:hidden fixed flex flex-col overflow-hidden z-40"
+          style={{
+            left: 0,
+            top: '56px',
+            width: '260px',
+            height: 'calc(100vh - 56px)',
+            backgroundColor: 'var(--bg-secondary)',
+            transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: isOpen ? '4px 0 12px rgba(0, 0, 0, 0.15)' : 'none',
+          }}
+        >
+          {/* Close Button - Top Right */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="absolute top-3 right-3 p-2 z-50"
+            aria-label="Close menu"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <X size={24} />
+          </button>
+
+          <nav className="flex-1 overflow-y-scroll pb-20 pt-2 scrollbar-hide">
               {/* Main Navigation Section */}
               <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
                 <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
@@ -391,17 +401,8 @@ export function Header() {
                   </button>
                 </div>
               )}
-            </nav>
-
-            {/* Close Info */}
-            <div
-              className="px-5 py-4 border-t text-center text-xs font-bold"
-              style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
-            >
-              Tap outside to close
-            </div>
-          </div>
-        )}
+          </nav>
+        </div>
       </header>
 
       {/* Mobile Bottom Navigation Bar - Professional */}

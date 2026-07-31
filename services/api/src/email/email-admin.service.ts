@@ -83,7 +83,7 @@ export class EmailAdminService {
     const results = [];
     for (const recipient of recipients) {
       try {
-        const result = await this.emailService.sendEmail(recipient.email, subject, html);
+        const result = await this.emailService.sendEmail(recipient.email, subject, this.withUnsubscribeLink(html, recipient.email));
         results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'sent', messageId: result.messageId });
       } catch (error: any) {
         results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'failed', error: error.message || 'Failed to send email' });
@@ -209,7 +209,7 @@ export class EmailAdminService {
     const results = [];
     for (const recipient of recipients) {
       try {
-        await this.emailService.sendEmail(recipient.email, title, html);
+        await this.emailService.sendEmail(recipient.email, title, this.withUnsubscribeLink(html, recipient.email));
         results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'sent' });
       } catch (error: any) {
         results.push({ userId: recipient.userId, subscriberId: recipient.subscriberId, email: recipient.email, status: 'failed', error: error.message || 'Failed to send email' });
@@ -264,22 +264,34 @@ export class EmailAdminService {
         select: { id: true, email: true }
       }),
       this.prisma.newsletterSubscriber.findMany({
-        where: { isActive: true },
-        select: { id: true, email: true }
+        select: { id: true, email: true, isActive: true }
       })
     ]);
 
     const recipients = new Map<string, { userId?: string; subscriberId?: string; email: string }>();
+    const optedOutEmails = new Set(
+      subscribers.filter((subscriber) => !subscriber.isActive).map((subscriber) => subscriber.email.toLowerCase())
+    );
 
     for (const user of users) {
-      if (user.email) recipients.set(user.email.toLowerCase(), { userId: user.id, email: user.email });
+      if (user.email && !optedOutEmails.has(user.email.toLowerCase())) {
+        recipients.set(user.email.toLowerCase(), { userId: user.id, email: user.email });
+      }
     }
 
-    for (const subscriber of subscribers) {
+    for (const subscriber of subscribers.filter((item) => item.isActive)) {
       const key = subscriber.email.toLowerCase();
       recipients.set(key, { ...recipients.get(key), subscriberId: subscriber.id, email: subscriber.email });
     }
 
     return Array.from(recipients.values());
+  }
+
+  private withUnsubscribeLink(html: string, email: string) {
+    const baseUrl = process.env.WEB_URL || 'http://localhost:3000';
+    const unsubscribeUrl = `${baseUrl}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
+    const footer = `<p style="text-align:center;color:#777;font-size:12px;margin-top:24px;">No longer want drop and offer emails? <a href="${unsubscribeUrl}" style="color:#FF6B5B;">Unsubscribe</a></p>`;
+
+    return html.replace('</div>\n      </div>', `${footer}\n        </div>\n      </div>`);
   }
 }

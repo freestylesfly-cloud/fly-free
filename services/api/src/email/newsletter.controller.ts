@@ -17,6 +17,11 @@ export class NewsletterController {
     return this.newsletterService.unsubscribe(body.email);
   }
 
+  @Get('newsletter/unsubscribe')
+  async unsubscribeFromLink(@Query('email') email: string) {
+    return this.newsletterService.unsubscribe(email);
+  }
+
   @Get('admin/newsletter/subscribers')
   async getSubscribers(@Query('activeOnly') activeOnly?: string) {
     return this.newsletterService.listSubscribers(activeOnly === 'true');

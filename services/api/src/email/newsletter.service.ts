@@ -47,9 +47,15 @@ export class NewsletterService {
   async unsubscribe(email: string) {
     const normalizedEmail = this.normalizeEmail(email);
 
-    const subscriber = await this.prisma.newsletterSubscriber.update({
+    const subscriber = await this.prisma.newsletterSubscriber.upsert({
       where: { email: normalizedEmail },
-      data: {
+      update: {
+        isActive: false,
+        unsubscribedAt: new Date()
+      },
+      create: {
+        email: normalizedEmail,
+        source: 'unsubscribe',
         isActive: false,
         unsubscribedAt: new Date()
       }
