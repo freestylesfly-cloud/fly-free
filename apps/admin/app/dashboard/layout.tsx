@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
       {/* Top Header */}
       <div
         style={{
@@ -64,11 +64,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           borderBottomWidth: '1px',
           borderBottomColor: 'var(--border-color)',
           backgroundColor: 'var(--bg-secondary)',
-          gap: '12px'
+          gap: '16px',
+          minHeight: '64px'
         }}
       >
-        {/* Left: Hamburger + Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+        {/* Left: Hamburger + Logo + Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
           <button
             onClick={() => setIsOpen(!isOpen)}
             style={{
@@ -77,19 +78,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
-              color: 'var(--text-primary)'
+              color: 'var(--text-primary)',
+              flexShrink: 0
             }}
+            aria-label="Toggle menu"
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           <img
             src="/logo.png"
             alt="Logo"
-            style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+            style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }}
             onError={(e) => (e.currentTarget.style.display = 'none')}
           />
-          <h1 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-            Fly Free
+          <h1 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Fly Free Admin
           </h1>
         </div>
 
@@ -120,25 +123,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Main Content */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', paddingBottom: '80px' }}>
-        {/* Sidebar */}
+        {/* Sidebar - Drawer Style */}
         <aside
           style={{
             position: isOpen ? 'fixed' : 'absolute',
             left: 0,
-            top: '60px',
-            width: '280px',
-            height: 'calc(100vh - 60px)',
+            top: '64px',
+            width: '260px',
+            height: 'calc(100vh - 64px)',
             backgroundColor: 'var(--bg-secondary)',
             borderRightWidth: '1px',
             borderRightColor: 'var(--border-color)',
             overflowY: 'auto',
-            zIndex: isOpen ? 20 : -1,
+            zIndex: 40,
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 0.3s',
-            display: isOpen ? 'flex' : 'none',
-            flexDirection: 'column'
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: isOpen ? '4px 0 12px rgba(0, 0, 0, 0.15)' : 'none'
           }}
-          className="md:relative md:flex md:transform-none md:z-auto"
+          className="md:relative md:flex md:transform-none md:z-auto md:box-shadow-none"
         >
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '12px 0' }}>
             {sidebarItems.map((item) => (
@@ -175,9 +179,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              zIndex: 10,
-              display: isOpen ? 'block' : 'none'
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              zIndex: 30,
+              display: isOpen ? 'block' : 'none',
+              top: '64px'
             }}
             className="md:hidden"
           />
