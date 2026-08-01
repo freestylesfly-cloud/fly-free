@@ -175,7 +175,7 @@ function ProductsBrowser() {
           floating above the bottom navigation. */}
       <div
         className="sticky z-30 grid grid-cols-2 border-y lg:hidden"
-        style={{ top: '56px', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+        style={{ top: '80px', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
       >
         <button
           type="button"

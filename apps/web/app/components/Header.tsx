@@ -138,7 +138,7 @@ export function Header() {
 
           {/* Center: Logo */}
           <Link href="/" className="flex-1 flex items-center justify-center hover:opacity-80">
-            <Logo size="md" showText={false} />
+            <Logo size="lg" showText={false} />
           </Link>
 
           {/* Right: Search & Cart */}
@@ -175,7 +175,7 @@ export function Header() {
         <div className="hidden md:flex items-center justify-between px-6 py-4 max-w-7xl mx-auto gap-8">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center justify-center hover:opacity-80 whitespace-nowrap flex-shrink-0">
-            <Logo size="md" showText={false} />
+            <Logo size="lg" showText={false} />
           </Link>
 
           {/* Center: Navigation Menu */}

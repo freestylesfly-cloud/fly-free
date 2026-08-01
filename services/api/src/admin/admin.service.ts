@@ -436,7 +436,7 @@ export class AdminService {
 
     const payment: any = order.payment;
     const paymentStatus = payment?.status || "PENDING";
-    ops.push({ kind: "text", text: `${payment?.provider || "RAZORPAY"} · ${paymentStatus}`, x: 300, y, size: 11, bold: true, color: ink });
+    ops.push({ kind: "text", text: `${payment?.provider || "RAZORPAY"} / ${paymentStatus}`, x: 300, y, size: 11, bold: true, color: ink });
     if (payment?.providerPaymentId) {
       y -= 13;
       ops.push({ kind: "text", text: payment.providerPaymentId, x: 300, y, size: 8, color: muted });

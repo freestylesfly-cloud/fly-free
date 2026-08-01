@@ -19,7 +19,7 @@ export function Logo({
   // The brand mark is 1920x1080 (16:9), so it must be constrained by HEIGHT and
   // allowed to take its natural width. Forcing it into a square box shrinks it
   // to a fraction of the available space.
-  const height = { sm: 30, md: 42, lg: 72 }[size];
+  const height = { sm: 30, md: 42, lg: 60 }[size];
   const imageStyle: React.CSSProperties = {
     height,
     width: 'auto',
