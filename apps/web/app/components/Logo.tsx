@@ -16,13 +16,16 @@ export function Logo({
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
 
-  const dimensions = {
-    sm: { width: 48, height: 48 },
-    md: { width: 72, height: 72 },
-    lg: { width: 100, height: 100 }
+  // The brand mark is 1920x1080 (16:9), so it must be constrained by HEIGHT and
+  // allowed to take its natural width. Forcing it into a square box shrinks it
+  // to a fraction of the available space.
+  const height = { sm: 30, md: 42, lg: 72 }[size];
+  const imageStyle: React.CSSProperties = {
+    height,
+    width: 'auto',
+    maxWidth: '240px',
+    objectFit: 'contain'
   };
-
-  const { width, height } = dimensions[size];
 
   useEffect(() => {
     // Only try to fetch API logo if not already failed
@@ -34,8 +37,10 @@ export function Logo({
     fetch('/api/cms/settings/logo', { signal: controller.signal })
       .then(res => res.json())
       .then((data: any) => {
-        if (data?.logoUrl && data.logoUrl.trim()) {
-          setLogoSrc(data.logoUrl === '/brand/flyfree-logo.png' ? '/logo.png' : data.logoUrl);
+        // Ignore the legacy "/logo.png" default; the real asset lives in /brand.
+        const url = String(data?.logoUrl || '').trim();
+        if (url && url !== '/logo.png') {
+          setLogoSrc(url);
           setHasError(false);
         } else {
           setHasError(true);
@@ -58,35 +63,14 @@ export function Logo({
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {logoSrc && !hasError ? (
-        // API logo loaded successfully
         <img
           src={logoSrc}
-          alt="Logo"
-          width={width}
-          height={height}
-          onError={() => {
-            console.warn('API Logo image failed to load, using local logo');
-            setHasError(true);
-          }}
-          style={{
-            width,
-            height,
-            objectFit: 'contain'
-          }}
+          alt="Fly Free"
+          style={imageStyle}
+          onError={() => setHasError(true)}
         />
       ) : (
-        // Fallback: Use local public logo
-        <img
-          src="/logo.png"
-          alt="Fly Free Logo"
-          width={width}
-          height={height}
-          style={{
-            width,
-            height,
-            objectFit: 'contain'
-          }}
-        />
+        <img src="/brand/logo.png" alt="Fly Free" style={imageStyle} />
       )}
       {showText && size !== 'sm' && (
         <span className="font-black text-xl" style={{ color: 'var(--color-primary)' }}>

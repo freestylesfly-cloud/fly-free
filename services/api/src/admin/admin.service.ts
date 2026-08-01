@@ -1,4 +1,10 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+
+/** Drawing primitives for the hand-rolled invoice PDF. Origin is bottom-left. */
+type PdfRgb = [number, number, number];
+type PdfOp =
+  | { kind: "text"; text: string; x: number; y: number; size: number; bold?: boolean; color?: PdfRgb; align?: "left" | "right" }
+  | { kind: "rect"; x: number; y: number; width: number; height: number; color: PdfRgb };
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import { createClient } from "@supabase/supabase-js";
@@ -400,41 +406,122 @@ export class AdminService {
 
     const invoice = await this.ensureInvoice(order.id);
     const settings = await this.getSettingsValue();
-    const lines = [
-      `${settings.appName || "Fly Free"} Invoice`,
-      `Invoice: ${invoice.invoiceNumber}`,
-      `Order: ${order.id}`,
-      `Date: ${new Date(order.createdAt).toLocaleDateString("en-IN")}`,
-      `Business: ${settings.businessName || settings.appName || "Fly Free"}`,
-      `GSTIN: ${settings.gstNumber || "Not configured"}`,
-      "",
-      `Bill To: Customer`,
-      `Email: `,
-      `Phone: `,
-      `Address: ${order.shippingLine1 || ""}, ${order.shippingCity || ""}, ${order.shippingState || ""} ${order.shippingPostalCode || ""}`,
-      "",
-      "Payment:",
-      `Provider: RAZORPAY`,
-      `Status: PENDING`,
-      `Payment ID: Pending`,
-      `Paid At: Not paid yet`,
-      "",
-      "Items:",
-      ...order.items.map((item: any) => `${item.name} | ${item.sku} | Qty ${item.quantity} | Rs ${this.formatMoney(item.price * item.quantity)}`),
-      "",
-      `Subtotal: Rs ${this.formatMoney(order.subtotal)}`,
-      `Discount: Rs ${this.formatMoney(order.discount)}`,
-      `Shipping: Rs ${this.formatMoney(order.shippingFee)}`,
-      `GST/Tax: Rs ${this.formatMoney(order.tax)}`,
-      `Total: Rs ${this.formatMoney(order.total)}`,
-      "",
-      "",
-      `${settings.businessName || settings.appName || "Fly Free"}`,
-      `${settings.businessAddress || settings.address || ""}`,
-      `${settings.supportEmail || settings.contactEmail || ""} ${settings.contactPhone || ""}`
-    ];
 
-    return this.createSimplePdf(lines);
+    const brand = settings.businessName || settings.appName || "Fly Free";
+    const accent: PdfRgb = [1, 0.29, 0.31]; // brand red
+    const ink: PdfRgb = [0.07, 0.09, 0.15];
+    const muted: PdfRgb = [0.42, 0.45, 0.5];
+    const hairline: PdfRgb = [0.88, 0.89, 0.91];
+
+    const money = (value: number) => `Rs ${this.formatMoney(value)}`;
+    const ops: PdfOp[] = [];
+
+    // ---- header band
+    ops.push({ kind: "rect", x: 0, y: 742, width: 595, height: 100, color: ink });
+    ops.push({ kind: "text", text: brand, x: 50, y: 800, size: 26, bold: true, color: [1, 1, 1] });
+    ops.push({ kind: "text", text: "TAX INVOICE", x: 50, y: 776, size: 10, color: [0.75, 0.77, 0.8] });
+    ops.push({ kind: "text", text: invoice.invoiceNumber, x: 545, y: 800, size: 14, bold: true, color: [1, 1, 1], align: "right" });
+    ops.push({
+      kind: "text",
+      text: new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      x: 545, y: 778, size: 10, color: [0.75, 0.77, 0.8], align: "right"
+    });
+
+    // ---- meta row
+    let y = 706;
+    ops.push({ kind: "text", text: "ORDER NUMBER", x: 50, y, size: 8, bold: true, color: muted });
+    ops.push({ kind: "text", text: "PAYMENT", x: 300, y, size: 8, bold: true, color: muted });
+    y -= 15;
+    ops.push({ kind: "text", text: order.orderNumber || order.id, x: 50, y, size: 11, bold: true, color: ink });
+
+    const payment: any = order.payment;
+    const paymentStatus = payment?.status || "PENDING";
+    ops.push({ kind: "text", text: `${payment?.provider || "RAZORPAY"} · ${paymentStatus}`, x: 300, y, size: 11, bold: true, color: ink });
+    if (payment?.providerPaymentId) {
+      y -= 13;
+      ops.push({ kind: "text", text: payment.providerPaymentId, x: 300, y, size: 8, color: muted });
+    }
+
+    // ---- billing
+    y -= 34;
+    ops.push({ kind: "text", text: "BILL TO", x: 50, y, size: 8, bold: true, color: muted });
+    ops.push({ kind: "text", text: "FROM", x: 300, y, size: 8, bold: true, color: muted });
+
+    const billTo = [
+      order.shippingName || order.user?.name || "Customer",
+      order.user?.email || "",
+      order.shippingPhone || order.user?.phone || "",
+      [order.shippingLine1, order.shippingLine2].filter(Boolean).join(", "),
+      [order.shippingCity, order.shippingState, order.shippingPostalCode].filter(Boolean).join(", "),
+      order.shippingCountry || "India"
+    ].filter(Boolean);
+
+    const from = [
+      brand,
+      settings.businessAddress || "",
+      settings.supportEmail || settings.contactEmail || "",
+      settings.contactPhone || "",
+      settings.gstNumber ? `GSTIN: ${settings.gstNumber}` : ""
+    ].filter(Boolean);
+
+    const blockTop = y - 16;
+    billTo.forEach((line, index) => {
+      ops.push({ kind: "text", text: line, x: 50, y: blockTop - index * 13, size: 9, bold: index === 0, color: index === 0 ? ink : muted });
+    });
+    from.forEach((line, index) => {
+      ops.push({ kind: "text", text: line, x: 300, y: blockTop - index * 13, size: 9, bold: index === 0, color: index === 0 ? ink : muted });
+    });
+
+    // ---- items table
+    y = blockTop - Math.max(billTo.length, from.length) * 13 - 26;
+    ops.push({ kind: "rect", x: 50, y: y - 6, width: 495, height: 22, color: [0.96, 0.96, 0.97] });
+    ops.push({ kind: "text", text: "ITEM", x: 58, y, size: 8, bold: true, color: muted });
+    ops.push({ kind: "text", text: "QTY", x: 400, y, size: 8, bold: true, color: muted, align: "right" });
+    ops.push({ kind: "text", text: "PRICE", x: 470, y, size: 8, bold: true, color: muted, align: "right" });
+    ops.push({ kind: "text", text: "AMOUNT", x: 537, y, size: 8, bold: true, color: muted, align: "right" });
+
+    y -= 24;
+    for (const item of order.items as any[]) {
+      ops.push({ kind: "text", text: String(item.name).slice(0, 46), x: 58, y, size: 10, color: ink });
+      ops.push({ kind: "text", text: String(item.quantity), x: 400, y, size: 10, color: ink, align: "right" });
+      ops.push({ kind: "text", text: money(item.price), x: 470, y, size: 10, color: ink, align: "right" });
+      ops.push({ kind: "text", text: money(item.price * item.quantity), x: 537, y, size: 10, bold: true, color: ink, align: "right" });
+
+      if (item.sku) {
+        y -= 12;
+        ops.push({ kind: "text", text: `SKU ${item.sku}`, x: 58, y, size: 8, color: muted });
+      }
+
+      y -= 10;
+      ops.push({ kind: "rect", x: 50, y: y + 2, width: 495, height: 0.6, color: hairline });
+      y -= 16;
+    }
+
+    // ---- totals
+    y -= 6;
+    const totalsRow = (label: string, value: string, bold = false) => {
+      ops.push({ kind: "text", text: label, x: 430, y, size: 10, bold, color: bold ? ink : muted, align: "right" });
+      ops.push({ kind: "text", text: value, x: 537, y, size: 10, bold, color: ink, align: "right" });
+      y -= 17;
+    };
+
+    totalsRow("Subtotal", money(order.subtotal));
+    if (order.discount > 0) totalsRow("Discount", `- ${money(order.discount)}`);
+    totalsRow("Delivery", order.shippingFee > 0 ? money(order.shippingFee) : "FREE");
+
+    ops.push({ kind: "rect", x: 340, y: y + 12, width: 205, height: 0.8, color: hairline });
+    y -= 6;
+    ops.push({ kind: "text", text: "TOTAL", x: 430, y, size: 12, bold: true, color: ink, align: "right" });
+    ops.push({ kind: "text", text: money(order.total), x: 537, y, size: 14, bold: true, color: accent, align: "right" });
+
+    // ---- footer
+    ops.push({ kind: "rect", x: 50, y: 96, width: 495, height: 0.8, color: hairline });
+    ops.push({ kind: "text", text: "Prices are inclusive. No additional tax is charged.", x: 50, y: 78, size: 8, color: muted });
+    ops.push({ kind: "text", text: "Exchange available within 30 days of delivery. We do not offer returns or refunds.", x: 50, y: 65, size: 8, color: muted });
+    ops.push({ kind: "text", text: `Questions? ${settings.supportEmail || settings.contactEmail || "support@flyfree.com"}`, x: 50, y: 52, size: 8, color: muted });
+    ops.push({ kind: "text", text: `Thank you for shopping with ${brand}.`, x: 537, y: 52, size: 9, bold: true, color: ink, align: "right" });
+
+    return this.renderPdf(ops);
   }
 
   async sendInvoiceEmail(id: string) {
@@ -448,10 +535,18 @@ export class AdminService {
     }
 
     const invoicePdf = await this.generateInvoicePdf(id);
+    const invoice = await this.ensureInvoice(order.id);
+
     const result = await this.emailService.sendInvoice(order.user.email, {
       id: order.id,
-      orderNumber: order.invoice?.invoiceNumber || order.id,
+      // The customer recognises the order number; the invoice number is separate.
+      orderNumber: order.orderNumber || order.id,
+      invoiceNumber: invoice.invoiceNumber,
       customerName: order.user.name || order.user.email,
+      createdAt: order.createdAt,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      shippingFee: order.shippingFee,
       total: order.total
     }, invoicePdf);
 
@@ -1273,17 +1368,36 @@ export class AdminService {
     });
   }
 
-  private createSimplePdf(lines: string[]) {
-    const escapedLines = lines.map((line) => this.pdfEscape(line));
-    const textCommands = escapedLines
-      .map((line, index) => `BT /F1 10 Tf 50 ${780 - index * 16} Td (${line}) Tj ET`)
+  /**
+   * Assemble a single-page A4 PDF from drawing operations. Written by hand so
+   * the service carries no PDF dependency; supports regular/bold text at any
+   * size and position, right alignment, filled rectangles, and rules.
+   */
+  private renderPdf(ops: PdfOp[]) {
+    // Helvetica character widths are ~0.5em on average; good enough to right-align.
+    const textWidth = (text: string, size: number) => text.length * size * 0.5;
+
+    const stream = ops
+      .map((op) => {
+        if (op.kind === "rect") {
+          const [r, g, b] = op.color;
+          return `${r} ${g} ${b} rg ${op.x} ${op.y} ${op.width} ${op.height} re f`;
+        }
+
+        const font = op.bold ? "/F2" : "/F1";
+        const [r, g, b] = op.color ?? [0, 0, 0];
+        const x = op.align === "right" ? op.x - textWidth(op.text, op.size) : op.x;
+        return `BT ${r} ${g} ${b} rg ${font} ${op.size} Tf ${x.toFixed(1)} ${op.y} Td (${this.pdfEscape(op.text)}) Tj ET`;
+      })
       .join("\n");
+
     const objects = [
       "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
       "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
-      "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+      "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 6 0 R >> >> /Contents 5 0 R >> endobj",
       "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
-      `5 0 obj << /Length ${Buffer.byteLength(textCommands, "utf8")} >> stream\n${textCommands}\nendstream endobj`
+      `5 0 obj << /Length ${Buffer.byteLength(stream, "utf8")} >> stream\n${stream}\nendstream endobj`,
+      "6 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> endobj"
     ];
 
     let pdf = "%PDF-1.4\n";
@@ -1302,8 +1416,21 @@ export class AdminService {
     return Buffer.from(pdf, "utf8");
   }
 
+  /**
+   * PDF string literals use the base Helvetica encoding, so anything outside
+   * Latin-1 renders as mojibake. Map the punctuation we actually use to ASCII
+   * and drop the rest rather than emitting broken glyphs.
+   */
   private pdfEscape(value: string) {
-    return String(value).replace(/[\\()]/g, "\\$&").slice(0, 120);
+    return String(value)
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/[–—]/g, "-")
+      .replace(/·/g, "-")
+      .replace(/₹/g, "Rs ")
+      .replace(/[^\x20-\x7E]/g, "")
+      .replace(/[\\()]/g, "\\$&")
+      .slice(0, 120);
   }
 
   private wrapAdminEmail(title: string, body: string) {

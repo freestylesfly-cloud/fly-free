@@ -471,7 +471,7 @@ async function main() {
     data: { key: 'shipping', value: { flatRate: 7900, freeAbove: 99900 } },
   });
   await prisma.appSetting.create({
-    data: { key: 'branding', value: { appLogo: '/logo.png', appFavicon: '/logo.png' } },
+    data: { key: 'branding', value: { appLogo: '/brand/logo.png', appFavicon: '/favicon_io/favicon.ico' } },
   });
 
   await prisma.page.create({

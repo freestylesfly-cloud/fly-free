@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthDrawerShell title="Reset">
+    <AuthDrawerShell title="Reset your password" subtitle="We will email you a 6-digit code.">
       {success ? (
         <div className="flex min-h-[360px] flex-col items-center justify-center text-center space-y-4">
           <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} />

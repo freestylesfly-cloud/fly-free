@@ -61,7 +61,7 @@ function LoginContent() {
   // Show loading state while redirecting
   if (redirecting) {
     return (
-      <AuthDrawerShell title="Welcome Back">
+      <AuthDrawerShell title="Welcome back" subtitle="Sign in to checkout, track orders, and see your saved items.">
         <div className="flex flex-col items-center justify-center gap-4 py-12">
           <div className="w-8 h-8 border-4 border-transparent border-t-current rounded-full animate-spin" style={{ color: 'var(--color-primary)' }} />
           <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>Redirecting...</p>
@@ -71,7 +71,7 @@ function LoginContent() {
   }
 
   return (
-    <AuthDrawerShell title="Welcome Back">
+    <AuthDrawerShell title="Welcome back" subtitle="Sign in to checkout, track orders, and see your saved items.">
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>

@@ -16,8 +16,16 @@ export const metadata: Metadata = {
   title: "Fly Free - Premium T-Shirts & Streetwear",
   description: "Explore our collection of stylish and comfortable t-shirts with unique designs. Custom t-shirt designer, multiple themes, and secure checkout.",
   manifest: "/manifest.json",
+  // Generated favicon set lives in /public/favicon_io.
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/favicon_io/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon_io/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon_io/android-chrome-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon_io/android-chrome-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon_io/favicon.ico",
+    apple: "/favicon_io/apple-touch-icon.png",
   },
 };
 

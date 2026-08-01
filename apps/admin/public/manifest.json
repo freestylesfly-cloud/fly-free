@@ -1,0 +1,17 @@
+{
+  "name": "Fly Free",
+  "short_name": "Fly Free",
+  "description": "Custom t-shirts, themed drops, gifting, and streetwear from Fly Free.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#ff6b5b",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

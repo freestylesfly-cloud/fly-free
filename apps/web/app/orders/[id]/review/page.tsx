@@ -56,7 +56,7 @@ export default function OrderReviewPage() {
 
   useEffect(() => {
     if (!token) {
-      router.push(`/login?redirect=/orders/${params?.id}/review`);
+      router.push(`/auth/login?next=/orders/${params?.id}/review`);
       return;
     }
 
@@ -257,7 +257,7 @@ export default function OrderReviewPage() {
           <Package className="mx-auto mb-4 h-12 w-12" style={{ color: 'var(--text-secondary)' }} />
           <h1 className="text-2xl font-black">Sign in to review</h1>
           <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>You need to sign in to submit a review for your order.</p>
-          <Link href={`/login?redirect=/orders/${params?.id}/review`} className="mt-6 inline-flex rounded px-5 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <Link href={`/auth/login?next=/orders/${params?.id}/review`} className="mt-6 inline-flex rounded px-5 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
             Sign in
           </Link>
         </section>

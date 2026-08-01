@@ -62,8 +62,8 @@ export class CmsService {
     const value = setting?.value as any;
 
     return {
-      logoUrl: value?.appLogo || '/logo.png',
-      faviconUrl: value?.appFavicon || value?.appLogo || '/logo.png'
+      logoUrl: value?.appLogo || '/brand/logo.png',
+      faviconUrl: value?.appFavicon || '/favicon_io/favicon.ico'
     };
   }
 

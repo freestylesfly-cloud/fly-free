@@ -82,13 +82,15 @@ export function Sidebar() {
         {/* Logo */}
         <div className="border-b border-black/10 p-5">
           <div className="flex items-center gap-3">
+            {/* The mark is 16:9, so constrain height and let width follow. */}
             <img
-              src="/logo.png"
-              alt="Fly Free logo"
-              className="w-10 h-10 rounded border border-black/10 bg-white object-contain"
+              src="/brand/logo.png"
+              alt="Fly Free"
+              className="object-contain"
+              style={{ height: 38, width: 'auto', maxWidth: 130 }}
             />
-            <div>
-              <h1 className="text-sm font-black uppercase tracking-wide">Fly Free</h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-black uppercase tracking-wide">Fly Free</h1>
               <p className="text-xs text-black/40">Admin Panel</p>
             </div>
           </div>

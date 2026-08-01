@@ -18,6 +18,8 @@ export class EmailService {
   }
 
   getStatus() {
+    if (!this.transporter) this.initializeTransporter();
+
     return {
       configured: Boolean(this.transporter),
       provider: this.transporter ? "gmail-smtp" : null,
@@ -112,21 +114,30 @@ export class EmailService {
   }
 
   async sendInvoice(email: string, order: any, invoicePdf: Buffer) {
+    const orderRef = order.orderNumber || order.id;
+    const invoiceRef = order.invoiceNumber || orderRef;
+
     const html = this.wrapTemplate(
-      "Invoice Attached",
+      "Your invoice",
       `
         <p>Hi ${this.escape(order.customerName || order.user?.name || "Customer")},</p>
-        <p>Your invoice for order #${this.escape(order.orderNumber || order.id)} is attached.</p>
+        <p>The invoice for your order is attached as a PDF.</p>
         ${this.summaryBlock([
-          ["Invoice Date", this.formatDate(new Date())],
-          ["Total Amount", `Rs ${this.money(order.total)}`]
+          ["Order", orderRef],
+          ["Invoice", invoiceRef],
+          ["Date", this.formatDate(order.createdAt || new Date())],
+          ...(Number(order.subtotal) ? [["Subtotal", `Rs ${this.money(order.subtotal)}`] as [string, string]] : []),
+          ...(Number(order.discount) > 0 ? [["Discount", `- Rs ${this.money(order.discount)}`] as [string, string]] : []),
+          ["Delivery", Number(order.shippingFee) > 0 ? `Rs ${this.money(order.shippingFee)}` : "FREE"],
+          ["Total paid", `Rs ${this.money(order.total)}`]
         ])}
-        <p>Thank you for shopping with Fly Free.</p>
+        ${this.button(`${this.webUrl()}/orders/${order.id}`, "View Order")}
+        <p style="color:#666;font-size:13px;">Exchange available within 30 days of delivery.</p>
       `
     );
 
-    return this.sendEmailWithAttachment(email, `Invoice - Order ${order.orderNumber || order.id}`, html, {
-      filename: `invoice-${order.orderNumber || order.id}.pdf`,
+    return this.sendEmailWithAttachment(email, `Invoice ${invoiceRef} - Fly Free`, html, {
+      filename: `flyfree-invoice-${invoiceRef}.pdf`,
       content: invoicePdf
     });
   }
@@ -208,9 +219,20 @@ export class EmailService {
     return { success: true, messageId: info.messageId };
   }
 
+  /**
+   * Build the transporter on demand. Constructing it once at boot meant a
+   * single startup where the env had not resolved left email permanently dead
+   * for the life of the process, surfacing as a confusing 400 much later.
+   */
   private requireTransporter() {
     if (!this.transporter) {
-      throw new BadRequestException("Email SMTP is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in services/api/.env.");
+      this.initializeTransporter();
+    }
+
+    if (!this.transporter) {
+      throw new BadRequestException(
+        "Email SMTP is not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in services/api/.env."
+      );
     }
 
     return this.transporter;

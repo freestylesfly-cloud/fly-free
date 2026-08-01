@@ -153,7 +153,30 @@ export class CommerceService {
       return created;
     });
 
-    const razorpayOrder = await this.createRazorpayOrder(order.id, total);
+    // The order row is already committed, so if Razorpay rejects us we must
+    // mark the payment FAILED rather than leaving a PLACED order that looks
+    // like a normal, payable order.
+    let razorpayOrder: any;
+    try {
+      razorpayOrder = await this.createRazorpayOrder(order.id, total);
+    } catch (error: any) {
+      await this.prisma.payment.update({
+        where: { orderId: order.id },
+        data: {
+          status: "FAILED",
+          rawPayload: {
+            checkoutSource: "web",
+            couponCode: coupon?.code || null,
+            failureReason: error?.message || "Could not start payment"
+          }
+        }
+      });
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: "CANCELLED" }
+      });
+      throw error;
+    }
 
     await this.prisma.payment.update({
       where: { orderId: order.id },
@@ -172,6 +195,8 @@ export class CommerceService {
         ...order,
         orderId: order.id,
         razorpayOrderId: razorpayOrder.id,
+        // Served from the API so the browser can never use a mismatched key.
+        razorpayKeyId: this.getRazorpayCredentials().keyId,
         amount: total,
         currency: "INR"
       }
@@ -281,11 +306,17 @@ export class CommerceService {
       }
     });
 
+    // Retrying revives a cancelled-on-failure order.
+    if (order.status === "CANCELLED") {
+      await this.prisma.order.update({ where: { id: order.id }, data: { status: "PLACED" } });
+    }
+
     return {
       success: true,
       data: {
         orderId: order.id,
         razorpayOrderId: razorpayOrder.id,
+        razorpayKeyId: this.getRazorpayCredentials().keyId,
         amount: order.total,
         currency: "INR"
       }

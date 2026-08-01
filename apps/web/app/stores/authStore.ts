@@ -154,6 +154,17 @@ const useAuthStore = create<AuthStore>()(
           const res = await fetch(`/api/auth/user/profile`, {
             headers: { Authorization: `Bearer ${token}` }
           });
+
+          // A rejected token means the session is dead (expired, or the account
+          // was removed). Clear it rather than leaving a half-logged-in state
+          // where the header shows a user but every request fails.
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('flyfree_auth_token');
+            localStorage.removeItem('flyfree_user_data');
+            set({ user: null, token: null, hydrated: true });
+            return;
+          }
+
           if (!res.ok) return;
 
           const data = await res.json();

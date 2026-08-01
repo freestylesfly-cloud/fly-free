@@ -84,7 +84,7 @@ export default function ResetPasswordContent() {
   }
 
   return (
-    <AuthDrawerShell title="Reset Password">
+    <AuthDrawerShell title="Set a new password" subtitle="Enter the code from your email and choose a new password.">
       {success ? (
         <div className="flex min-h-[360px] flex-col items-center justify-center space-y-4 text-center">
           <CheckCircle size={64} style={{ color: 'var(--color-primary)' }} />

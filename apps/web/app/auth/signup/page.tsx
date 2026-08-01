@@ -72,7 +72,7 @@ function SignupContent() {
 
   if (success) {
     return (
-      <AuthDrawerShell title="Register">
+      <AuthDrawerShell title="Create your account" subtitle="One account for orders, addresses, and saved items.">
         <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
           <CheckCircle size={64} className="mb-5" style={{ color: 'var(--color-primary)' }} />
           <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Check your email</h1>
@@ -83,7 +83,7 @@ function SignupContent() {
   }
 
   return (
-    <AuthDrawerShell title="Register">
+    <AuthDrawerShell title="Create your account" subtitle="One account for orders, addresses, and saved items.">
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
@@ -194,7 +194,7 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<AuthDrawerShell title="Register"><div className="h-10" /></AuthDrawerShell>}>
+    <Suspense fallback={<AuthDrawerShell title="Create your account" subtitle="One account for orders, addresses, and saved items."><div className="h-10" /></AuthDrawerShell>}>
       <SignupContent />
     </Suspense>
   );

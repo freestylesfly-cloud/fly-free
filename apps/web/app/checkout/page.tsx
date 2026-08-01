@@ -181,35 +181,65 @@ export default function CheckoutPage() {
       const order = await orderRes.json();
       const orderData = order.data || order;
 
-      if (typeof window !== 'undefined' && (window as any).Razorpay) {
-        const amountInPaise = Math.round((total || orderData.amount) * 100);
-
-        const razorpay = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: amountInPaise,
-          currency: 'INR',
-          name: 'Fly Free',
-          description: `${cartItems.length} item(s)`,
-          order_id: orderData.razorpayOrderId,
-          prefill: {
-            email: user?.email || '',
-            contact: user?.phone || ''
-          },
-          handler: async (response: any) => {
-            await verifyPayment(response, orderData.orderId);
-          },
-          modal: {
-            ondismiss: () => {
-              setProcessing(false);
-              setError('Payment cancelled');
-            }
-          }
-        });
-        razorpay.open();
+      if (typeof window === 'undefined' || !(window as any).Razorpay) {
+        throw new Error('Payment library failed to load. Please refresh and try again.');
       }
+
+      // Prefer the key the API used to create this order; a mismatch between
+      // the two is what produces "Authentication key was missing".
+      const razorpayKey = orderData.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!razorpayKey || !orderData.razorpayOrderId) {
+        throw new Error('Payments are not configured. Please contact support.');
+      }
+
+      const amountInPaise = Math.round((total || orderData.amount) * 100);
+
+      const razorpay = new (window as any).Razorpay({
+        key: razorpayKey,
+        amount: amountInPaise,
+        currency: 'INR',
+        name: 'Fly Free',
+        description: `${cartItems.length} item(s)`,
+        order_id: orderData.razorpayOrderId,
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || ''
+        },
+        handler: async (response: any) => {
+          await verifyPayment(response, orderData.orderId);
+        },
+        modal: {
+          ondismiss: () => {
+            releaseCheckoutUi();
+            setError('Payment cancelled. Your order is saved — you can pay for it from your orders page.');
+          }
+        }
+      });
+
+      razorpay.on('payment.failed', (event: any) => {
+        releaseCheckoutUi();
+        setError(event?.error?.description || 'Payment failed. You can retry from your orders page.');
+      });
+
+      razorpay.open();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed');
-      setProcessing(false);
+      releaseCheckoutUi();
+    }
+  }
+
+  /**
+   * Razorpay locks body scroll while its modal is open and occasionally leaves
+   * the lock behind when it is dismissed, which makes the page feel frozen.
+   */
+  function releaseCheckoutUi() {
+    setProcessing(false);
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
     }
   }
 
@@ -232,14 +262,20 @@ export default function CheckoutPage() {
       if (verifyRes.ok) {
         clearCart();
         window.location.href = `/order-success?orderId=${orderId}`;
-      } else {
-        setProcessing(false);
-        setError('Payment verification failed');
+        return;
       }
+
+      const body = await verifyRes.json().catch(() => null);
+      releaseCheckoutUi();
+      setError(
+        body?.message ||
+          body?.error ||
+          'We could not confirm your payment. If money was deducted it will be refunded, or you can retry from your orders page.'
+      );
     } catch (err) {
-      setProcessing(false);
-      setError('Payment error');
-      console.error('Error:', err);
+      releaseCheckoutUi();
+      setError('We could not confirm your payment. Please check your orders page before paying again.');
+      console.error('Payment verification error:', err);
     }
   }
 
