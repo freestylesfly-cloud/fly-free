@@ -94,6 +94,8 @@ export default function SettingsPage() {
           {error && <div className="rounded border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
           {saved && <div className="rounded border border-green-200 bg-green-50 p-4 text-green-700">Settings saved.</div>}
 
+          <StorageStatusCard />
+
           <div className="flex gap-2 border-b border-black/10">
             <button onClick={() => setActiveTab('general')} className={`px-4 py-3 font-bold ${activeTab === 'general' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>General</button>
             <button onClick={() => setActiveTab('delivery')} className={`px-4 py-3 font-bold ${activeTab === 'delivery' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Delivery &amp; Orders</button>
@@ -198,6 +200,110 @@ export default function SettingsPage() {
   function update(key: keyof AppSettings, value: string | number) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
+}
+
+type StorageStatus = {
+  bucket: string;
+  supabaseUrl: string | null;
+  hasSupabaseUrl: boolean;
+  hasServiceRoleKey: boolean;
+  bucketReachable: boolean;
+  isPublic: boolean | null;
+  ok: boolean;
+  error: string | null;
+};
+
+/**
+ * Live check of the image bucket. Uploads are performed by the API server, so
+ * this reports the API's configuration — not this admin app's.
+ */
+function StorageStatusCard() {
+  const [status, setStatus] = useState<StorageStatus | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [failed, setFailed] = useState('');
+
+  async function check() {
+    try {
+      setChecking(true);
+      setFailed('');
+      setStatus((await apiService.getStorageStatus()) as StorageStatus);
+    } catch (err) {
+      setFailed(err instanceof Error ? err.message : 'Could not reach the API server');
+      setStatus(null);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  useEffect(() => {
+    void check();
+  }, []);
+
+  const good = status?.ok === true;
+  const tone = checking
+    ? 'border-black/10 bg-white'
+    : good
+      ? 'border-green-200 bg-green-50'
+      : 'border-red-200 bg-red-50';
+
+  return (
+    <section className={`rounded border p-5 ${tone}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-black">Image storage</h2>
+          <p className="text-sm text-black/55">
+            Where product, theme, hamper and category uploads are stored.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void check()}
+          disabled={checking}
+          className="rounded border border-black/15 px-3 py-2 text-sm font-bold disabled:opacity-50"
+        >
+          {checking ? 'Checking...' : 'Re-check'}
+        </button>
+      </div>
+
+      {failed && <p className="mt-3 text-sm font-bold text-red-700">API unreachable: {failed}</p>}
+
+      {status && (
+        <>
+          <p className={`mt-3 font-black ${good ? 'text-green-800' : 'text-red-700'}`}>
+            {good ? 'Uploads are working.' : 'Uploads will fail.'}
+          </p>
+          {status.error && <p className="mt-1 text-sm font-bold text-red-700">{status.error}</p>}
+
+          <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+            <Check label="SUPABASE_URL set on API" ok={status.hasSupabaseUrl} />
+            <Check label="SUPABASE_SERVICE_ROLE_KEY set on API" ok={status.hasServiceRoleKey} />
+            <Check label={`Bucket "${status.bucket}" reachable`} ok={status.bucketReachable} />
+            <Check label="Bucket is public" ok={status.isPublic === true} />
+          </dl>
+
+          {status.supabaseUrl && (
+            <p className="mt-3 break-all text-xs font-bold text-black/45">Project: {status.supabaseUrl}</p>
+          )}
+
+          {!good && (
+            <p className="mt-3 text-xs font-bold text-black/60">
+              These variables belong on the server that runs the API, not on the frontend host. The
+              service-role key must never be added as a NEXT_PUBLIC_ variable.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Check({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`font-black ${ok ? 'text-green-700' : 'text-red-600'}`}>{ok ? '✓' : '✕'}</span>
+      <span className="font-bold text-black/70">{label}</span>
+    </div>
+  );
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

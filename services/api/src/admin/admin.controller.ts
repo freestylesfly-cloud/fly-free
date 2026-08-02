@@ -213,6 +213,13 @@ export class AdminController {
     return this.adminService.deleteImage(body?.url);
   }
 
+  // Read-only: reports whether this server can reach the storage bucket.
+  // Never returns the key itself, only whether one is present.
+  @Get("storage-status")
+  storageStatus() {
+    return this.adminService.getStorageStatus();
+  }
+
   // ==================== SETTINGS ====================
   @Get("settings")
   getSettings() {

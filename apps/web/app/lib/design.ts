@@ -67,6 +67,20 @@ export const MEDIA = {
   hamper: { ratio: 4 / 5, css: '4 / 5', export: '1200 × 1500' }
 } as const;
 
+/**
+ * Fallback support details, used until the API answers.
+ *
+ * The live values come from Admin → Settings (`supportEmail`, `contactPhone`,
+ * `businessAddress`, `socialLinks.instagram`). These are only what renders
+ * before that request lands — keep them truthful, they ship in the HTML.
+ */
+export const SUPPORT = {
+  email: 'support@flyfree.com',
+  phone: '+91 98765 43210',
+  address: 'Guwahati, Assam, India',
+  instagram: 'https://instagram.com/flyfree'
+};
+
 /** Copy shown over the hero when a theme supplies no description of its own. */
 export const HERO_FALLBACK = {
   tag: 'New drop',

@@ -332,6 +332,11 @@ class ApiService {
     return this.request('/api/admin/settings');
   }
 
+  /** Reports whether the API server can reach the image bucket. */
+  async getStorageStatus() {
+    return this.request('/api/admin/storage-status');
+  }
+
   async updateSettings(data: any) {
     return this.request('/api/admin/settings', {
       method: 'PUT',

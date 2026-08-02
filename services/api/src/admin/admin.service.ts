@@ -10,6 +10,9 @@ import { EmailService } from "../email/email.service";
 import { createClient } from "@supabase/supabase-js";
 import type { PrismaClient } from "@prisma/client";
 
+/** Every admin-uploaded image lands here. The bucket must be public. */
+const STORAGE_BUCKET = "product-images";
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
@@ -1055,7 +1058,16 @@ export class AdminService {
     const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !serviceKey) {
-      throw new BadRequestException("Image storage is not configured");
+      // Name the missing variable — this runs on the API host (Railway), not on
+      // Vercel, and that distinction is where the setup usually goes wrong.
+      const missing = [
+        !url && "SUPABASE_URL",
+        !serviceKey && "SUPABASE_SERVICE_ROLE_KEY"
+      ].filter(Boolean);
+      this.logger.error(`Image upload blocked: missing ${missing.join(" and ")} on the API server`);
+      throw new BadRequestException(
+        `Image storage is not configured: ${missing.join(" and ")} missing on the API server. Set it where the API is deployed, not on the frontend host.`
+      );
     }
 
     const storage = createClient(url, serviceKey);
@@ -1064,21 +1076,73 @@ export class AdminService {
     const objectPath = `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
 
     const { data, error } = await storage.storage
-      .from("product-images")
+      .from(STORAGE_BUCKET)
       .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
 
     if (error) {
       this.logger.error(`Admin image upload failed: ${error.message}`);
-      throw new BadRequestException("Failed to upload image");
+      throw new BadRequestException(`Failed to upload image: ${error.message}`);
     }
 
-    const { data: pub } = storage.storage.from("product-images").getPublicUrl(data.path);
+    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
     return { url: pub.publicUrl };
+  }
+
+  /**
+   * Read-only health check for image storage, so a failing upload can be
+   * diagnosed without uploading anything.
+   *
+   * Uploads are performed by THIS server, so the credentials must exist on the
+   * API host. Setting them on the frontend host has no effect — and the
+   * service-role key must never be shipped to a browser.
+   */
+  async getStorageStatus() {
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const status: Record<string, any> = {
+      bucket: STORAGE_BUCKET,
+      supabaseUrl: url || null,
+      hasSupabaseUrl: Boolean(url),
+      hasServiceRoleKey: Boolean(serviceKey),
+      bucketReachable: false,
+      isPublic: null as boolean | null,
+      ok: false,
+      error: null as string | null
+    };
+
+    if (!url || !serviceKey) {
+      status.error = `Missing ${[!url && "SUPABASE_URL", !serviceKey && "SUPABASE_SERVICE_ROLE_KEY"]
+        .filter(Boolean)
+        .join(" and ")} on the API server.`;
+      return status;
+    }
+
+    try {
+      const storage = createClient(url, serviceKey);
+      const { data, error } = await storage.storage.getBucket(STORAGE_BUCKET);
+
+      if (error) {
+        status.error = error.message;
+        return status;
+      }
+
+      status.bucketReachable = true;
+      status.isPublic = data?.public ?? null;
+      status.ok = Boolean(data?.public);
+      if (!data?.public) {
+        status.error = `Bucket "${STORAGE_BUCKET}" exists but is not public, so uploaded images will not load.`;
+      }
+    } catch (err) {
+      status.error = err instanceof Error ? err.message : "Could not reach Supabase storage";
+    }
+
+    return status;
   }
 
   /** Best-effort removal of a previously uploaded image. */
   async deleteImage(url: string) {
-    const marker = "/storage/v1/object/public/product-images/";
+    const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
     const index = (url || "").indexOf(marker);
     if (index === -1) return { removed: false };
 
@@ -1088,7 +1152,7 @@ export class AdminService {
 
     const storage = createClient(supabaseUrl, serviceKey);
     const { error } = await storage.storage
-      .from("product-images")
+      .from(STORAGE_BUCKET)
       .remove([url.slice(index + marker.length)]);
 
     if (error) {

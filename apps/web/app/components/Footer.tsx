@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
 import { Logo } from './Logo';
+import { getApiBaseUrl } from '../lib/api';
+import { SUPPORT } from '../lib/design';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -11,6 +13,25 @@ export function Footer() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  // Same source the Contact page reads, so the two can never disagree.
+  const [support, setSupport] = useState(SUPPORT);
+
+  useEffect(() => {
+    fetch(`${getApiBaseUrl()}/cms/home`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((home) => {
+        const settings = home?.settings || {};
+        setSupport({
+          email: settings.supportEmail || settings.contactEmail || SUPPORT.email,
+          phone: settings.contactPhone || SUPPORT.phone,
+          address: settings.businessAddress || SUPPORT.address,
+          instagram: settings.socialLinks?.instagram || SUPPORT.instagram
+        });
+      })
+      .catch(() => {
+        /* Keep the compiled-in defaults. */
+      });
+  }, []);
 
   async function handleSubscribe(event: React.FormEvent) {
     event.preventDefault();
@@ -110,12 +131,12 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Support</h3>
             <ul className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li className="flex gap-2"><Mail size={16} /> <a href="mailto:support@flyfree.com">support@flyfree.com</a></li>
-              <li className="flex gap-2"><Phone size={16} /> <a href="tel:+919876543210">+91 98765 43210</a></li>
-              <li className="flex gap-2"><MapPin size={16} /> <span>Guwahati, Assam, India</span></li>
+              <li className="flex gap-2"><Mail size={16} /> <a href={`mailto:${support.email}`}>{support.email}</a></li>
+              <li className="flex gap-2"><Phone size={16} /> <a href={`tel:${support.phone.replace(/[^\d+]/g, '')}`}>{support.phone}</a></li>
+              <li className="flex gap-2"><MapPin size={16} /> <span>{support.address}</span></li>
               <li>
                 <a
-                  href="https://instagram.com/flyfree"
+                  href={support.instagram}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-3 py-2 font-bold"
