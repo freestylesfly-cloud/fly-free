@@ -123,11 +123,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   {order.user?.id && <Link href={`/users/${order.user.id}`} className="mt-3 inline-block font-bold text-coral">Open user profile</Link>}
                 </section>
                 <section className="rounded border border-black/10 bg-white p-5">
-                  <h2 className="mb-3 font-black">Shipping address</h2>
-                  <p>{order.shippingAddress?.fullName}</p>
-                  <p className="text-black/60">{order.shippingAddress?.line1}</p>
-                  <p className="text-black/60">{order.shippingAddress?.line2}</p>
-                  <p className="text-black/60">{order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.postalCode}</p>
+                  <h2 className="mb-3 font-black">Delivery address</h2>
+                  <ShippingAddress address={order.shippingAddress} />
                 </section>
               </div>
 
@@ -220,6 +217,33 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+/**
+ * Where the parcel ships. This is a snapshot taken at checkout, not a live
+ * lookup, so it still reads correctly after the customer edits or deletes the
+ * address in their address book.
+ */
+function ShippingAddress({ address }: { address: any }) {
+  if (!address) {
+    return <p className="text-sm font-bold text-black/45">No delivery address on this order.</p>;
+  }
+
+  // Skip blank parts so the block never renders a stray comma.
+  const region = [address.city, address.state].filter(Boolean).join(', ');
+  const lines = [address.line1, address.line2, [region, address.postalCode].filter(Boolean).join(' '), address.country]
+    .map((line) => String(line || '').trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-0.5 text-sm">
+      {address.fullName && <p className="font-bold text-ink">{address.fullName}</p>}
+      {lines.map((line) => (
+        <p key={line} className="text-black/60">{line}</p>
+      ))}
+      {address.phone && <p className="pt-1 font-bold text-ink">{address.phone}</p>}
+    </div>
   );
 }
 

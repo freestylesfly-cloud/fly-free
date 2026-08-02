@@ -45,8 +45,9 @@ interface OrderData {
     city?: string;
     state?: string;
     postalCode?: string;
+    country?: string;
     phone?: string;
-  };
+  } | null;
 }
 
 export default function InvoicePreviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -180,12 +181,25 @@ export default function InvoicePreviewPage({ params }: { params: Promise<{ id: s
                   {order.shippingAddress ? (
                     <>
                       <p className="font-bold">{order.shippingAddress.fullName}</p>
-                      <p className="text-black/60">{order.shippingAddress.line1}</p>
-                      {order.shippingAddress.line2 && <p className="text-black/60">{order.shippingAddress.line2}</p>}
-                      <p className="text-black/60">
-                        {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
-                      </p>
-                      <p className="font-bold text-black/60">{order.shippingAddress.phone}</p>
+                      {[
+                        order.shippingAddress.line1,
+                        order.shippingAddress.line2,
+                        [
+                          [order.shippingAddress.city, order.shippingAddress.state].filter(Boolean).join(', '),
+                          order.shippingAddress.postalCode
+                        ]
+                          .filter(Boolean)
+                          .join(' '),
+                        order.shippingAddress.country
+                      ]
+                        .map((line: any) => String(line || '').trim())
+                        .filter(Boolean)
+                        .map((line: string) => (
+                          <p key={line} className="text-black/60">{line}</p>
+                        ))}
+                      {order.shippingAddress.phone && (
+                        <p className="font-bold text-black/60">{order.shippingAddress.phone}</p>
+                      )}
                     </>
                   ) : (
                     <p className="text-black/45">No shipping address</p>

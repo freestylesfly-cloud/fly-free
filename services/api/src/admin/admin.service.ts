@@ -285,13 +285,13 @@ export class AdminService {
     ]);
 
     return {
-      data: orders,
+      data: orders.map((order) => this.withShippingAddress(order)),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     };
   }
 
   async getOrder(id: string) {
-    return this.prisma.order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
         user: true,
@@ -303,6 +303,40 @@ export class AdminService {
         items: { include: { product: true } }
       }
     });
+
+    return order ? this.withShippingAddress(order) : order;
+  }
+
+  /**
+   * The delivery address is snapshotted onto the order as flat `shipping*`
+   * columns at checkout, so it survives the customer deleting the address book
+   * entry. Admin screens and the storefront both expect it as one nested
+   * object, so expose it in both shapes — with the same field aliases the
+   * storefront uses, so a component can be moved between apps unchanged.
+   */
+  private withShippingAddress(order: any) {
+    const hasAddress = Boolean(
+      order.shippingName || order.shippingLine1 || order.shippingCity || order.shippingPostalCode
+    );
+
+    return {
+      ...order,
+      shippingAddress: hasAddress
+        ? {
+            name: order.shippingName,
+            fullName: order.shippingName,
+            phone: order.shippingPhone,
+            street: order.shippingLine1,
+            line1: order.shippingLine1,
+            line2: order.shippingLine2,
+            city: order.shippingCity,
+            state: order.shippingState,
+            pincode: order.shippingPostalCode,
+            postalCode: order.shippingPostalCode,
+            country: order.shippingCountry
+          }
+        : null
+    };
   }
 
   async updateOrderStatus(id: string, status: string, note?: string, changedBy = "admin") {
