@@ -337,6 +337,11 @@ class ApiService {
     return this.request('/api/admin/storage-status');
   }
 
+  /** Creates any storefront content page that does not exist yet. */
+  async createMissingPages() {
+    return this.request('/api/admin/pages/create-missing', { method: 'POST' });
+  }
+
   async updateSettings(data: any) {
     return this.request('/api/admin/settings', {
       method: 'PUT',

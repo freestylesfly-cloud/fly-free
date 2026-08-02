@@ -20,6 +20,15 @@ type PageRecord = {
   updatedAt: string;
 };
 
+/** A content page the storefront asks for by slug. Supplied by the API. */
+type StandardPage = {
+  slug: string;
+  title: string;
+  route: string;
+  exists: boolean;
+  isPublished: boolean;
+};
+
 const emptyPage = { slug: '', title: '', content: '', metaTitle: '', metaDesc: '', isPublished: true };
 
 export default function PagesPage() {
@@ -27,7 +36,25 @@ export default function PagesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyPage);
   const [message, setMessage] = useState('');
+  const [creating, setCreating] = useState(false);
   const pages = (data?.data || []) as PageRecord[];
+  const standard = (data?.standard || []) as StandardPage[];
+  const missing = standard.filter((page) => !page.exists);
+
+  async function createMissing() {
+    try {
+      setCreating(true);
+      setMessage('');
+      const result: any = await apiService.createMissingPages();
+      const created = result?.created?.length ?? 0;
+      setMessage(created > 0 ? `Created ${created} page(s). Edit the text before launch.` : 'Nothing missing.');
+      refetch();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Could not create pages');
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +87,52 @@ export default function PagesPage() {
     <ProtectedRoute>
       <DashboardLayout title="Pages" subtitle="Manage website content, policies, SEO, and size chart text from database">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
-          <section className="overflow-hidden rounded border border-black/10 bg-white">
+          <section className="space-y-6">
+            {/* Which storefront pages are live, and which still show the
+                hard-coded fallback text baked into the site. */}
+            <div className={`rounded border p-5 ${missing.length > 0 ? 'border-amber-300 bg-amber-50' : 'border-black/10 bg-white'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-black">Storefront pages</h2>
+                  <p className="text-sm text-black/55">
+                    These slugs are read by the website. A missing page falls back to built-in text that you cannot edit.
+                  </p>
+                </div>
+                {missing.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void createMissing()}
+                    disabled={creating}
+                    className="rounded bg-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    {creating ? 'Creating...' : `Create ${missing.length} missing page(s)`}
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {standard.map((page) => {
+                  const live = page.exists && page.isPublished;
+                  return (
+                    <div key={page.slug} className="flex items-start gap-2 text-sm">
+                      <span className={`font-black ${live ? 'text-green-700' : 'text-amber-700'}`}>
+                        {live ? '✓' : '!'}
+                      </span>
+                      <span>
+                        <span className="font-bold text-ink">{page.title}</span>
+                        <span className="block text-xs font-bold text-black/45">
+                          {page.slug} · {page.route}
+                          {page.exists && !page.isPublished && ' · DRAFT, not visible'}
+                          {!page.exists && ' · using built-in text'}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded border border-black/10 bg-white">
             <div className="border-b border-black/10 p-4">
               <h2 className="flex items-center gap-2 font-black"><FileText size={18} /> Content pages</h2>
             </div>
@@ -94,16 +166,21 @@ export default function PagesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </section>
 
-          <form onSubmit={submit} className="space-y-4 rounded border border-black/10 bg-white p-5">
+          <form onSubmit={submit} className="h-fit space-y-4 rounded border border-black/10 bg-white p-5">
             <h2 className="flex items-center gap-2 text-lg font-black"><Plus size={18} /> {editingId ? 'Edit page' : 'Create page'}</h2>
             {message && <div className="rounded bg-green-50 p-3 text-sm font-bold text-green-700">{message}</div>}
             <Field label="Title" value={form.title} onChange={(value) => setForm({ ...form, title: value })} required />
             <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="about-us" />
             <label className="grid gap-2 text-sm font-bold">
               Content
-              <textarea required rows={10} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} className="rounded border border-black/10 px-3 py-2" />
+              <textarea required rows={14} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} className="rounded border border-black/10 px-3 py-2 font-mono text-sm" />
+              <span className="text-xs font-bold text-black/45">
+                Formatting: <code>## Heading</code> for a section, <code>- item</code> for a bullet,
+                <code> 1. item</code> for a numbered step, blank line for a new paragraph.
+              </span>
             </label>
             <Field label="SEO Title" value={form.metaTitle} onChange={(value) => setForm({ ...form, metaTitle: value })} />
             <label className="grid gap-2 text-sm font-bold">

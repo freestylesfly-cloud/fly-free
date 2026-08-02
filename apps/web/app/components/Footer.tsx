@@ -123,6 +123,8 @@ export function Footer() {
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/about" style={linkStyle}>About us</Link></li>
               <li><Link href="/contact" style={linkStyle}>Contact us</Link></li>
+              <li><Link href="/returns" style={linkStyle}>Returns &amp; exchange</Link></li>
+              <li><Link href="/shipping" style={linkStyle}>Shipping</Link></li>
               <li><Link href="/terms" style={linkStyle}>Terms</Link></li>
               <li><Link href="/privacy" style={linkStyle}>Privacy</Link></li>
             </ul>

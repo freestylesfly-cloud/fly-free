@@ -220,6 +220,12 @@ export class AdminController {
     return this.adminService.getStorageStatus();
   }
 
+  // Creates any storefront content page that does not exist yet. Idempotent.
+  @Post("pages/create-missing")
+  createMissingPages() {
+    return this.adminService.createMissingPages();
+  }
+
   // ==================== SETTINGS ====================
   @Get("settings")
   getSettings() {

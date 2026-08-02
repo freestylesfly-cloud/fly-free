@@ -1,5 +1,6 @@
 import { PrismaClient, ReviewStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { STANDARD_PAGES } from '../src/cms/standard-pages';
 
 const prisma = new PrismaClient();
 
@@ -435,13 +436,19 @@ async function main() {
     data: { key: 'branding', value: { appLogo: '/brand/logo.png', appFavicon: '/favicon_io/favicon.ico' } },
   });
 
-  await prisma.page.create({
-    data: {
-      slug: 'size-chart',
-      title: 'Size Chart',
-      content: 'All measurements are in inches and taken flat. Unisex sizing across every fit.',
-    },
-  });
+  // Content pages the storefront reads by slug. Editable in Admin -> Pages.
+  console.log('Creating content pages...');
+  for (const page of STANDARD_PAGES) {
+    await prisma.page.create({
+      data: {
+        slug: page.slug,
+        title: page.title,
+        content: page.content,
+        metaTitle: page.title,
+        isPublished: true,
+      },
+    });
+  }
 
   console.log('\nSeed complete');
   console.log(`  fits:        ${fitSpecs.length}`);

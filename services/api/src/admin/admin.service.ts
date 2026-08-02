@@ -9,6 +9,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import { createClient } from "@supabase/supabase-js";
 import type { PrismaClient } from "@prisma/client";
+import { STANDARD_PAGES, STANDARD_PAGE_SLUGS } from "../cms/standard-pages";
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
 const STORAGE_BUCKET = "product-images";
@@ -1174,7 +1175,48 @@ export class AdminService {
 
   // ==================== PAGES ====================
   async listPages() {
-    return { data: await this.prisma.page.findMany({ orderBy: { updatedAt: "desc" } }) };
+    const pages = await this.prisma.page.findMany({ orderBy: { updatedAt: "desc" } });
+    const bySlug = new Map(pages.map((page) => [page.slug, page]));
+
+    return {
+      data: pages,
+      // Lets the admin show which storefront pages exist and which are still
+      // falling back to hard-coded copy, without hardcoding slugs in the UI.
+      standard: STANDARD_PAGES.map((page) => ({
+        slug: page.slug,
+        title: page.title,
+        route: page.route,
+        exists: bySlug.has(page.slug),
+        isPublished: bySlug.get(page.slug)?.isPublished ?? false
+      }))
+    };
+  }
+
+  /**
+   * Creates any storefront page that does not exist yet, with starter content.
+   * Existing pages are left untouched, so this is safe to re-run.
+   */
+  async createMissingPages() {
+    const existing = await this.prisma.page.findMany({
+      where: { slug: { in: STANDARD_PAGE_SLUGS } },
+      select: { slug: true }
+    });
+    const have = new Set(existing.map((page) => page.slug));
+    const missing = STANDARD_PAGES.filter((page) => !have.has(page.slug));
+
+    if (missing.length > 0) {
+      await this.prisma.page.createMany({
+        data: missing.map((page) => ({
+          slug: page.slug,
+          title: page.title,
+          content: page.content,
+          metaTitle: page.title,
+          isPublished: true
+        }))
+      });
+    }
+
+    return { created: missing.map((page) => page.slug), skipped: existing.length };
   }
 
   async getPage(id: string) {

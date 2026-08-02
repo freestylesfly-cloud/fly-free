@@ -120,7 +120,8 @@ export class CmsService {
     });
   }
 
+  /** Drafts stay private — only published pages reach the storefront. */
   getPage(slug: string) {
-    return this.prisma.page.findUnique({ where: { slug } });
+    return this.prisma.page.findFirst({ where: { slug, isPublished: true } });
   }
 }
