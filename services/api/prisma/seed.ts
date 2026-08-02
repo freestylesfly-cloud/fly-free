@@ -63,7 +63,6 @@ async function wipe() {
   await prisma.newsletterSubscriber.deleteMany();
   await prisma.page.deleteMany();
   await prisma.appSetting.deleteMany();
-  await prisma.websiteTheme.deleteMany();
   await prisma.sizeGuide.deleteMany();
   await prisma.instagramPost.deleteMany();
 }
@@ -280,43 +279,6 @@ async function main() {
     await prisma.sizeGuide.create({ data: { ...row, active: true } });
   }
 
-  // ------------------------------------------------------ website themes
-  // These drive the site-wide CSS variables. One must always be active.
-  console.log('Creating website themes...');
-  const websiteTheme = await prisma.websiteTheme.create({
-    data: {
-      name: 'Fly Free Default',
-      slug: 'fly-free-default',
-      description: 'Core brand skin: red, blue, and gold on paper white.',
-      primaryColor: '#FF4A4E',
-      secondaryColor: '#00A8E8',
-      accentColor: '#FFB703',
-      backgroundColor: '#FFFFFF',
-      textColor: '#111827',
-      fontFamily: 'Inter, Arial, sans-serif',
-      animationStyle: 'fade',
-      priority: 1,
-      isActive: true,
-    },
-  });
-
-  await prisma.websiteTheme.create({
-    data: {
-      name: 'Festive Night',
-      slug: 'festive-night',
-      description: 'Darker festive skin for Puja and Bihu drops.',
-      primaryColor: '#E65100',
-      secondaryColor: '#B71C1C',
-      accentColor: '#FFD54F',
-      backgroundColor: '#12100E',
-      textColor: '#F8F5F0',
-      fontFamily: 'Inter, Arial, sans-serif',
-      animationStyle: 'fade',
-      priority: 2,
-      isActive: false,
-    },
-  });
-
   // ------------------------------------------------------- announcements
   // These render as the scrolling marquee strip above the header.
   console.log('Creating announcements...');
@@ -333,7 +295,6 @@ async function main() {
         type: 'EVENT',
         priority: index + 1,
         isActive: true,
-        websiteThemeId: websiteTheme.id,
         startsAt: new Date(Date.now() - 86400000),
         endsAt: new Date(Date.now() + 86400000 * 60),
       },

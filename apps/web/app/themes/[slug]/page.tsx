@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
+import { HERO_MAX_WIDTH, MEDIA } from "../../lib/design";
 import { ThemeProductGrid } from "./ThemeProductGrid";
 
 const API_BASE = getApiBaseUrl();
@@ -26,42 +27,38 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* THEME BANNER HERO */}
-      <section
-        className="relative flex min-h-[420px] items-end overflow-hidden md:min-h-[520px]"
-        style={{
-          backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
-          backgroundColor: theme.primaryColor || "var(--color-primary)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,.15) 70%)" }} />
-
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-14">
-          <nav className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70">
-            <Link href="/" className="hover:text-white">Home</Link>
-            <span>/</span>
-            <Link href="/products" className="hover:text-white">Themes</Link>
-            <span>/</span>
-            <span className="text-white">{theme.name}</span>
-          </nav>
-
-          <h1 className="text-5xl font-black uppercase leading-none text-white md:text-7xl">{theme.name}</h1>
-
-          {(theme.story || theme.description) && (
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/85 md:text-lg">
-              {theme.story || theme.description}
-            </p>
-          )}
-
-          <a
-            href="#collection"
-            className="mt-8 inline-flex items-center gap-2 rounded-lg px-7 py-4 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
-            style={{ backgroundColor: "var(--color-primary)" }}
+      {/* THEME BANNER HERO — same 16:9 frame as the homepage carousel, so one
+          uploaded crop reads identically on phone and desktop. */}
+      <section className="relative">
+        <div className="mx-auto w-full" style={{ maxWidth: `${HERO_MAX_WIDTH}px` }}>
+          <div
+            className="relative w-full overflow-hidden"
+            style={{
+              aspectRatio: MEDIA.themeBanner.css,
+              backgroundColor: theme.primaryColor || "var(--color-primary)",
+            }}
           >
-            Explore Collection <ArrowRight size={18} />
-          </a>
+            {theme.bannerImageUrl && (
+              <img
+                src={theme.bannerImageUrl}
+                alt={theme.name}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            <div
+              className="absolute inset-0 hidden md:block"
+              style={{ background: "linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,.15) 70%)" }}
+            />
+
+            <div className="absolute inset-0 z-10 hidden flex-col justify-end px-8 py-10 md:flex">
+              <ThemeBannerCopy theme={theme} onDark />
+            </div>
+          </div>
+
+          {/* Phones read the copy under the banner rather than over it. */}
+          <div className="px-5 py-8 md:hidden" style={{ backgroundColor: "var(--bg-secondary)" }}>
+            <ThemeBannerCopy theme={theme} />
+          </div>
         </div>
       </section>
 
@@ -90,5 +87,45 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
         )}
       </section>
     </main>
+  );
+}
+
+function ThemeBannerCopy({ theme, onDark = false }: { theme: any; onDark?: boolean }) {
+  const muted = onDark ? "rgba(255,255,255,.85)" : "var(--text-secondary)";
+
+  return (
+    <>
+      <nav
+        className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide"
+        style={{ color: onDark ? "rgba(255,255,255,.7)" : "var(--text-secondary)" }}
+      >
+        <Link href="/" className="hover:opacity-100">Home</Link>
+        <span>/</span>
+        <Link href="/products" className="hover:opacity-100">Themes</Link>
+        <span>/</span>
+        <span style={{ color: onDark ? "#fff" : "var(--text-primary)" }}>{theme.name}</span>
+      </nav>
+
+      <h1
+        className="text-4xl font-black uppercase leading-none md:text-6xl"
+        style={{ color: onDark ? "#fff" : "var(--text-primary)" }}
+      >
+        {theme.name}
+      </h1>
+
+      {(theme.story || theme.description) && (
+        <p className="mt-4 max-w-2xl text-base leading-relaxed md:text-lg" style={{ color: muted }}>
+          {theme.story || theme.description}
+        </p>
+      )}
+
+      <a
+        href="#collection"
+        className="mt-6 inline-flex items-center gap-2 rounded-lg px-6 py-3.5 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
+        style={{ backgroundColor: "var(--color-primary)" }}
+      >
+        Explore Collection <ArrowRight size={18} />
+      </a>
+    </>
   );
 }

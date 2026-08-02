@@ -24,6 +24,7 @@ import { formatCurrency } from '../../lib/utils';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
+import { MEDIA } from '../../lib/design';
 
 interface ProductDetailProps {
   params: Promise<{ slug: string }>;
@@ -628,7 +629,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 className="group rounded-lg border p-4 transition hover:shadow-lg"
                 style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
               >
-                <div className="relative mb-4 aspect-square overflow-hidden rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                <div className="relative mb-4 overflow-hidden rounded-lg" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }}>
                   <img
                     src={rec.images?.[0]?.url || `https://via.placeholder.com/300?text=${encodeURIComponent(rec.name)}`}
                     alt={rec.name}
@@ -771,7 +772,7 @@ function HamperOption({ active, onClick, hamper }: { active: boolean; onClick: (
         backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
       }}
     >
-      <span className="aspect-square overflow-hidden rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
+      <span className="overflow-hidden rounded border" style={{ aspectRatio: MEDIA.hamper.css, borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
         {image ? (
           <img src={image} alt={hamper.name} className="h-full w-full object-cover" />
         ) : (
@@ -842,7 +843,7 @@ function ProductSkeleton() {
   return (
     <main className="min-h-screen px-4 py-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
-        <div className="aspect-square animate-pulse rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+        <div className="animate-pulse rounded-lg" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }} />
         <div className="space-y-4">
           <div className="h-5 w-24 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
           <div className="h-10 w-3/4 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />

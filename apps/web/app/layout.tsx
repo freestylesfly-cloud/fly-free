@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Providers } from "./providers";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { BRAND, designTokensCss } from "./lib/design";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,8 +33,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
+        {/* Brand tokens come from app/lib/design.ts — edit that file, not the DB. */}
+        <style id="design-tokens" dangerouslySetInnerHTML={{ __html: designTokensCss() }} />
       </head>
-      <body style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: "'Times New Roman', Georgia, serif" }} className="min-h-screen flex flex-col">
+      <body
+        data-campaign-motion={BRAND.motion}
+        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: BRAND.fonts.body }}
+        className="min-h-screen flex flex-col"
+      >
         <Providers>
           <Header />
           <main className="flex-1 pb-28 md:pb-0">{children}</main>

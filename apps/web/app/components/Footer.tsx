@@ -78,7 +78,7 @@ export function Footer() {
         <div className="grid gap-8 py-10 md:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
-              <Logo size="md" showText={false} />
+              <Logo size="lg" showText={false} />
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
               Freedom, culture, comfort, and self-expression through premium tees and custom-crafted apparel.

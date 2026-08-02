@@ -6,6 +6,7 @@ import { InstagramFeedCarousel } from './components/InstagramFeedCarousel';
 import { HeroCarousel } from './components/HeroCarousel';
 import { AutoSlider } from './components/AutoSlider';
 import { getApiBaseUrl } from './lib/api';
+import { HERO_FALLBACK, MEDIA } from './lib/design';
 
 const API_BASE = getApiBaseUrl();
 
@@ -113,13 +114,15 @@ const rupees = (paise: number) => Math.round((paise || 0) / 100);
 export default async function HomePage() {
   const { themes, products, reviews, hampers, instagram, influencers } = await getHomeData();
 
+  // The hero is simply the active product themes — each theme's banner is one
+  // slide. There is no separate site-wide hero to configure.
   const heroSlides = themes
     .filter((theme) => theme.bannerImageUrl || theme.imageUrl)
     .slice(0, 5)
     .map((theme) => ({
       id: theme.id,
       image: theme.bannerImageUrl || theme.imageUrl,
-      tag: 'New drop',
+      tag: HERO_FALLBACK.tag,
       title: theme.name,
       subtitle: theme.description,
       ctaLabel: `Shop ${theme.name}`,
@@ -179,9 +182,13 @@ export default async function HomePage() {
                 style={{ width: '300px', borderColor: 'var(--border-color)' }}
               >
                 <div
-                  className="flex aspect-video items-end p-5 text-white"
+                  className="flex items-end p-5 text-white"
                   style={{
-                    backgroundImage: theme.bannerImageUrl ? `url('${theme.bannerImageUrl}')` : undefined,
+                    aspectRatio: MEDIA.themeCard.css,
+                    // Card crop first, banner only as a fallback — both are 16:9.
+                    backgroundImage: theme.imageUrl || theme.bannerImageUrl
+                      ? `url('${theme.imageUrl || theme.bannerImageUrl}')`
+                      : undefined,
                     backgroundColor: theme.primaryColor || 'var(--color-primary)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
@@ -252,9 +259,10 @@ export default async function HomePage() {
                   className="group overflow-hidden rounded-xl border-2 transition hover:shadow-lg"
                   style={{ borderColor: 'var(--border-color)' }}
                 >
+                  {/* Same frame as a product card, so hampers line up with tees. */}
                   <div
-                    className="flex aspect-square items-center justify-center overflow-hidden"
-                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                    className="flex items-center justify-center overflow-hidden"
+                    style={{ aspectRatio: MEDIA.hamper.css, backgroundColor: 'var(--bg-secondary)' }}
                   >
                     {cover ? (
                       <img

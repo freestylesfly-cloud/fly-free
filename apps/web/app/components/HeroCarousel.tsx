@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { HERO_MAX_WIDTH, MEDIA } from '../lib/design';
 
 export interface HeroSlide {
   id: string;
@@ -12,6 +13,14 @@ export interface HeroSlide {
   ctaLabel?: string;
   ctaHref?: string;
 }
+
+/**
+ * Banners are authored as a single 16:9 crop in the admin, so the frame stays
+ * 16:9 at every width — phone and desktop show exactly the same picture area.
+ * The stage is width-capped rather than height-capped, because capping height
+ * on a fixed ratio is what re-introduces cropping.
+ */
+const HERO_ASPECT = MEDIA.themeBanner.css;
 
 export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -56,80 +65,118 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
   return (
     <section className="relative overflow-hidden" style={{ borderBottom: '2px solid var(--border-color)' }}>
-      <div ref={trackRef} className="mo-slider flex w-full overflow-x-auto" style={{ scrollBehavior: 'smooth' }}>
-        {slides.map((slide) => (
-          <div key={slide.id} className="mo-slide relative flex-shrink-0 w-full" style={{ height: 'min(68vh, 680px)' }}>
-            {slide.image ? (
-              <div className="absolute inset-0">
-                <img src={slide.image} alt={slide.title || ''} className="h-full w-full object-cover" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.55), rgba(0,0,0,.1) 60%)' }} />
-              </div>
-            ) : (
-              <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
-            )}
-            {(slide.title || slide.subtitle) && (
-              <div className="relative z-10 flex h-full max-w-2xl flex-col justify-center gap-5 px-6 py-16 sm:px-8">
-                {slide.tag && (
-                  <span
-                    className="w-max text-xs font-black uppercase tracking-wide px-3 py-1"
-                    style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
-                  >
-                    {slide.tag}
-                  </span>
+      <div className="relative mx-auto w-full" style={{ maxWidth: `${HERO_MAX_WIDTH}px` }}>
+        <div ref={trackRef} className="mo-slider flex w-full overflow-x-auto" style={{ scrollBehavior: 'smooth' }}>
+          {slides.map((slide) => (
+            <div key={slide.id} className="mo-slide relative w-full flex-shrink-0">
+              <div className="relative w-full overflow-hidden" style={{ aspectRatio: HERO_ASPECT }}>
+                {slide.image ? (
+                  <>
+                    <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover" />
+                    {/* The overlay only exists where the copy sits on top of the art. */}
+                    <div
+                      className="absolute inset-0 hidden sm:block"
+                      style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.6), rgba(0,0,0,.05) 60%)' }}
+                    />
+                  </>
+                ) : (
+                  <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
                 )}
-                {slide.title && (
-                  <h1
-                    className="font-black uppercase leading-[0.9] text-white"
-                    style={{ fontSize: 'clamp(40px, 6vw, 88px)', letterSpacing: '-0.02em' }}
-                  >
-                    {slide.title}
-                  </h1>
-                )}
-                {slide.subtitle && (
-                  <p className="max-w-md text-base sm:text-lg leading-relaxed text-white/85">{slide.subtitle}</p>
-                )}
-                {slide.ctaLabel && slide.ctaHref && (
-                  <Link
-                    href={slide.ctaHref}
-                    className="w-max px-7 py-4 text-sm font-bold uppercase tracking-wide text-white transition hover:opacity-90"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
-                    {slide.ctaLabel}
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {slides.length > 1 && (
-        <>
-          <div className="absolute bottom-6 right-6 z-10 hidden gap-3 sm:flex">
-            <button type="button" className="mo-arrow" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => step(-1)} aria-label="Previous slide">
-              &#8592;
-            </button>
-            <button type="button" className="mo-arrow" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => step(1)} aria-label="Next slide">
-              &#8594;
-            </button>
+                {(slide.title || slide.subtitle) && (
+                  <div className="absolute inset-0 z-10 hidden max-w-2xl flex-col justify-center gap-4 px-8 sm:flex">
+                    <SlideCopy slide={slide} onDark />
+                  </div>
+                )}
+              </div>
+
+              {/* Below the frame on phones, so the banner itself is never covered. */}
+              {(slide.title || slide.subtitle) && (
+                <div
+                  className="flex flex-col gap-3 px-5 py-6 sm:hidden"
+                  style={{ backgroundColor: 'var(--bg-secondary)' }}
+                >
+                  <SlideCopy slide={slide} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {slides.length > 1 && (
+          // Pinned to the media frame, not the slide, so the controls stay on
+          // the banner once the copy moves below it on phones.
+          <div className="pointer-events-none absolute inset-x-0 top-0" style={{ aspectRatio: HERO_ASPECT }}>
+            <div className="pointer-events-auto absolute bottom-6 right-6 z-10 hidden gap-3 sm:flex">
+              <button type="button" className="mo-arrow" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => step(-1)} aria-label="Previous slide">
+                &#8592;
+              </button>
+              <button type="button" className="mo-arrow" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => step(1)} aria-label="Next slide">
+                &#8594;
+              </button>
+            </div>
+            <div className="pointer-events-auto absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2 sm:bottom-7 sm:left-6 sm:translate-x-0">
+              {slides.map((slide, idx) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => goto(idx)}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  className="h-3 w-3 rounded-full transition"
+                  style={{
+                    border: '2px solid #fff',
+                    backgroundColor: active === idx ? '#fff' : 'rgba(0,0,0,.25)'
+                  }}
+                />
+              ))}
+            </div>
           </div>
-          <div className="absolute bottom-7 left-6 z-10 flex gap-2">
-            {slides.map((slide, idx) => (
-              <button
-                key={slide.id}
-                type="button"
-                onClick={() => goto(idx)}
-                aria-label={`Go to slide ${idx + 1}`}
-                className="h-3 w-3 rounded-full transition"
-                style={{
-                  border: '2px solid #fff',
-                  backgroundColor: active === idx ? '#fff' : 'transparent'
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
+        )}
+      </div>
     </section>
+  );
+}
+
+function SlideCopy({ slide, onDark = false }: { slide: HeroSlide; onDark?: boolean }) {
+  return (
+    <>
+      {slide.tag && (
+        <span
+          className="w-max px-3 py-1 text-xs font-black uppercase tracking-wide"
+          style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
+        >
+          {slide.tag}
+        </span>
+      )}
+      {slide.title && (
+        <h1
+          className="font-black uppercase leading-[0.9]"
+          style={{
+            fontSize: onDark ? 'clamp(36px, 5vw, 72px)' : 'clamp(28px, 8vw, 40px)',
+            letterSpacing: '-0.02em',
+            color: onDark ? '#fff' : 'var(--text-primary)'
+          }}
+        >
+          {slide.title}
+        </h1>
+      )}
+      {slide.subtitle && (
+        <p
+          className="max-w-md text-sm leading-relaxed sm:text-lg"
+          style={{ color: onDark ? 'rgba(255,255,255,.85)' : 'var(--text-secondary)' }}
+        >
+          {slide.subtitle}
+        </p>
+      )}
+      {slide.ctaLabel && slide.ctaHref && (
+        <Link
+          href={slide.ctaHref}
+          className="w-max px-6 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:opacity-90 sm:px-7 sm:py-4"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+        >
+          {slide.ctaLabel}
+        </Link>
+      )}
+    </>
   );
 }

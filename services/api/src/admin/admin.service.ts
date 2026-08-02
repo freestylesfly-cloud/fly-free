@@ -887,53 +887,14 @@ export class AdminService {
     return this.prisma.theme.delete({ where: { id } });
   }
 
-  async listWebsiteThemes() {
-    return this.prisma.websiteTheme.findMany({ orderBy: [{ isActive: "desc" }, { priority: "asc" }, { name: "asc" }] });
-  }
-
-  async createWebsiteTheme(data: any) {
-    const normalized = this.normalizeWebsiteThemeData(data);
-
-    if (normalized.isActive) {
-      return this.prisma.$transaction(async (tx: any) => {
-        await tx.websiteTheme.updateMany({ where: { isActive: true }, data: { isActive: false } });
-        return tx.websiteTheme.create({ data: normalized });
-      });
-    }
-
-    return this.prisma.websiteTheme.create({ data: normalized });
-  }
-
-  async updateWebsiteTheme(id: string, data: any) {
-    const normalized = this.normalizeWebsiteThemeData(data, true);
-
-    if (normalized.isActive) {
-      return this.prisma.$transaction(async (tx: any) => {
-        await tx.websiteTheme.updateMany({ where: { id: { not: id }, isActive: true }, data: { isActive: false } });
-        return tx.websiteTheme.update({ where: { id }, data: { ...normalized, isActive: true } });
-      });
-    }
-
-    return this.prisma.websiteTheme.update({ where: { id }, data: normalized });
-  }
-
-  async setActiveWebsiteTheme(id: string) {
-    await this.prisma.websiteTheme.updateMany({ where: { isActive: true }, data: { isActive: false } });
-    return this.prisma.websiteTheme.update({ where: { id }, data: { isActive: true } });
-  }
-
-  async deleteWebsiteTheme(id: string) {
-    return this.prisma.websiteTheme.delete({ where: { id } });
-  }
-
   async listAnnouncements() {
-    return { data: await this.prisma.announcement.findMany({ include: { theme: true, websiteTheme: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }) };
+    return { data: await this.prisma.announcement.findMany({ include: { theme: true }, orderBy: [{ priority: "asc" }, { createdAt: "desc" }] }) };
   }
 
   async createAnnouncement(data: any) {
     return this.prisma.announcement.create({
       data: this.normalizeAnnouncementData(data),
-      include: { theme: true, websiteTheme: true }
+      include: { theme: true }
     });
   }
 
@@ -941,7 +902,7 @@ export class AdminService {
     return this.prisma.announcement.update({
       where: { id },
       data: this.normalizeAnnouncementData(data, true),
-      include: { theme: true, websiteTheme: true }
+      include: { theme: true }
     });
   }
 
@@ -974,41 +935,6 @@ export class AdminService {
     return normalized;
   }
 
-  private normalizeWebsiteThemeData(data: any, partial = false) {
-    const normalized: any = {};
-    const set = (key: string, value: any, fallback?: any) => {
-      if (partial) {
-        if (value !== undefined) normalized[key] = value;
-        return;
-      }
-
-      normalized[key] = value === undefined || value === "" ? fallback : value;
-    };
-
-    set("name", data.name, "Untitled Website Theme");
-    set("slug", data.slug || (data.name ? this.slugify(data.name) : undefined), `website-theme-${Date.now()}`);
-    set("description", data.description, null);
-    set("primaryColor", data.primaryColor, "#111827");
-    set("secondaryColor", data.secondaryColor, "#ff6b5b");
-    set("backgroundColor", data.backgroundColor, "#f7f3ea");
-    set("textColor", data.textColor, "#161616");
-    set("accentColor", data.accentColor, "#4ecdc4");
-    set("fontFamily", data.fontFamily, "Inter, Arial, sans-serif");
-    set("animationStyle", data.animationStyle, "fade");
-    set("heroTitle", data.heroTitle, null);
-    set("heroSubtitle", data.heroSubtitle, null);
-    set("heroDesktopImageUrl", data.heroDesktopImageUrl, null);
-    set("heroMobileImageUrl", data.heroMobileImageUrl, null);
-    set("heroCtaLabel", data.heroCtaLabel, "Shop now");
-    set("heroHref", data.heroHref, "/products");
-    set("priority", data.priority === undefined ? undefined : Number(data.priority));
-    set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
-    set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
-    set("isActive", data.isActive, false);
-
-    return normalized;
-  }
-
   private normalizeAnnouncementData(data: any, partial = false) {
     const normalized: any = {};
     const set = (key: string, value: any) => {
@@ -1026,7 +952,6 @@ export class AdminService {
     set("startsAt", data.startsAt ? new Date(data.startsAt) : data.startsAt === null ? null : undefined);
     set("endsAt", data.endsAt ? new Date(data.endsAt) : data.endsAt === null ? null : undefined);
     set("themeId", data.themeId || (data.themeId === null ? null : undefined));
-    set("websiteThemeId", data.websiteThemeId || (data.websiteThemeId === null ? null : undefined));
 
     return normalized;
   }

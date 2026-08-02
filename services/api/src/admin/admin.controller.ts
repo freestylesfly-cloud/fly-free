@@ -145,31 +145,6 @@ export class AdminController {
     return this.adminService.getActiveTheme();
   }
 
-  @Get("website-themes")
-  listWebsiteThemes() {
-    return this.adminService.listWebsiteThemes();
-  }
-
-  @Post("website-themes")
-  createWebsiteTheme(@Body() data: any) {
-    return this.adminService.createWebsiteTheme(data);
-  }
-
-  @Put("website-themes/:id")
-  updateWebsiteTheme(@Param("id") id: string, @Body() data: any) {
-    return this.adminService.updateWebsiteTheme(id, data);
-  }
-
-  @Put("website-themes/:id/activate")
-  setActiveWebsiteTheme(@Param("id") id: string) {
-    return this.adminService.setActiveWebsiteTheme(id);
-  }
-
-  @Delete("website-themes/:id")
-  deleteWebsiteTheme(@Param("id") id: string) {
-    return this.adminService.deleteWebsiteTheme(id);
-  }
-
   @Post("themes")
   createTheme(@Body() data: any) {
     return this.adminService.createTheme(data);

@@ -6,11 +6,10 @@ export class CmsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getHomePage() {
-    const [collections, categories, themes, websiteTheme, announcements, influencers, reviews, settings] = await Promise.all([
+    const [collections, categories, themes, announcements, influencers, reviews, settings] = await Promise.all([
       this.prisma.collection.findMany({ orderBy: { priority: "asc" } }),
       this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
       this.getActiveThemes(),
-      this.getActiveWebsiteTheme(),
       this.getActiveAnnouncements(),
       this.prisma.influencer.findMany({ where: { isActive: true }, take: 6, orderBy: { createdAt: "desc" } }),
       this.prisma.review.findMany({
@@ -25,21 +24,7 @@ export class CmsService {
       this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } })
     ]);
 
-    return { collections, categories, themes, websiteTheme, announcements, influencers, reviews, settings: settings?.value || null };
-  }
-
-  getActiveWebsiteTheme() {
-    const now = new Date();
-    return this.prisma.websiteTheme.findFirst({
-      where: {
-        isActive: true,
-        AND: [
-          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] }
-        ]
-      },
-      orderBy: [{ priority: "asc" }, { updatedAt: "desc" }]
-    });
+    return { collections, categories, themes, announcements, influencers, reviews, settings: settings?.value || null };
   }
 
   getActiveAnnouncements() {
@@ -52,7 +37,7 @@ export class CmsService {
           { OR: [{ endsAt: null }, { endsAt: { gte: now } }] }
         ]
       },
-      include: { theme: true, websiteTheme: true },
+      include: { theme: true },
       orderBy: [{ priority: "asc" }, { createdAt: "desc" }]
     });
   }

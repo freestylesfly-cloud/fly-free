@@ -381,8 +381,10 @@ export default function HampersPage() {
                       onChange={(value) => setForm({ ...form, imageUrl: value })}
                       bucket="product-images"
                       folder={form.name ? `hampers/${form.name.replace(/\s+/g, '-').toLowerCase()}` : 'hampers'}
-                      aspect={1}
+                      aspect={4 / 5}
+                      targetWidth={1200}
                       alt={form.name || 'Hamper cover image'}
+                      hint="Same 4:5 frame as a product photo — hamper images sit in the product gallery, so they must match."
                     />
 
                     <label className="grid gap-2 text-sm font-bold">

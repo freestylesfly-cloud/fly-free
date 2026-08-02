@@ -36,7 +36,6 @@ const menuItems = [
     items: [
       { label: 'Announcements', href: '/announcements', icon: Bell },
       { label: 'Pages', href: '/pages', icon: FileText },
-      { label: 'Appearance', href: '/website-themes', icon: Sparkles },
       { label: 'Activity Logs', href: '/activity-logs', icon: ScrollText },
       { label: 'Settings', href: '/settings', icon: Sliders },
     ],

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { Edit3, ImageIcon, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 
@@ -192,7 +193,17 @@ export default function CategoriesPage() {
             <div className="space-y-3">
               <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
               <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="auto from name if empty" />
-              <Field label="Image URL" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} />
+              <ImageUploadField
+                label="Category image"
+                value={form.imageUrl}
+                onChange={(value) => setForm({ ...form, imageUrl: value })}
+                bucket="product-images"
+                folder={`categories/${form.slug || slugify(form.name) || 'general'}`}
+                aspect={1}
+                targetWidth={800}
+                alt={form.name || 'Category image'}
+                hint="Square tile used in fit/type pickers and menus."
+              />
               <label className="grid gap-2 text-sm font-bold">
                 Priority
                 <input

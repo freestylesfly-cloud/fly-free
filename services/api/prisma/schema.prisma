@@ -384,8 +384,6 @@ model Announcement {
   endsAt         DateTime?
   themeId        String?
   theme          Theme?        @relation(fields: [themeId], references: [id])
-  websiteThemeId String?
-  websiteTheme   WebsiteTheme? @relation(fields: [websiteThemeId], references: [id])
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 }
@@ -475,33 +473,6 @@ model Referral {
   order                Order?     @relation(fields: [orderId], references: [id])
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
-}
-
-model WebsiteTheme {
-  id                 String    @id @default(cuid())
-  name               String    @unique
-  slug               String    @unique
-  description        String?
-  primaryColor       String
-  secondaryColor     String
-  backgroundColor    String
-  textColor          String
-  accentColor        String
-  fontFamily         String
-  animationStyle     String    @default("fade")
-  heroTitle          String?
-  heroSubtitle       String?
-  heroDesktopImageUrl String?
-  heroMobileImageUrl  String?
-  heroCtaLabel       String?
-  heroHref           String?
-  priority           Int       @default(0)
-  startsAt           DateTime?
-  endsAt             DateTime?
-  isActive           Boolean   @default(false)
-  announcements      Announcement[]
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
 }
 
 model Return {

@@ -17,7 +17,6 @@ type AnnouncementForm = {
   imageUrl: string;
   ctaLabel: string;
   type: string;
-  websiteThemeId: string;
   priority: number;
   startsAt: string;
   endsAt: string;
@@ -31,7 +30,6 @@ const emptyAnnouncement: AnnouncementForm = {
   imageUrl: '',
   ctaLabel: '',
   type: 'INFO',
-  websiteThemeId: '',
   priority: 0,
   startsAt: '',
   endsAt: '',
@@ -40,9 +38,7 @@ const emptyAnnouncement: AnnouncementForm = {
 
 export default function AnnouncementsPage() {
   const { data: announcementsRaw, loading, error, refetch } = useFetch<any>(() => apiService.getAnnouncements(), { skip: false });
-  const { data: websiteThemesRaw } = useFetch<any>(() => apiService.getWebsiteThemes(), { skip: false });
   const announcements = announcementsRaw?.data || [];
-  const websiteThemes = Array.isArray(websiteThemesRaw) ? websiteThemesRaw : websiteThemesRaw?.data || [];
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AnnouncementForm>(emptyAnnouncement);
   const [notice, setNotice] = useState('');
@@ -57,7 +53,6 @@ export default function AnnouncementsPage() {
       imageUrl: item.imageUrl || '',
       ctaLabel: item.ctaLabel || '',
       type: item.type || 'INFO',
-      websiteThemeId: item.websiteThemeId || '',
       priority: item.priority || 0,
       startsAt: toInputDate(item.startsAt),
       endsAt: toInputDate(item.endsAt),
@@ -73,7 +68,6 @@ export default function AnnouncementsPage() {
     try {
       const payload = {
         ...form,
-        websiteThemeId: form.websiteThemeId || null,
         themeId: null,
         startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null
@@ -143,7 +137,7 @@ export default function AnnouncementsPage() {
                           <div>
                             <p className="font-black">{item.title}</p>
                             <p className="text-xs font-bold text-black/45">
-                              {item.isActive ? 'Visible' : 'Paused'} - {item.websiteTheme?.name || 'All website skins'} - {item.type || 'INFO'}
+                              {item.isActive ? 'Visible' : 'Paused'} - {item.type || 'INFO'}
                             </p>
                           </div>
                           <div className="flex gap-2">
@@ -187,17 +181,6 @@ export default function AnnouncementsPage() {
                   <Input label="CTA label" value={form.ctaLabel} onChange={(value) => setForm({ ...form, ctaLabel: value })} />
                   <Input label="Link" value={form.href} onChange={(value) => setForm({ ...form, href: value })} placeholder="/products" />
                 </div>
-                <label className="block">
-                  <span className="mb-1 block text-xs font-bold uppercase text-black/45">Website skin</span>
-                  <select
-                    value={form.websiteThemeId}
-                    onChange={(event) => setForm({ ...form, websiteThemeId: event.target.value })}
-                    className="w-full rounded border border-black/10 px-3 py-2 text-sm font-bold"
-                  >
-                    <option value="">All website skins</option>
-                    {websiteThemes.map((theme: any) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
-                  </select>
-                </label>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
                     <span className="mb-1 block text-xs font-bold uppercase text-black/45">Type</span>
@@ -218,7 +201,9 @@ export default function AnnouncementsPage() {
                   bucket="product-images"
                   folder="announcements"
                   aspect={16 / 5}
+                  targetWidth={1600}
                   alt={form.title}
+                  hint="Wide strip behind the announcement text."
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Input label="Starts" type="datetime-local" value={form.startsAt} onChange={(value) => setForm({ ...form, startsAt: value })} />

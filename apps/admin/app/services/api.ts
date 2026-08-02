@@ -456,36 +456,6 @@ class ApiService {
     });
   }
 
-  async getWebsiteThemes() {
-    return this.request('/api/admin/website-themes');
-  }
-
-  async createWebsiteTheme(data: any) {
-    return this.request('/api/admin/website-themes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateWebsiteTheme(themeId: string, data: any) {
-    return this.request(`/api/admin/website-themes/${themeId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async setActiveWebsiteTheme(themeId: string) {
-    return this.request(`/api/admin/website-themes/${themeId}/activate`, {
-      method: 'PUT',
-    });
-  }
-
-  async deleteWebsiteTheme(themeId: string) {
-    return this.request(`/api/admin/website-themes/${themeId}`, {
-      method: 'DELETE',
-    });
-  }
-
   // ============ PRODUCT THEMES ============
   async getProductThemes() {
     return this.request('/api/admin/product-themes');

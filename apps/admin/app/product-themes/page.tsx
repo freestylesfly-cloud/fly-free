@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { Edit3, Plus, Search, Trash2, X } from 'lucide-react';
+import { Edit3, ImageIcon, Search, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -179,14 +179,23 @@ export default function ProductThemesPage() {
                 <div className="divide-y divide-black/5">
                   {filtered.map((theme) => (
                     <article key={theme.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex-1">
-                        <h2 className="font-black text-ink">{theme.name}</h2>
-                        <p className="text-sm font-bold text-black/45">
-                          /{theme.slug} · {theme._count?.products || 0} products · Priority {theme.priority}
-                        </p>
-                        {theme.description && (
-                          <p className="mt-1 text-sm text-black/60">{theme.description}</p>
-                        )}
+                      <div className="flex flex-1 items-center gap-4">
+                        <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]">
+                          {theme.bannerImageUrl || theme.imageUrl ? (
+                            <img src={theme.bannerImageUrl || theme.imageUrl} alt={theme.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <ImageIcon className="text-black/35" size={22} />
+                          )}
+                        </div>
+                        <div>
+                          <h2 className="font-black text-ink">{theme.name}</h2>
+                          <p className="text-sm font-bold text-black/45">
+                            /{theme.slug} · {theme._count?.products || 0} products · Priority {theme.priority}
+                          </p>
+                          {theme.description && (
+                            <p className="mt-1 text-sm text-black/60">{theme.description}</p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => editTheme(theme)} className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-sm font-bold">
@@ -223,17 +232,27 @@ export default function ProductThemesPage() {
               <Field label="Description" value={form.description} onChange={(value) => setForm({ ...form, description: value })} placeholder="Short line shown on theme cards" isTextarea />
               <Field label="Story" value={form.story} onChange={(value) => setForm({ ...form, story: value })} placeholder="Longer copy shown on the theme page" isTextarea />
 
-              <ImageField
+              <ImageUploadField
                 label="Banner image"
-                hint="Full-width hero on the theme page and the homepage carousel."
+                hint="Full-bleed hero on the theme page and the homepage carousel. Keep faces and text out of the bottom-left third — the copy sits there."
                 value={form.bannerImageUrl}
                 onChange={(value) => setForm({ ...form, bannerImageUrl: value })}
+                bucket="product-images"
+                folder={`themes/${form.slug || slugify(form.name) || 'general'}/banner`}
+                aspect={16 / 9}
+                targetWidth={2400}
+                alt={`${form.name || 'Theme'} banner`}
               />
-              <ImageField
+              <ImageUploadField
                 label="Card image"
-                hint="Square-ish thumbnail used in menus and theme cards."
+                hint="Thumbnail in the Shop-by-theme row and the Themes menu. Can be a tighter crop of the banner."
                 value={form.imageUrl}
                 onChange={(value) => setForm({ ...form, imageUrl: value })}
+                bucket="product-images"
+                folder={`themes/${form.slug || slugify(form.name) || 'general'}/card`}
+                aspect={16 / 9}
+                targetWidth={800}
+                alt={`${form.name || 'Theme'} card`}
               />
 
               <div className="grid grid-cols-3 gap-2">
@@ -266,33 +285,6 @@ export default function ProductThemesPage() {
         </div>
       </DashboardLayout>
     </ProtectedRoute>
-  );
-}
-
-function ImageField({
-  label,
-  hint,
-  value,
-  onChange
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-2">
-      <ImageUploadField
-        label={label}
-        value={value}
-        onChange={onChange}
-        bucket="product-images"
-        folder="themes"
-        aspect={16 / 9}
-        alt={label}
-      />
-      <p className="text-xs text-black/50">{hint}</p>
-    </div>
   );
 }
 

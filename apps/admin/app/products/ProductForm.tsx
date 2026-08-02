@@ -279,7 +279,9 @@ export function ProductForm({ productId }: { productId?: string }) {
                 bucket="product-images"
                 folder={form.slug || slugify(form.name || 'product')}
                 aspect={4 / 5}
+                targetWidth={1200}
                 alt={image.alt || form.name}
+                hint="Product cards and the gallery render a strict 4:5 box."
               />
               <button type="button" onClick={() => setImages(images.filter((_, i) => i !== index))} className="h-fit rounded border border-red-200 px-3 py-2 text-red-600"><Trash2 size={16} /></button>
             </div>
