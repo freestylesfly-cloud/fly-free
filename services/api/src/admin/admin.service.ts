@@ -9,10 +9,19 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import { createClient } from "@supabase/supabase-js";
 import type { PrismaClient } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { STANDARD_PAGES, STANDARD_PAGE_SLUGS } from "../cms/standard-pages";
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
 const STORAGE_BUCKET = "product-images";
+
+/**
+ * Prisma's default interactive-transaction deadline is 5s, which is fine
+ * against a local database and marginal against a managed one in another
+ * region. Editors save large products with many variants, so give the write
+ * real headroom rather than failing the save.
+ */
+const TRANSACTION_OPTIONS = { timeout: 30_000, maxWait: 10_000 };
 
 @Injectable()
 export class AdminService {
@@ -146,81 +155,117 @@ export class AdminService {
     });
   }
 
+  /**
+   * Replaces a product and its child rows.
+   *
+   * Round trips are the budget here: the database is remote, so every extra
+   * query inside the transaction is another ~100ms against the interactive
+   * transaction deadline. Two things keep this bounded:
+   *
+   *  - variants are written with two `createMany` calls (ids generated here so
+   *    inventory can reference them) instead of a nested `create` per variant,
+   *    which cost two round trips *each*;
+   *  - the fully-populated product is re-read after the transaction commits,
+   *    so those joins are not on the clock.
+   */
   async updateProduct(id: string, data: any) {
-    return this.prisma.$transaction(async (tx: any) => {
-      if (Array.isArray(data.variants)) {
-        const existingVariants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
-        await tx.inventory.deleteMany({ where: { variantId: { in: existingVariants.map((variant: any) => variant.id) } } });
-        await tx.productVariant.deleteMany({ where: { productId: id } });
-      }
+    const variants = Array.isArray(data.variants)
+      ? data.variants.map((variant: any) => ({
+          id: randomUUID(),
+          productId: id,
+          sku: variant.sku,
+          color: variant.color,
+          size: variant.size,
+          price: variant.price ? Number(variant.price) : null,
+          stock: Number(variant.stock || 0),
+          lowStockAlert: Number(variant.lowStockAlert || 5),
+          warehouse: variant.warehouse || null,
+          barcode: variant.barcode || null
+        }))
+      : null;
 
-      if (Array.isArray(data.images)) {
-        await tx.productImage.deleteMany({ where: { productId: id } });
-      }
+    await this.prisma.$transaction(
+      async (tx: any) => {
+        if (variants) {
+          // Relation filter, so the variant ids do not need a separate read.
+          await tx.inventory.deleteMany({ where: { variant: { productId: id } } });
+          await tx.productVariant.deleteMany({ where: { productId: id } });
+        }
 
-      if (Array.isArray(data.hampers)) {
-        await tx.productHamper.deleteMany({ where: { productId: id } });
-      }
+        if (Array.isArray(data.images)) {
+          await tx.productImage.deleteMany({ where: { productId: id } });
+        }
 
-      return tx.product.update({
-        where: { id },
-        data: {
-          name: data.name,
-          slug: data.slug,
-          sku: data.sku,
-          description: data.description,
-          tags: data.tags,
-          material: data.material,
-          washCare: data.washCare,
-          price: data.price === undefined ? undefined : Number(data.price),
-          mrp: data.mrp === undefined ? undefined : Number(data.mrp),
-          discountPercent: data.discountPercent,
-          gstPercent: data.gstPercent,
-          weightGrams: data.weightGrams,
-          seoTitle: data.seoTitle,
-          seoDescription: data.seoDescription,
-          isVisible: data.isVisible,
-          isFeatured: data.isFeatured,
-          isTrending: data.isTrending,
-          isNewArrival: data.isNewArrival,
-          categoryId: data.categoryId,
-          collectionId: data.collectionId,
-          themeId: data.themeId,
-          images: Array.isArray(data.images) ? { createMany: { data: data.images } } : undefined,
-          hampers: Array.isArray(data.hampers) ? {
-            createMany: { data: data.hampers.map((hamper: any, index: number) => this.normalizeProductHamperData(hamper, index)) }
-          } : undefined,
-          variants: Array.isArray(data.variants) ? {
-            create: data.variants.map((variant: any) => ({
-              sku: variant.sku,
-              color: variant.color,
-              size: variant.size,
-              price: variant.price ? Number(variant.price) : undefined,
-              inventory: {
-                create: {
-                  stock: Number(variant.stock || 0),
-                  lowStockAlert: Number(variant.lowStockAlert || 5),
-                  warehouse: variant.warehouse || undefined,
-                  barcode: variant.barcode || undefined
+        if (Array.isArray(data.hampers)) {
+          await tx.productHamper.deleteMany({ where: { productId: id } });
+        }
+
+        await tx.product.update({
+          where: { id },
+          data: {
+            name: data.name,
+            slug: data.slug,
+            sku: data.sku,
+            description: data.description,
+            tags: data.tags,
+            material: data.material,
+            washCare: data.washCare,
+            price: data.price === undefined ? undefined : Number(data.price),
+            mrp: data.mrp === undefined ? undefined : Number(data.mrp),
+            discountPercent: data.discountPercent,
+            gstPercent: data.gstPercent,
+            weightGrams: data.weightGrams,
+            seoTitle: data.seoTitle,
+            seoDescription: data.seoDescription,
+            isVisible: data.isVisible,
+            isFeatured: data.isFeatured,
+            isTrending: data.isTrending,
+            isNewArrival: data.isNewArrival,
+            categoryId: data.categoryId,
+            collectionId: data.collectionId,
+            themeId: data.themeId,
+            images: Array.isArray(data.images) ? { createMany: { data: data.images } } : undefined,
+            hampers: Array.isArray(data.hampers)
+              ? {
+                  createMany: {
+                    data: data.hampers.map((hamper: any, index: number) =>
+                      this.normalizeProductHamperData(hamper, index)
+                    )
+                  }
                 }
-              }
+              : undefined
+          }
+        });
+
+        if (variants && variants.length > 0) {
+          await tx.productVariant.createMany({
+            data: variants.map(({ stock, lowStockAlert, warehouse, barcode, ...variant }: any) => variant)
+          });
+          await tx.inventory.createMany({
+            data: variants.map((variant: any) => ({
+              variantId: variant.id,
+              stock: variant.stock,
+              lowStockAlert: variant.lowStockAlert,
+              warehouse: variant.warehouse,
+              barcode: variant.barcode
             }))
-          } : undefined
-        },
-        include: { category: true, variants: { include: { inventory: true } }, images: true, hampers: true }
-      });
-    });
+          });
+        }
+      },
+      TRANSACTION_OPTIONS
+    );
+
+    return this.getProduct(id);
   }
 
   async deleteProduct(id: string) {
     return this.prisma.$transaction(async (tx: any) => {
-      const variants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true } });
-      await tx.inventory.deleteMany({ where: { variantId: { in: variants.map((variant: any) => variant.id) } } });
+      await tx.inventory.deleteMany({ where: { variant: { productId: id } } });
       await tx.productVariant.deleteMany({ where: { productId: id } });
       await tx.productImage.deleteMany({ where: { productId: id } });
       await tx.productHamper.deleteMany({ where: { productId: id } });
       return tx.product.delete({ where: { id } });
-    });
+    }, TRANSACTION_OPTIONS);
   }
 
   private normalizeProductHamperData(hamper: any, index = 0) {

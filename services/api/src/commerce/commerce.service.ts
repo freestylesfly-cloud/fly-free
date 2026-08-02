@@ -151,6 +151,11 @@ export class CommerceService {
       }
 
       return created;
+    }, {
+      // Checkout must not fail on the default 5s interactive deadline when the
+      // database is in another region and the cart has many lines.
+      timeout: 30_000,
+      maxWait: 10_000
     });
 
     // The order row is already committed, so if Razorpay rejects us we must
