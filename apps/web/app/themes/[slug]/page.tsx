@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
-import { HERO_MAX_WIDTH, MEDIA } from "../../lib/design";
+import { MEDIA } from "../../lib/design";
 import { ThemeProductGrid } from "./ThemeProductGrid";
 
 const API_BASE = getApiBaseUrl();
@@ -27,40 +27,35 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* THEME BANNER HERO — same 16:9 frame as the homepage carousel, so one
-          uploaded crop reads identically on phone and desktop. */}
-      <section className="relative">
-        <div className="mx-auto w-full" style={{ maxWidth: `${HERO_MAX_WIDTH}px` }}>
-          <div
-            className="relative w-full overflow-hidden"
-            style={{
-              aspectRatio: MEDIA.themeBanner.css,
-              backgroundColor: theme.primaryColor || "var(--color-primary)",
-            }}
-          >
-            {theme.bannerImageUrl && (
-              <img
-                src={theme.bannerImageUrl}
-                alt={theme.name}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
-            <div
-              className="absolute inset-0 hidden md:block"
-              style={{ background: "linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,.15) 70%)" }}
-            />
-
-            <div className="absolute inset-0 z-10 hidden flex-col justify-end px-8 py-10 md:flex">
-              <ThemeBannerCopy theme={theme} onDark />
-            </div>
-          </div>
-
-          {/* Phones read the copy under the banner rather than over it. */}
-          <div className="px-5 py-8 md:hidden" style={{ backgroundColor: "var(--bg-secondary)" }}>
-            <ThemeBannerCopy theme={theme} />
-          </div>
+      {/* THEME BANNER — identical treatment to the homepage hero: full-bleed
+          16:9, copy overlaid at the top on every breakpoint. */}
+      <section
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: MEDIA.themeBanner.css,
+          backgroundColor: theme.primaryColor || "var(--color-primary)",
+        }}
+      >
+        {theme.bannerImageUrl && (
+          <img src={theme.bannerImageUrl} alt={theme.name} className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        <div
+          className="absolute inset-x-0 top-0 h-2/3"
+          style={{ background: "linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,0))" }}
+        />
+        <div className="absolute inset-x-0 top-0 z-10 px-4 pt-4 sm:px-10 sm:pt-10 lg:px-16 lg:pt-14">
+          <ThemeBannerCopy theme={theme} />
         </div>
       </section>
+
+      {/* The story is dropped from the phone banner to keep the art clean. */}
+      {(theme.story || theme.description) && (
+        <div className="px-4 pt-6 sm:hidden">
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            {theme.story || theme.description}
+          </p>
+        </div>
+      )}
 
       {/* PRODUCTS */}
       <section id="collection" className="mx-auto max-w-7xl px-5 py-14 md:py-20">
@@ -90,41 +85,37 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
   );
 }
 
-function ThemeBannerCopy({ theme, onDark = false }: { theme: any; onDark?: boolean }) {
-  const muted = onDark ? "rgba(255,255,255,.85)" : "var(--text-secondary)";
-
+function ThemeBannerCopy({ theme }: { theme: any }) {
   return (
     <>
-      <nav
-        className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide"
-        style={{ color: onDark ? "rgba(255,255,255,.7)" : "var(--text-secondary)" }}
-      >
-        <Link href="/" className="hover:opacity-100">Home</Link>
+      <nav className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-white/70 sm:mb-4 sm:text-xs">
+        <Link href="/" className="hover:text-white">Home</Link>
         <span>/</span>
-        <Link href="/products" className="hover:opacity-100">Themes</Link>
+        <Link href="/products" className="hover:text-white">Themes</Link>
         <span>/</span>
-        <span style={{ color: onDark ? "#fff" : "var(--text-primary)" }}>{theme.name}</span>
+        <span className="text-white">{theme.name}</span>
       </nav>
 
       <h1
-        className="text-4xl font-black uppercase leading-none md:text-6xl"
-        style={{ color: onDark ? "#fff" : "var(--text-primary)" }}
+        className="max-w-3xl font-black uppercase leading-[0.95] text-white"
+        style={{ fontSize: "clamp(20px, 5.5vw, 68px)", letterSpacing: "-0.02em" }}
       >
         {theme.name}
       </h1>
 
+      {/* Story is long — phones get the banner clean and read it below. */}
       {(theme.story || theme.description) && (
-        <p className="mt-4 max-w-2xl text-base leading-relaxed md:text-lg" style={{ color: muted }}>
+        <p className="mt-4 hidden max-w-xl text-base leading-relaxed text-white/85 sm:block lg:text-lg">
           {theme.story || theme.description}
         </p>
       )}
 
       <a
         href="#collection"
-        className="mt-6 inline-flex items-center gap-2 rounded-lg px-6 py-3.5 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
+        className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 sm:mt-6 sm:px-6 sm:py-3.5 sm:text-sm"
         style={{ backgroundColor: "var(--color-primary)" }}
       >
-        Explore Collection <ArrowRight size={18} />
+        Explore <ArrowRight size={14} />
       </a>
     </>
   );

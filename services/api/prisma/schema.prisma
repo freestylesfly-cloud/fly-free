@@ -31,20 +31,20 @@ enum ReviewStatus {
 }
 
 model User {
-  id              String                 @id @default(cuid())
+  id              String     @id @default(cuid())
   name            String?
-  email           String?                @unique
-  phone           String?                @unique
+  email           String?    @unique
+  phone           String?    @unique
   passwordHash    String?
-  emailVerified   Boolean                @default(false)
+  emailVerified   Boolean    @default(false)
   emailVerifiedAt DateTime?
   image           String?
   addresses       Address[]
   orders          Order[]
   wishlistItems   Wishlist[]
   reviews         Review[]
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 }
 
 model EmailVerification {
@@ -90,20 +90,20 @@ model Category {
 }
 
 model Theme {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   name           String
-  slug           String         @unique
+  slug           String          @unique
   description    String?
   story          String?
   imageUrl       String?
   bannerImageUrl String?
-  primaryColor   String         @default("#111827")
-  secondaryColor String         @default("#ff6b5b")
-  accentColor    String         @default("#4ecdc4")
-  fontFamily     String         @default("Inter, Arial, sans-serif")
-  animationStyle String         @default("fade")
-  priority       Int            @default(0)
-  active         Boolean        @default(false)
+  primaryColor   String          @default("#111827")
+  secondaryColor String          @default("#ff6b5b")
+  accentColor    String          @default("#4ecdc4")
+  fontFamily     String          @default("Inter, Arial, sans-serif")
+  animationStyle String          @default("fade")
+  priority       Int             @default(0)
+  active         Boolean         @default(false)
   startsAt       DateTime?
   endsAt         DateTime?
   products       Product[]
@@ -371,21 +371,21 @@ model Review {
 }
 
 model Announcement {
-  id             String        @id @default(cuid())
-  title          String
-  message        String
-  href           String?
-  imageUrl       String?
-  ctaLabel       String?
-  type           String        @default("INFO")
-  priority       Int           @default(0)
-  isActive       Boolean       @default(true)
-  startsAt       DateTime?
-  endsAt         DateTime?
-  themeId        String?
-  theme          Theme?        @relation(fields: [themeId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id        String    @id @default(cuid())
+  title     String
+  message   String
+  href      String?
+  imageUrl  String?
+  ctaLabel  String?
+  type      String    @default("INFO")
+  priority  Int       @default(0)
+  isActive  Boolean   @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  themeId   String?
+  theme     Theme?    @relation(fields: [themeId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Notification {
@@ -432,7 +432,6 @@ model Page {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-
 
 model Influencer {
   id                   String     @id @default(cuid())
@@ -487,16 +486,16 @@ model Return {
 }
 
 model SizeGuide {
-  id           String   @id @default(cuid())
-  size         String   @unique // S, M, L, XL, XXL
-  chest        String   // 44", 46", 48", 51"
-  shoulder     String   // 20.5", 21.5", 22.5", 23.5"
-  length       String   // 28", 29", 30", 30.5"
-  sleeve       String   // 8.5", 9", 9.5", 10"
-  priority     Int      @default(0)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  size      String   @unique // S, M, L, XL, XXL
+  chest     String // 44", 46", 48", 51"
+  shoulder  String // 20.5", 21.5", 22.5", 23.5"
+  length    String // 28", 29", 30", 30.5"
+  sleeve    String // 8.5", 9", 9.5", 10"
+  priority  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([size])
   @@index([active])
@@ -519,7 +518,7 @@ model InstagramPost {
 /// without shelling into the server. Written asynchronously off the response path.
 model ActivityLog {
   id         String   @id @default(cuid())
-  level      String   // INFO | WARN | ERROR
+  level      String // INFO | WARN | ERROR
   method     String
   path       String
   statusCode Int
@@ -538,4 +537,3 @@ model ActivityLog {
   @@index([statusCode])
   @@index([userId])
 }
-

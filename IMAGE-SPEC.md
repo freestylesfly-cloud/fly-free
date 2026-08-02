@@ -65,21 +65,19 @@ source and drop it in the same folder.
 ### Theme banner — 16:9, export 2400 × 1350
 Hero on the homepage carousel and at the top of each theme page.
 
-The frame is a **fixed 16:9 box at every screen size**, capped at 1200px wide
-(so 1200 × 675 on desktop, full-width × 9/16 on a phone). Because the ratio never
-changes, **the phone and the desktop show exactly the same picture area** — no
-part of your crop is ever cut off.
+**One image, every screen.** The frame is **full-bleed** — edge to edge, no
+side gutters, no height cap — and locked to **16:9 at every width**. On a 16:9
+monitor that means the hero fills the viewport; on a phone it is the full width
+by 9/16 of it. Because the ratio never changes, **the phone and the desktop show
+exactly the same picture area.** Nothing is ever cut off.
 
-Where the copy sits changes, though:
+**Safe area: keep faces and key detail in the LOWER HALF.**
+The theme name, tag and button are overlaid across the **top** of the image on
+every screen size, under a dark gradient covering the top two-thirds. The slider
+dots sit centred at the very bottom, so leave the bottom ~40px quiet too.
 
-- **Desktop / tablet (`sm` and up)** — theme name, description and button sit
-  **over** the image on the left, under a dark gradient. Keep faces and key
-  detail out of the **left half** and away from the bottom edge, where the
-  slider dots and arrows sit.
-- **Phone (below `sm`)** — the copy moves to a panel **below** the banner, so
-  the whole image stays visible and uncovered. Nothing to avoid here.
-
-Design against the desktop rule and the phone takes care of itself.
+That single rule is all a designer needs — there is no separate mobile crop and
+no per-breakpoint exception.
 
 ### Theme card — 16:9, export 800 × 450
 Used in the "Shop by theme" row and the Themes hover menu. Can be a tighter

@@ -102,7 +102,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
 
   return (
     <article
-      className="group relative overflow-hidden rounded-lg border bg-white transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative h-full overflow-hidden border bg-white transition hover:shadow-lg"
       style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
     >
       <Link href={`/products/${slug}`} className="block">
@@ -120,7 +120,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
           <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
             {tag && (
               <span
-                className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm"
+                className="px-2 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm"
                 style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
               >
                 {tag}
@@ -128,7 +128,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
             )}
             {discountPercent > 0 && (
               <span
-                className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
+                className="px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
                 style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {discountPercent}% off
@@ -153,7 +153,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
               type="button"
               onClick={handleWishlist}
               disabled={wishlistLoading}
-              className="flex h-9 w-9 items-center justify-center rounded border transition hover:bg-black/5 disabled:opacity-50"
+              className="flex h-9 w-9 items-center justify-center border transition hover:bg-black/5 disabled:opacity-50"
               style={{ borderColor: 'var(--border-color)', color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
               aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -163,7 +163,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
             <button
               type="button"
               onClick={handleShare}
-              className="hidden h-9 w-9 items-center justify-center rounded border transition hover:bg-black/5 sm:flex"
+              className="hidden h-9 w-9 items-center justify-center border transition hover:bg-black/5 sm:flex"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
               aria-label="Share product"
               title={shareText}
@@ -177,7 +177,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
           type="button"
           onClick={handleAddToCart}
           disabled={isAdding}
-          className="flex w-full items-center justify-center gap-2 rounded px-3 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-60"
           style={{ backgroundColor: 'var(--color-primary)' }}
         >
           <ShoppingCart size={15} />
@@ -192,13 +192,13 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       </div>
 
       {showLoginPrompt && (
-        <div className="absolute inset-x-3 bottom-3 rounded-lg border bg-white p-3 shadow-xl" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="absolute inset-x-3 bottom-3 border bg-white p-3 shadow-xl" style={{ borderColor: 'var(--border-color)' }}>
           <button type="button" onClick={() => setShowLoginPrompt(false)} className="absolute right-2 top-2" aria-label="Close login prompt">
             <X size={14} />
           </button>
           <p className="pr-5 text-sm font-black" style={{ color: 'var(--text-primary)' }}>Login to save wishlist</p>
           <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Cart works without login.</p>
-          <Link href={`/auth/login?redirect=/products/${slug}`} className="mt-3 inline-flex rounded px-3 py-2 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <Link href={`/auth/login?redirect=/products/${slug}`} className="mt-3 inline-flex px-3 py-2 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
             Login
           </Link>
         </div>

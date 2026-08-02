@@ -67,9 +67,6 @@ export const MEDIA = {
   hamper: { ratio: 4 / 5, css: '4 / 5', export: '1200 × 1500' }
 } as const;
 
-/** The hero stage is width-capped, never height-capped — see HeroCarousel. */
-export const HERO_MAX_WIDTH = 1200;
-
 /** Copy shown over the hero when a theme supplies no description of its own. */
 export const HERO_FALLBACK = {
   tag: 'New drop',

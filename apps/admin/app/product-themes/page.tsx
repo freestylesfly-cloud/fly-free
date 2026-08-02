@@ -234,7 +234,7 @@ export default function ProductThemesPage() {
 
               <ImageUploadField
                 label="Banner image"
-                hint="Full-bleed hero on the theme page and the homepage carousel. Keep faces and text out of the bottom-left third — the copy sits there."
+                hint="Full-bleed hero on the homepage and theme page — edge to edge at every screen size. The theme name and button sit over the TOP of the image, so keep faces and key detail in the lower half."
                 value={form.bannerImageUrl}
                 onChange={(value) => setForm({ ...form, bannerImageUrl: value })}
                 bucket="product-images"
