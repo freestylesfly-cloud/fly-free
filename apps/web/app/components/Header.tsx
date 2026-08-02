@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import type React from 'react';
-import { ChevronDown, Heart, PackageSearch, Package, ShoppingBag, Menu, X, Megaphone, User, Search, LogOut } from 'lucide-react';
+import { ChevronDown, Heart, PackageSearch, Package, ShoppingBag, Menu, X, User, Search, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
@@ -90,25 +90,19 @@ export function Header() {
 
   return (
     <>
-      {/* Announcement marquee */}
+      {/* Announcement marquee — brand red strip, pauses on hover so a link is
+          actually clickable. */}
       {announcements.length > 0 && (
         <div
-          className="overflow-hidden whitespace-nowrap"
-          style={{ backgroundColor: 'var(--text-primary)', borderBottom: '2px solid var(--border-color)', padding: '10px 0' }}
+          className="mo-marquee overflow-hidden whitespace-nowrap"
+          style={{ backgroundColor: 'var(--color-primary)', padding: '7px 0' }}
         >
           <div className="mo-marquee-track">
             {[0, 1].map((rep) => (
-              <span key={rep} className="inline-flex items-center">
+              // The second pass is purely visual filler for the loop.
+              <span key={rep} className="inline-flex items-center" aria-hidden={rep === 1}>
                 {announcements.map((item, idx) => (
-                  <Link
-                    key={`${rep}-${item.id ?? idx}`}
-                    href={item.href || '#'}
-                    className="inline-flex items-center gap-2 px-6 text-sm font-bold uppercase tracking-wide text-white hover:opacity-80"
-                  >
-                    <Megaphone size={14} />
-                    <span>{item.title}</span>
-                    {item.ctaLabel && <span className="underline underline-offset-4">{item.ctaLabel}</span>}
-                  </Link>
+                  <AnnouncementItem key={`${rep}-${item.id ?? idx}`} item={item} />
                 ))}
               </span>
             ))}
@@ -126,7 +120,7 @@ export function Header() {
         }}
       >
         {/* Mobile Header - Logo Centered */}
-        <div className="md:hidden px-3 py-3 flex items-center justify-between gap-2">
+        <div className="md:hidden px-3 py-1.5 flex items-center justify-between gap-2">
           {/* Left: Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -138,7 +132,7 @@ export function Header() {
 
           {/* Center: Logo */}
           <Link href="/" className="flex-1 flex items-center justify-center hover:opacity-80">
-            <Logo size="lg" showText={false} />
+            <Logo size="md" showText={false} />
           </Link>
 
           {/* Right: Search & Cart */}
@@ -172,10 +166,10 @@ export function Header() {
         </div>
 
         {/* Desktop Header - Professional Layout */}
-        <div className="hidden md:flex items-center justify-between px-6 py-4 max-w-7xl mx-auto gap-8">
+        <div className="hidden md:flex items-center justify-between px-6 py-2 max-w-7xl mx-auto gap-8">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center justify-center hover:opacity-80 whitespace-nowrap flex-shrink-0">
-            <Logo size="lg" showText={false} />
+            <Logo size="md" showText={false} />
           </Link>
 
           {/* Center: Navigation Menu */}
@@ -546,6 +540,39 @@ export function Header() {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * One announcement in the marquee. The link path is typed by hand in the admin,
+ * so it is often blank — without a path this renders as plain text rather than
+ * a dead `#` anchor that looks clickable and does nothing.
+ */
+function AnnouncementItem({ item }: { item: any }) {
+  const label = (
+    <>
+      <span>{item.title}</span>
+      {item.ctaLabel && (
+        <span className="underline decoration-white/50 underline-offset-4">{item.ctaLabel}</span>
+      )}
+    </>
+  );
+
+  const shared = 'inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-white sm:text-[13px]';
+
+  return (
+    <span className="inline-flex items-center">
+      {item.href ? (
+        <Link href={item.href} className={`${shared} transition hover:text-white/75`}>
+          {label}
+        </Link>
+      ) : (
+        <span className={shared}>{label}</span>
+      )}
+      <span className="select-none px-5 text-white/40 sm:px-7" aria-hidden>
+        &bull;
+      </span>
+    </span>
   );
 }
 

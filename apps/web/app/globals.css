@@ -671,8 +671,19 @@ a {
 .mo-marquee-track {
   display: inline-flex;
   width: max-content;
-  animation: mo-marquee 26s linear infinite;
+  animation: mo-marquee 38s linear infinite;
   white-space: nowrap;
+}
+
+/* Hold the strip still so an announcement link can actually be clicked. */
+.mo-marquee:hover .mo-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mo-marquee-track {
+    animation: none;
+  }
 }
 
 /* Square, 2px-border icon/nav button used for slider & carousel controls */
