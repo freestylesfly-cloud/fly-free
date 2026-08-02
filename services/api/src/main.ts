@@ -10,7 +10,14 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({ bodyLimit: 30 * 1024 * 1024 })
   );
-  const defaultCorsOrigins = [
+  // Extra origins can be added per-environment without a code change:
+  // CORS_ORIGINS="https://staging.example.com,https://other.example.com"
+  const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const defaultCorsOrigins: Array<string | RegExp> = [
     // Local Development
     "http://localhost:3000",
     "http://localhost:3001",
@@ -18,15 +25,17 @@ async function bootstrap() {
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "http://127.0.0.1:3002",
-    // Production Vercel
+    // Production custom domains
+    "https://flyfree.co.in",
+    "https://www.flyfree.co.in",
+    "https://admin.flyfree.co.in",
+    // Vercel default hostnames, kept as a fallback while DNS is switching over
     "https://fly-free-web.vercel.app",
     "https://fly-free-admin.vercel.app",
-    // Custom Domains (if configured)
-    "https://web.flyfree.co.in",
-    "https://admin.flyfree.co.in",
-    "https://www.flyfree.co.in",
-    // Vercel Preview Deployments
-    /^https:\/\/.*\.vercel\.app$/
+    // Preview deployments of THESE projects only. A bare `.*\.vercel\.app`
+    // would let any Vercel app on the internet call this API with credentials.
+    /^https:\/\/fly-free-(web|admin)-[a-z0-9-]+\.vercel\.app$/,
+    ...extraCorsOrigins
   ];
 
   app.enableCors({
