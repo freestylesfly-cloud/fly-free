@@ -1,16 +1,8 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
 import { Providers } from "./providers";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import "./globals.css";
-
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
-  variable: "--font-archivo",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Fly Free - Premium T-Shirts & Streetwear",
@@ -37,11 +29,11 @@ export const viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={archivo.variable}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
       </head>
-      <body style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)' }} className="min-h-screen flex flex-col">
+      <body style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: "'Times New Roman', Georgia, serif" }} className="min-h-screen flex flex-col">
         <Providers>
           <Header />
           <main className="flex-1 pb-28 md:pb-0">{children}</main>

@@ -7,12 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Gender {
-  MEN
-  WOMEN
-  UNISEX
-}
-
 enum OrderStatus {
   PLACED
   CONFIRMED
@@ -133,7 +127,6 @@ model Product {
   slug            String           @unique
   sku             String           @unique
   description     String
-  gender          Gender           @default(UNISEX)
   tags            String[]
   brand           String           @default("Fly Free")
   material        String?

@@ -130,16 +130,19 @@ export function Footer() {
 
         <div className="w-full overflow-hidden" style={{ borderTop: '2px solid var(--border-color)' }}>
           <div
-            className="font-black leading-none whitespace-nowrap"
+            className="font-black uppercase leading-none whitespace-nowrap"
             style={{
               fontSize: 'clamp(72px, 16vw, 220px)',
-              color: 'transparent',
-              WebkitTextStroke: '1.5px var(--text-primary)',
+              color: 'var(--text-primary)',
+              //color black code: #000000
+              
+              fontWeight: 900,
+              letterSpacing: '0',
               padding: '8px 0 var(--space-4, 16px)',
               marginTop: '-8px'
             }}
           >
-            flyfree
+            FlyFree
           </div>
         </div>
 
