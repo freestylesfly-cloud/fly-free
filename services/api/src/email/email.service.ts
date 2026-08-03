@@ -38,8 +38,9 @@ export class EmailService {
 
     this.transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: { user, pass }
-    });
+      auth: { user, pass },
+      connectionUrl: `smtps://${user}:${pass}@smtp.gmail.com:465/?family=4`
+    } as any);
   }
 
   async sendOrderConfirmation(email: string, order: any) {
