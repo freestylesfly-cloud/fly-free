@@ -63,10 +63,7 @@ export class AuthService {
         name,
         phone,
         passwordHash,
-        // Temporarily auto-verify emails while email service is being fixed
-        // TODO: Change back to false when email service is operational
-        emailVerified: true,
-        emailVerifiedAt: new Date()
+        emailVerified: false
       }
     });
 
@@ -185,11 +182,9 @@ export class AuthService {
       throw new UnauthorizedException("Invalid email or password");
     }
 
-    // Temporarily allow unverified emails to login while email service is being fixed
-    // TODO: Re-enable email verification requirement after implementing SendGrid/Resend
-    // if (!user.emailVerified) {
-    //   throw new UnauthorizedException("Please verify your email first");
-    // }
+    if (!user.emailVerified) {
+      throw new UnauthorizedException("Please verify your email first");
+    }
 
     if (!user.passwordHash) {
       throw new UnauthorizedException("Invalid credentials");
