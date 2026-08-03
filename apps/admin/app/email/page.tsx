@@ -107,7 +107,7 @@ function BroadcastForm() {
         message: String(formData.get('message') || '')
       });
       setMessage(`✅ Email sent to ${result.sent} users (${result.failed} failed)`);
-      e.currentTarget.reset();
+      if (e.currentTarget) e.currentTarget.reset();
     } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
@@ -183,7 +183,7 @@ function PromotionalForm() {
         discount: parseInt(formData.get('discount') as string) || 0
       });
       setMessage(`✅ Promotional email sent to ${result.sent} users`);
-      e.currentTarget.reset();
+      if (e.currentTarget) e.currentTarget.reset();
     } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
@@ -266,7 +266,7 @@ function ReviewRequestForm() {
     try {
       await apiService.sendReviewRequest(String(formData.get('orderId') || ''), String(formData.get('customMessage') || ''));
       setMessage('✅ Review request email sent!');
-      e.currentTarget.reset();
+      if (e.currentTarget) e.currentTarget.reset();
     } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
@@ -329,7 +329,7 @@ function InviteForm() {
       });
 
       setMessage('✅ Invite email sent!');
-      e.currentTarget.reset();
+      if (e.currentTarget) e.currentTarget.reset();
     } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
@@ -393,7 +393,7 @@ function CustomMessageForm() {
       });
 
       setMessage('✅ Message sent to user!');
-      e.currentTarget.reset();
+      if (e.currentTarget) e.currentTarget.reset();
     } catch (error: any) {
       setMessage(`❌ Error: ${error.message}`);
     } finally {
