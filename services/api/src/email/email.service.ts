@@ -34,10 +34,14 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       host: "smtp-relay.brevo.com",
       port: 587,
+      secure: false,
       auth: {
         user: smtpUser,
         pass: apiKey
-      }
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+      tls: { rejectUnauthorized: false }
     });
 
     this.logger.log("Brevo SMTP configured");
