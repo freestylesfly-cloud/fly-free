@@ -8,6 +8,23 @@ type MailAttachment = {
   content: Buffer;
 };
 
+export type EmailTemplateOptions = {
+  /** Headline shown at the top of the card and used as the <title>. */
+  title: string;
+  /** Small uppercase label above the headline (optional). */
+  eyebrow?: string;
+  /** Inbox preview text. Falls back to the title. */
+  preheader?: string;
+  /** Pre-rendered HTML body. */
+  body: string;
+  /** Adds an unsubscribe line + List-Unsubscribe header for marketing sends. */
+  unsubscribeUrl?: string;
+};
+
+type SendOptions = {
+  unsubscribeUrl?: string;
+};
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -204,7 +221,7 @@ export class EmailService {
     return this.sendEmail(email, `New Product: ${product.name}`, html);
   }
 
-  async sendEmail(to: string, subject: string, html: string) {
+  async sendEmail(to: string, subject: string, html: string, options: SendOptions = {}) {
     if (!this.transporter) {
       this.logger.warn(`Email not sent (Brevo not configured): ${to}`);
       return { success: false, message: "Email service not configured" };
@@ -212,10 +229,18 @@ export class EmailService {
 
     try {
       const result = await this.transporter.sendMail({
-        from: `Fly Free <${this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in"}>`,
+        from: this.fromAddress(),
+        replyTo: this.configService.get<string>("SUPPORT_EMAIL") || undefined,
         to,
         subject,
-        html
+        html,
+        text: this.toPlainText(html),
+        headers: options.unsubscribeUrl
+          ? {
+              "List-Unsubscribe": `<${options.unsubscribeUrl}>`,
+              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
+            }
+          : undefined
       });
 
       this.logger.log(`Email sent to ${to}`);
@@ -234,10 +259,12 @@ export class EmailService {
 
     try {
       const result = await this.transporter.sendMail({
-        from: `Fly Free <${this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in"}>`,
+        from: this.fromAddress(),
+        replyTo: this.configService.get<string>("SUPPORT_EMAIL") || undefined,
         to,
         subject,
         html,
+        text: this.toPlainText(html),
         attachments: [attachment]
       });
 
@@ -249,99 +276,208 @@ export class EmailService {
     }
   }
 
-  private wrapTemplate(title: string, body: string) {
+  /**
+   * Branded email shell used by every Fly Free email.
+   * Table based + inline styles so it renders the same in Gmail, Outlook and Apple Mail.
+   */
+  renderEmail(options: EmailTemplateOptions) {
+    const { title, eyebrow, preheader, body, unsubscribeUrl } = options;
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "freestylesfly@gmail.com";
+    const supportPhone = this.configService.get<string>("SUPPORT_PHONE") || "+91 76388 89189";
+    const instagramUrl = this.configService.get<string>("INSTAGRAM_URL") || "https://instagram.com/flyfree";
     const webUrl = this.webUrl();
 
-    return `
-      <!DOCTYPE html>
-      <html style="font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="margin: 0; padding: 0; background: #f5f5f5;">
-        <div style="max-width: 640px; margin: 0 auto; background: white;">
-          <!-- Header -->
-          <div style="background: linear-gradient(135deg, #FF6B5B 0%, #4ECDC4 100%); padding: 32px 24px; text-align: center; color: white;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: 700;">Fly Free</h1>
-            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">Freedom, culture, comfort, self-expression</p>
-          </div>
+    const footerLinks = [
+      ["Shop", `${webUrl}/products`],
+      ["About", `${webUrl}/about`],
+      ["Returns & exchange", `${webUrl}/returns`],
+      ["Shipping", `${webUrl}/shipping`],
+      ["Privacy", `${webUrl}/privacy`],
+      ["Terms", `${webUrl}/terms`]
+    ]
+      .map(
+        ([label, href]) =>
+          `<a href="${this.escape(href)}" style="color:#4A4A4A;text-decoration:none;font-size:12px;white-space:nowrap;">${this.escape(label)}</a>`
+      )
+      .join('<span style="color:#C9C9C9;font-size:12px;padding:0 8px;">&middot;</span>');
 
-          <!-- Main Content -->
-          <div style="padding: 32px 24px; color: #1A1A1A; line-height: 1.6;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #FF6B5B;">${this.escape(title)}</h2>
-            ${body}
-          </div>
+    return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>${this.escape(title)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F2F2F0;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${this.escape(preheader || title)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F2F2F0;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background-color:#FFFFFF;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+
+          <!-- Brand bar -->
+          <tr>
+            <td style="background-color:#111111;padding:26px 32px;" align="left">
+              <a href="${this.escape(webUrl)}" style="text-decoration:none;">
+                <span style="display:inline-block;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:3px;color:#FFFFFF;text-transform:uppercase;">Fly&nbsp;Free</span>
+              </a>
+              <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:1.4px;color:#9A9A9A;text-transform:uppercase;padding-top:6px;">Freedom &middot; Culture &middot; Comfort</div>
+            </td>
+          </tr>
+          <tr><td style="height:4px;line-height:4px;font-size:0;background-color:#FF6B5B;">&nbsp;</td></tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding:36px 32px 8px 32px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1A1A1A;">
+              ${
+                eyebrow
+                  ? `<div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#FF6B5B;padding-bottom:10px;">${this.escape(eyebrow)}</div>`
+                  : ""
+              }
+              <h1 style="margin:0 0 18px 0;font-size:26px;line-height:1.25;font-weight:700;color:#111111;">${this.escape(title)}</h1>
+              <div style="font-size:15px;line-height:1.65;color:#3A3A3A;">
+                ${body}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Support strip -->
+          <tr>
+            <td style="padding:28px 32px 0 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EDEDED;">
+                <tr>
+                  <td style="padding-top:20px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#6A6A6A;">
+                    Need help? Write to <a href="mailto:${this.escape(supportEmail)}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportEmail)}</a>
+                    or call <a href="tel:${this.escape(supportPhone.replace(/\s/g, ""))}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportPhone)}</a>.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
           <!-- Footer -->
-          <div style="background: #f9f9f9; padding: 32px 24px; border-top: 1px solid #e0e0e0;">
-            <!-- Company Info -->
-            <div style="margin-bottom: 24px; font-size: 13px; color: #666; text-align: center;">
-              <p style="margin: 0 0 8px 0;">
-                <strong>Fly Free</strong><br>
-                Guwahati, Assam, India
-              </p>
-              <p style="margin: 0 0 8px 0;">
-                📧 ${this.escape(supportEmail)}<br>
-                📱 +91 76388 89189
-              </p>
-            </div>
-
-            <!-- Links -->
-            <div style="text-align: center; margin-bottom: 24px; font-size: 12px;">
-              <a href="${webUrl}/about" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">About</a> |
-              <a href="${webUrl}/returns" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Returns & Exchange</a> |
-              <a href="${webUrl}/shipping" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Shipping</a> |
-              <a href="${webUrl}/privacy" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Privacy</a> |
-              <a href="${webUrl}/terms" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Terms</a>
-            </div>
-
-            <!-- Social -->
-            <div style="text-align: center; margin-bottom: 20px; font-size: 12px;">
-              <a href="https://instagram.com/flyfree" style="color: #FF6B5B; text-decoration: none; margin: 0 8px;">Instagram</a>
-            </div>
-
-            <!-- Copyright & Unsubscribe -->
-            <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 16px; font-size: 11px; color: #999;">
-              <p style="margin: 0 0 8px 0;">© 2026 Fly Free. All rights reserved.</p>
-              <p style="margin: 0;">✅ Secure checkout · 🔄 30-day exchange support</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+          <tr>
+            <td style="padding:24px 32px 32px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FAFAF8;border-radius:10px;">
+                <tr>
+                  <td align="center" style="padding:22px 20px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+                    <div style="font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#111111;">Fly Free</div>
+                    <div style="font-size:12px;line-height:1.6;color:#6A6A6A;padding-top:6px;">
+                      Premium tees &amp; custom-crafted apparel<br />
+                      Guwahati, Assam, India
+                    </div>
+                    <div style="padding:16px 0 4px 0;line-height:2;">${footerLinks}</div>
+                    <div style="padding-top:8px;">
+                      <a href="${this.escape(instagramUrl)}" style="color:#FF6B5B;text-decoration:none;font-size:12px;font-weight:600;">Instagram</a>
+                    </div>
+                    <div style="border-top:1px solid #E6E6E2;margin-top:18px;padding-top:14px;font-size:11px;line-height:1.7;color:#9A9A9A;">
+                      Secure checkout &middot; 30-day exchange support<br />
+                      &copy; ${new Date().getFullYear()} Fly Free. All rights reserved.
+                      ${
+                        unsubscribeUrl
+                          ? `<br /><a href="${this.escape(unsubscribeUrl)}" style="color:#9A9A9A;text-decoration:underline;">Unsubscribe from marketing emails</a>`
+                          : ""
+                      }
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   }
 
-  private summaryBlock(rows: Array<[string, unknown]>) {
+  private wrapTemplate(title: string, body: string, options: Partial<EmailTemplateOptions> = {}) {
+    return this.renderEmail({ title, body, ...options });
+  }
+
+  /** Key/value summary card (order details, promo details, etc). */
+  summaryBlock(rows: Array<[string, unknown]>) {
     const content = rows
       .filter(([, value]) => value !== undefined && value !== null && value !== "")
       .map(
         ([label, value]) => `
-          <p style="margin: 6px 0;"><strong>${this.escape(label)}:</strong> ${this.escape(String(value))}</p>`
+          <tr>
+            <td style="padding:7px 0;font-size:13px;color:#6A6A6A;width:45%;">${this.escape(label)}</td>
+            <td style="padding:7px 0;font-size:14px;color:#111111;font-weight:600;text-align:right;word-break:break-word;">${this.escape(String(value))}</td>
+          </tr>`
       )
       .join("");
 
-    return `<div style="background: white; padding: 16px; border-radius: 8px; margin: 20px 0;">${content}</div>`;
-  }
-
-  private codeBlock(code: string, link: string) {
     return `
-      <div style="background: white; padding: 18px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF6B5B;">
-        <p style="margin: 0 0 8px;"><strong>Your Code</strong></p>
-        <p style="font-size: 24px; font-weight: bold; color: #FF6B5B; margin: 0 0 12px;">${this.escape(code)}</p>
-        <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 4px;">${this.escape(link)}</p>
-      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FAFAF8;border:1px solid #EDEDE9;border-radius:10px;margin:22px 0;">
+        <tr>
+          <td style="padding:6px 18px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${content}</table>
+          </td>
+        </tr>
+      </table>
     `;
   }
 
-  private button(href: string, label: string) {
+  /** Highlighted card for a promo/referral code plus its link. */
+  codeBlock(code: string, link?: string, caption = "Your code") {
     return `
-      <p style="margin-top: 24px;">
-        <a href="${this.escape(href)}" style="display: inline-block; background: #FF6B5B; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">${this.escape(label)}</a>
-      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF6F4;border:1px solid #FFD9D3;border-radius:10px;margin:22px 0;">
+        <tr>
+          <td align="center" style="padding:22px 18px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#B4483B;">${this.escape(caption)}</div>
+            <div style="font-size:28px;font-weight:700;letter-spacing:4px;color:#111111;padding:10px 0;">${this.escape(code)}</div>
+            ${
+              link
+                ? `<div style="font-size:12px;color:#6A6A6A;word-break:break-all;">${this.escape(link)}</div>`
+                : ""
+            }
+          </td>
+        </tr>
+      </table>
     `;
+  }
+
+  /** One-time passcode card used by signup verification and password reset. */
+  otpBlock(code: string, expiryNote: string) {
+    return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#111111;border-radius:10px;margin:24px 0;">
+        <tr>
+          <td align="center" style="padding:26px 18px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#9A9A9A;">Verification code</div>
+            <div style="font-size:36px;font-weight:700;letter-spacing:10px;color:#FFFFFF;padding:12px 0 6px 0;">${this.escape(code)}</div>
+            <div style="font-size:12px;color:#9A9A9A;">${this.escape(expiryNote)}</div>
+          </td>
+        </tr>
+      </table>
+    `;
+  }
+
+  /** Primary call-to-action button (bulletproof enough for Outlook). */
+  button(href: string, label: string) {
+    return `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
+        <tr>
+          <td align="center" bgcolor="#FF6B5B" style="border-radius:8px;">
+            <a href="${this.escape(href)}" style="display:inline-block;padding:14px 32px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">${this.escape(label)}</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 4px 0;font-size:12px;color:#9A9A9A;line-height:1.6;">If the button does not work, copy this link into your browser:<br /><span style="color:#6A6A6A;word-break:break-all;">${this.escape(href)}</span></p>
+    `;
+  }
+
+  /** Turns admin-authored plain text into safe paragraphs. */
+  paragraphs(text: string) {
+    return String(text || "")
+      .split(/\n{2,}|\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `<p style="margin:0 0 14px 0;">${this.escape(line)}</p>`)
+      .join("");
   }
 
   private money(value: unknown) {
@@ -351,6 +487,39 @@ export class EmailService {
   private formatDate(value: unknown) {
     if (!value) return "";
     return new Date(value as string).toLocaleDateString("en-IN");
+  }
+
+  private fromAddress() {
+    const fromName = this.configService.get<string>("EMAIL_FROM_NAME") || "Fly Free";
+    const fromEmail = this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in";
+    return `${fromName} <${fromEmail}>`;
+  }
+
+  /** Plain-text alternative. A text part is required by most spam filters. */
+  private toPlainText(html: string) {
+    return html
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<head[\s\S]*?<\/head>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|tr|h1|h2|h3|li|table)>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&middot;/g, "-")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n")
+      .trim();
+  }
+
+  unsubscribeUrl(email: string) {
+    return `${this.webUrl()}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
   }
 
   webUrl() {

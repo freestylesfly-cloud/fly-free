@@ -444,36 +444,41 @@ export class AuthService {
   }
 
   private getVerificationEmailTemplate(name: string, code: string): string {
-    return `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>Verify Your Email Address</h2>
-        <p>Hi ${name},</p>
-        <p>Thank you for signing up at Fly Free! To verify your email address, please use the code below:</p>
-        <div style="background: #f0f0f0; padding: 15px; text-align: center; margin: 20px 0; border-radius: 5px;">
-          <h3 style="margin: 0; letter-spacing: 3px; color: #333;">${code}</h3>
-        </div>
-        <p>This code will expire in 15 minutes.</p>
-        <p>If you didn't create this account, please ignore this email.</p>
-        <hr style="margin: 30px 0;" />
-        <p style="color: #666; font-size: 12px;">© 2026 Fly Free. All rights reserved.</p>
-      </div>
-    `;
+    const verifyUrl = `${this.emailService.webUrl()}/auth/verify-email?email=`;
+    return this.emailService.renderEmail({
+      eyebrow: "Confirm your email",
+      title: "Your verification code",
+      preheader: `${code} is your Fly Free verification code`,
+      body: `
+        <p style="margin:0 0 14px 0;">Hi ${this.escapeHtml(name)},</p>
+        <p style="margin:0 0 14px 0;">Welcome to Fly Free. Enter this code on the verification screen to activate your account.</p>
+        ${this.emailService.otpBlock(code, "This code expires in 15 minutes.")}
+        <p style="margin:0 0 14px 0;">Closed the tab? Open <a href="${verifyUrl}" style="color:#FF6B5B;text-decoration:none;">the verification page</a> and enter your email plus the code above.</p>
+        <p style="margin:0;font-size:12px;color:#9A9A9A;">If you did not create a Fly Free account, you can ignore this email - nothing will be activated.</p>
+      `
+    });
   }
 
   private getPasswordResetEmailTemplate(name: string, code: string): string {
-    return `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>Reset Your Password</h2>
-        <p>Hi ${name},</p>
-        <p>We received a request to reset your Fly Free password. Use the code below:</p>
-        <div style="background: #f0f0f0; padding: 15px; text-align: center; margin: 20px 0; border-radius: 5px;">
-          <h3 style="margin: 0; letter-spacing: 3px; color: #333;">${code}</h3>
-        </div>
-        <p>This code will expire in 30 minutes.</p>
-        <p>If you didn't request a password reset, please ignore this email.</p>
-        <hr style="margin: 30px 0;" />
-        <p style="color: #666; font-size: 12px;">© 2026 Fly Free. All rights reserved.</p>
-      </div>
-    `;
+    return this.emailService.renderEmail({
+      eyebrow: "Password reset",
+      title: "Reset your password",
+      preheader: `${code} is your Fly Free password reset code`,
+      body: `
+        <p style="margin:0 0 14px 0;">Hi ${this.escapeHtml(name)},</p>
+        <p style="margin:0 0 14px 0;">We received a request to reset the password on your Fly Free account. Use the code below to set a new one.</p>
+        ${this.emailService.otpBlock(code, "This code expires in 30 minutes.")}
+        <p style="margin:0;font-size:12px;color:#9A9A9A;">Did not request this? Ignore this email and your password stays unchanged.</p>
+      `
+    });
+  }
+
+  private escapeHtml(value: string) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 }

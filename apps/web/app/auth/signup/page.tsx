@@ -10,13 +10,15 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get('next') || searchParams.get('redirect') || '/';
+  const invitedEmail = (searchParams.get('email') || '').trim();
+  const isInvited = searchParams.get('invited') === '1';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
+    email: invitedEmail,
     password: ''
   });
 
@@ -94,6 +96,15 @@ function SignupContent() {
   return (
     <AuthDrawerShell title="Create your account" subtitle="One account for orders, addresses, and saved items.">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {isInvited && !error && (
+          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'rgba(255, 107, 91, 0.08)' }}>
+            <CheckCircle size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
+            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+              You have been invited to Fly Free. Set a password to finish creating your account.
+            </p>
+          </div>
+        )}
+
         {error && (
           <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
             <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />
