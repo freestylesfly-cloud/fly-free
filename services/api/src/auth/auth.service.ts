@@ -77,11 +77,16 @@ export class AuthService {
       }
     });
 
-    await this.emailService.sendEmail(
-      email,
-      "Verify Your Fly Free Account",
-      this.getVerificationEmailTemplate(name, verificationCode)
-    );
+    try {
+      await this.emailService.sendEmail(
+        email,
+        "Verify Your Fly Free Account",
+        this.getVerificationEmailTemplate(name, verificationCode)
+      );
+    } catch (emailError) {
+      console.warn("Email send failed (non-blocking):", emailError);
+      // Continue anyway - email can fail without blocking signup
+    }
 
     return {
       message: "Signup successful! Please verify your email.",
@@ -151,11 +156,16 @@ export class AuthService {
       }
     });
 
-    await this.emailService.sendEmail(
-      email,
-      "Verify Your Fly Free Account",
-      this.getVerificationEmailTemplate(user.name || "User", verificationCode)
-    );
+    try {
+      await this.emailService.sendEmail(
+        email,
+        "Verify Your Fly Free Account",
+        this.getVerificationEmailTemplate(user.name || "User", verificationCode)
+      );
+    } catch (emailError) {
+      console.warn("Email resend failed (non-blocking):", emailError);
+      // Continue anyway - email can fail without blocking resend
+    }
 
     return { message: "Verification email sent. Check your inbox." };
   }
