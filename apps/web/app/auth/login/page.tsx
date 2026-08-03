@@ -16,7 +16,17 @@ function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [redirecting, setRedirecting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
   const nextPath = searchParams.get('next') || searchParams.get('redirect') || '/';
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
 
   // Redirect after hydration check
   useEffect(() => {
@@ -37,6 +47,7 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setNeedsVerification(false);
 
     if (!email.trim() || !password) {
       setError('Email and password are required');
@@ -52,9 +63,37 @@ function LoginContent() {
       // The useEffect will catch the user update and redirect
     } catch (err) {
       setRedirecting(false);
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const errorMsg = err instanceof Error ? err.message : 'Login failed';
+      if (errorMsg.includes('verify your email') || errorMsg.includes('email first')) {
+        setNeedsVerification(true);
+        setError(null);
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!email.trim()) return;
+
+    setResendLoading(true);
+    try {
+      const response = await fetch('/api/auth/user/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+
+      if (!response.ok) throw new Error('Failed to resend');
+
+      setResendTimer(60);
+      setError(null);
+    } catch (err) {
+      setError('Failed to resend code. Please try again.');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -65,6 +104,68 @@ function LoginContent() {
         <div className="flex flex-col items-center justify-center gap-4 py-12">
           <div className="w-8 h-8 border-4 border-transparent border-t-current rounded-full animate-spin" style={{ color: 'var(--color-primary)' }} />
           <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>Redirecting...</p>
+        </div>
+      </AuthDrawerShell>
+    );
+  }
+
+  if (needsVerification) {
+    return (
+      <AuthDrawerShell title="Verify Your Email" subtitle="Check your inbox for a 6-digit code">
+        <div className="space-y-6">
+          <div className="text-center">
+            <p style={{ color: 'var(--text-secondary)' }} className="text-sm">
+              Email not yet verified: <strong>{email}</strong>
+            </p>
+          </div>
+
+          {error && (
+            <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
+              <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />
+              <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <button
+              onClick={handleResendCode}
+              disabled={resendLoading || resendTimer > 0}
+              className="w-full h-12 rounded-lg font-black text-white transition flex items-center justify-center gap-2 uppercase tracking-wide hover:opacity-90 disabled:opacity-60"
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                cursor: (resendLoading || resendTimer > 0) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {resendLoading && <Loader2 size={18} className="animate-spin" />}
+              <span>
+                {resendLoading
+                  ? 'Sending...'
+                  : resendTimer > 0
+                  ? `Resend in ${resendTimer}s`
+                  : 'Resend Code'}
+              </span>
+            </button>
+
+            <Link
+              href={`/auth/verify-email?email=${encodeURIComponent(email)}`}
+              className="w-full h-12 rounded-lg font-bold transition flex items-center justify-center uppercase tracking-wide border-2 hover:bg-opacity-10"
+              style={{
+                borderColor: 'var(--color-primary)',
+                color: 'var(--color-primary)',
+                backgroundColor: 'transparent',
+              }}
+            >
+              Enter Verification Code
+            </Link>
+          </div>
+
+          <button
+            onClick={() => { setNeedsVerification(false); setError(null); }}
+            className="w-full text-sm font-bold transition hover:opacity-80"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            Back to Login
+          </button>
         </div>
       </AuthDrawerShell>
     );
