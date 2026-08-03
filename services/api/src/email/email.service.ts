@@ -47,8 +47,8 @@ export class EmailService {
     const smtpKey = (this.configService.get<string>("BREVO_SMTP_KEY") || "").trim();
     const smtpUser = (this.configService.get<string>("BREVO_SMTP_USER") || "").trim();
 
-    const httpKey = [apiKey, smtpKey].find((key) => key.startsWith("xkeysib-"));
-    const relayKey = [smtpKey, apiKey].find((key) => key.startsWith("xsmtpsib-"));
+    const httpKey = [apiKey, smtpKey].filter(this.isUsableKey.bind(this)).find((key) => key.startsWith("xkeysib-"));
+    const relayKey = [smtpKey, apiKey].filter(this.isUsableKey.bind(this)).find((key) => key.startsWith("xsmtpsib-"));
 
     if (httpKey) {
       this.httpApiKey = httpKey;
@@ -72,6 +72,25 @@ export class EmailService {
         "Email sending disabled. Set BREVO_API_KEY to an xkeysib-* API key, or an xsmtpsib-* SMTP key together with BREVO_SMTP_USER."
       );
     }
+  }
+
+  /**
+   * A key pasted from an abbreviated doc keeps the "..." and blows up deep inside
+   * fetch() with an unreadable ByteString error. Catch it here instead.
+   */
+  private isUsableKey(key: string) {
+    if (!key) return false;
+
+    const badChar = [...key].find((char) => char.charCodeAt(0) > 126 || char.charCodeAt(0) < 33);
+    if (badChar) {
+      this.logger.error(
+        `Brevo key is not valid: it contains "${badChar}" at index ${key.indexOf(badChar)}. ` +
+          "This usually means a truncated copy/paste - set the complete key with no ellipsis or spaces."
+      );
+      return false;
+    }
+
+    return true;
   }
 
   getStatus() {
