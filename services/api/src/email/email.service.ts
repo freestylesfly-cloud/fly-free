@@ -25,52 +25,123 @@ type SendOptions = {
   unsubscribeUrl?: string;
 };
 
+const BREVO_API_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter | null = null;
+  private httpApiKey: string | null = null;
 
   constructor(private readonly configService: ConfigService) {
     this.initializeBrevo();
   }
 
+  /**
+   * Brevo can be driven two ways and the key prefix tells us which one we hold:
+   *   xkeysib-*  -> HTTPS API  (preferred: no SMTP egress, no IP allowlist)
+   *   xsmtpsib-* -> SMTP relay (fallback: needs BREVO_SMTP_USER + an authorized IP)
+   */
   private initializeBrevo() {
-    const apiKey = this.configService.get<string>("BREVO_API_KEY");
-    const smtpUser = this.configService.get<string>("BREVO_SMTP_USER");
+    const apiKey = (this.configService.get<string>("BREVO_API_KEY") || "").trim();
+    const smtpKey = (this.configService.get<string>("BREVO_SMTP_KEY") || "").trim();
+    const smtpUser = (this.configService.get<string>("BREVO_SMTP_USER") || "").trim();
 
-    if (!apiKey) {
-      this.logger.warn("BREVO_API_KEY not set. Email sending disabled.");
-      return;
+    const httpKey = [apiKey, smtpKey].find((key) => key.startsWith("xkeysib-"));
+    const relayKey = [smtpKey, apiKey].find((key) => key.startsWith("xsmtpsib-"));
+
+    if (httpKey) {
+      this.httpApiKey = httpKey;
+      this.logger.log("Brevo HTTP API configured");
     }
 
-    if (!smtpUser) {
-      this.logger.warn("BREVO_SMTP_USER not set. Email sending disabled.");
-      return;
+    if (relayKey && smtpUser) {
+      this.transporter = nodemailer.createTransport({
+        host: "smtp-relay.brevo.com",
+        port: 587,
+        secure: false,
+        auth: { user: smtpUser, pass: relayKey },
+        connectionTimeout: 10000,
+        socketTimeout: 10000
+      });
+      this.logger.log(this.httpApiKey ? "Brevo SMTP configured (fallback)" : "Brevo SMTP configured");
     }
 
-    this.transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: smtpUser,
-        pass: apiKey
-      },
-      connectionTimeout: 10000,
-      socketTimeout: 10000,
-      tls: { rejectUnauthorized: false }
-    });
-
-    this.logger.log("Brevo SMTP configured");
+    if (!this.httpApiKey && !this.transporter) {
+      this.logger.warn(
+        "Email sending disabled. Set BREVO_API_KEY to an xkeysib-* API key, or an xsmtpsib-* SMTP key together with BREVO_SMTP_USER."
+      );
+    }
   }
 
   getStatus() {
-    const apiKey = this.configService.get<string>("BREVO_API_KEY");
     return {
-      configured: Boolean(this.transporter),
-      provider: this.transporter ? "brevo" : null,
+      configured: Boolean(this.httpApiKey || this.transporter),
+      provider: this.httpApiKey ? "brevo-api" : this.transporter ? "brevo-smtp" : null,
       from: this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in"
     };
+  }
+
+  /** Sends over the HTTPS API. Works from any IP and needs no SMTP egress. */
+  private async sendViaHttpApi(payload: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+    headers?: Record<string, string>;
+    attachment?: MailAttachment;
+  }) {
+    const fromEmail = this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in";
+    const fromName = this.configService.get<string>("EMAIL_FROM_NAME") || "Fly Free";
+    const replyTo = this.configService.get<string>("SUPPORT_EMAIL");
+
+    const response = await fetch(BREVO_API_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "api-key": this.httpApiKey as string,
+        "content-type": "application/json",
+        accept: "application/json"
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: payload.to }],
+        subject: payload.subject,
+        htmlContent: payload.html,
+        textContent: payload.text,
+        ...(replyTo ? { replyTo: { email: replyTo } } : {}),
+        ...(payload.headers ? { headers: payload.headers } : {}),
+        ...(payload.attachment
+          ? {
+              attachment: [
+                {
+                  name: payload.attachment.filename,
+                  content: payload.attachment.content.toString("base64")
+                }
+              ]
+            }
+          : {})
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    const body = await response.text();
+
+    if (!response.ok) {
+      // Brevo returns { code, message } - surface the message, not a bare status.
+      let detail = body;
+      try {
+        detail = JSON.parse(body).message || body;
+      } catch {
+        /* keep raw body */
+      }
+      throw new Error(`Brevo API ${response.status}: ${detail}`);
+    }
+
+    try {
+      return JSON.parse(body).messageId as string;
+    } catch {
+      return undefined;
+    }
   }
 
   async sendOrderConfirmation(email: string, order: any) {
@@ -222,58 +293,74 @@ export class EmailService {
   }
 
   async sendEmail(to: string, subject: string, html: string, options: SendOptions = {}) {
-    if (!this.transporter) {
+    const headers = options.unsubscribeUrl
+      ? {
+          "List-Unsubscribe": `<${options.unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
+        }
+      : undefined;
+
+    return this.deliver({ to, subject, html, headers });
+  }
+
+  async sendEmailWithAttachment(to: string, subject: string, html: string, attachment: MailAttachment) {
+    return this.deliver({ to, subject, html, attachment });
+  }
+
+  /**
+   * Single delivery path. Tries the HTTPS API first and falls back to the SMTP
+   * relay, so a blocked SMTP port or an unauthorized IP does not lose the email.
+   */
+  private async deliver(payload: {
+    to: string;
+    subject: string;
+    html: string;
+    headers?: Record<string, string>;
+    attachment?: MailAttachment;
+  }) {
+    const { to, subject, html, headers, attachment } = payload;
+    const text = this.toPlainText(html);
+
+    if (!this.httpApiKey && !this.transporter) {
       this.logger.warn(`Email not sent (Brevo not configured): ${to}`);
       return { success: false, message: "Email service not configured" };
     }
 
-    try {
-      const result = await this.transporter.sendMail({
-        from: this.fromAddress(),
-        replyTo: this.configService.get<string>("SUPPORT_EMAIL") || undefined,
-        to,
-        subject,
-        html,
-        text: this.toPlainText(html),
-        headers: options.unsubscribeUrl
-          ? {
-              "List-Unsubscribe": `<${options.unsubscribeUrl}>`,
-              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
-            }
-          : undefined
-      });
+    let lastError = "";
 
-      this.logger.log(`Email sent to ${to}`);
-      return { success: true, messageId: result.messageId };
-    } catch (error: any) {
-      this.logger.error(`Failed to send email to ${to}:`, error.message);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async sendEmailWithAttachment(to: string, subject: string, html: string, attachment: MailAttachment) {
-    if (!this.transporter) {
-      this.logger.warn(`Email with attachment not sent (Brevo not configured): ${to}`);
-      return { success: false, message: "Email service not configured" };
+    if (this.httpApiKey) {
+      try {
+        const messageId = await this.sendViaHttpApi({ to, subject, html, text, headers, attachment });
+        this.logger.log(`Email sent to ${to} via Brevo API`);
+        return { success: true, messageId };
+      } catch (error: any) {
+        lastError = error?.message || "Brevo API request failed";
+        this.logger.warn(`Brevo API send to ${to} failed: ${lastError}`);
+      }
     }
 
-    try {
-      const result = await this.transporter.sendMail({
-        from: this.fromAddress(),
-        replyTo: this.configService.get<string>("SUPPORT_EMAIL") || undefined,
-        to,
-        subject,
-        html,
-        text: this.toPlainText(html),
-        attachments: [attachment]
-      });
+    if (this.transporter) {
+      try {
+        const result = await this.transporter.sendMail({
+          from: this.fromAddress(),
+          replyTo: this.configService.get<string>("SUPPORT_EMAIL") || undefined,
+          to,
+          subject,
+          html,
+          text,
+          headers,
+          attachments: attachment ? [attachment] : undefined
+        });
 
-      this.logger.log(`Email with attachment sent to ${to}`);
-      return { success: true, messageId: result.messageId };
-    } catch (error: any) {
-      this.logger.error(`Failed to send email with attachment to ${to}:`, error.message);
-      return { success: false, error: error.message };
+        this.logger.log(`Email sent to ${to} via Brevo SMTP`);
+        return { success: true, messageId: result.messageId };
+      } catch (error: any) {
+        lastError = error?.message || "SMTP send failed";
+      }
     }
+
+    this.logger.error(`Failed to send email to ${to}: ${lastError}`);
+    return { success: false, error: lastError };
   }
 
   /**
