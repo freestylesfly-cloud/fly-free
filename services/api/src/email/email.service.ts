@@ -19,8 +19,15 @@ export class EmailService {
 
   private initializeBrevo() {
     const apiKey = this.configService.get<string>("BREVO_API_KEY");
+    const smtpUser = this.configService.get<string>("BREVO_SMTP_USER");
+
     if (!apiKey) {
       this.logger.warn("BREVO_API_KEY not set. Email sending disabled.");
+      return;
+    }
+
+    if (!smtpUser) {
+      this.logger.warn("BREVO_SMTP_USER not set. Email sending disabled.");
       return;
     }
 
@@ -28,7 +35,7 @@ export class EmailService {
       host: "smtp-relay.brevo.com",
       port: 587,
       auth: {
-        user: this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in",
+        user: smtpUser,
         pass: apiKey
       }
     });
@@ -239,17 +246,67 @@ export class EmailService {
   }
 
   private wrapTemplate(title: string, body: string) {
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "freestylesfly@gmail.com";
+    const webUrl = this.webUrl();
+
     return `
-      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1A1A1A;">
-        <div style="background: #1A1A1A; padding: 24px; color: white;">
-          <h1 style="margin: 0;">${this.escape(title)}</h1>
-          <p style="margin: 8px 0 0; color: rgba(255,255,255,.72);">Fly Free</p>
+      <!DOCTYPE html>
+      <html style="font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background: #f5f5f5;">
+        <div style="max-width: 640px; margin: 0 auto; background: white;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #FF6B5B 0%, #4ECDC4 100%); padding: 32px 24px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 700;">Fly Free</h1>
+            <p style="margin: 8px 0 0; font-size: 14px; opacity: 0.9;">Freedom, culture, comfort, self-expression</p>
+          </div>
+
+          <!-- Main Content -->
+          <div style="padding: 32px 24px; color: #1A1A1A; line-height: 1.6;">
+            <h2 style="margin: 0 0 16px 0; font-size: 24px; color: #FF6B5B;">${this.escape(title)}</h2>
+            ${body}
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f9f9f9; padding: 32px 24px; border-top: 1px solid #e0e0e0;">
+            <!-- Company Info -->
+            <div style="margin-bottom: 24px; font-size: 13px; color: #666; text-align: center;">
+              <p style="margin: 0 0 8px 0;">
+                <strong>Fly Free</strong><br>
+                Guwahati, Assam, India
+              </p>
+              <p style="margin: 0 0 8px 0;">
+                📧 ${this.escape(supportEmail)}<br>
+                📱 +91 76388 89189
+              </p>
+            </div>
+
+            <!-- Links -->
+            <div style="text-align: center; margin-bottom: 24px; font-size: 12px;">
+              <a href="${webUrl}/about" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">About</a> |
+              <a href="${webUrl}/returns" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Returns & Exchange</a> |
+              <a href="${webUrl}/shipping" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Shipping</a> |
+              <a href="${webUrl}/privacy" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Privacy</a> |
+              <a href="${webUrl}/terms" style="color: #FF6B5B; text-decoration: none; margin: 0 12px;">Terms</a>
+            </div>
+
+            <!-- Social -->
+            <div style="text-align: center; margin-bottom: 20px; font-size: 12px;">
+              <a href="https://instagram.com/flyfree" style="color: #FF6B5B; text-decoration: none; margin: 0 8px;">Instagram</a>
+            </div>
+
+            <!-- Copyright & Unsubscribe -->
+            <div style="text-align: center; border-top: 1px solid #e0e0e0; padding-top: 16px; font-size: 11px; color: #999;">
+              <p style="margin: 0 0 8px 0;">© 2026 Fly Free. All rights reserved.</p>
+              <p style="margin: 0;">✅ Secure checkout · 🔄 30-day exchange support</p>
+            </div>
+          </div>
         </div>
-        <div style="padding: 24px; background: #fafafa;">${body}</div>
-        <div style="padding: 16px 24px; color: #666; font-size: 12px;">
-          <p>Need help? Contact ${this.escape(this.configService.get<string>("SUPPORT_EMAIL") || "support@flyfree.com")}.</p>
-        </div>
-      </div>
+      </body>
+      </html>
     `;
   }
 
