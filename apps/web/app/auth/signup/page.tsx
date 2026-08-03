@@ -54,9 +54,18 @@ function SignupContent() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        const message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
-        throw new Error(message || err.error || 'Signup failed');
+        // Handle specific HTTP status codes
+        if (res.status === 409) {
+          throw new Error('This email is already registered. Please login or use a different email.');
+        }
+
+        try {
+          const err = await res.json();
+          const message = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+          throw new Error(message || err.error || 'Signup failed');
+        } catch (parseError) {
+          throw new Error('Signup failed. Please try again.');
+        }
       }
 
       setSuccess(true);
