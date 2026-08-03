@@ -576,14 +576,24 @@ export class EmailService {
     `;
   }
 
-  /** Turns admin-authored plain text into safe paragraphs. */
+  /** Turns admin-authored plain text into safe paragraphs with clickable links. */
   paragraphs(text: string) {
     return String(text || "")
       .split(/\n{2,}|\n/)
       .map((line) => line.trim())
       .filter(Boolean)
-      .map((line) => `<p style="margin:0 0 14px 0;">${this.escape(line)}</p>`)
+      .map((line) => `<p style="margin:0 0 14px 0;">${this.linkify(this.escape(line))}</p>`)
       .join("");
+  }
+
+  /** Makes bare URLs in admin-typed copy clickable. Input must already be escaped. */
+  private linkify(escapedText: string) {
+    return escapedText.replace(/https?:\/\/[^\s<]+/g, (match) => {
+      // Keep sentence punctuation out of the href.
+      const trailing = match.match(/[.,;:!?)]+$/)?.[0] ?? "";
+      const url = trailing ? match.slice(0, -trailing.length) : match;
+      return `<a href="${url}" style="color:#FF6B5B;text-decoration:none;font-weight:600;">${url}</a>${trailing}`;
+    });
   }
 
   private money(value: unknown) {
