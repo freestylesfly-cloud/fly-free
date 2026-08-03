@@ -1,52 +1,61 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as sgMail from "@sendgrid/mail";
+import * as nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.initializeSendGrid();
+    this.initializeBrevo();
   }
 
-  private initializeSendGrid() {
-    const apiKey = this.configService.get<string>("SENDGRID_API_KEY");
-    if (apiKey) {
-      sgMail.setApiKey(apiKey);
-      this.logger.log("SendGrid configured");
-    } else {
-      this.logger.warn("SENDGRID_API_KEY not set. Email sending disabled.");
+  private initializeBrevo() {
+    const apiKey = this.configService.get<string>("BREVO_API_KEY");
+    if (!apiKey) {
+      this.logger.warn("BREVO_API_KEY not set. Email sending disabled.");
+      return;
     }
+
+    this.transporter = nodemailer.createTransport({
+      host: "smtp-relay.brevo.com",
+      port: 587,
+      auth: {
+        user: this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in",
+        pass: apiKey
+      }
+    });
+
+    this.logger.log("Brevo SMTP configured");
   }
 
   getStatus() {
-    const apiKey = this.configService.get<string>("SENDGRID_API_KEY");
+    const apiKey = this.configService.get<string>("BREVO_API_KEY");
     return {
-      configured: Boolean(apiKey),
-      provider: apiKey ? "sendgrid" : null,
-      from: this.configService.get<string>("SENDGRID_FROM_EMAIL") || "noreply@flyfree.co.in"
+      configured: Boolean(this.transporter),
+      provider: this.transporter ? "brevo" : null,
+      from: this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in"
     };
   }
 
   async sendEmail(to: string, subject: string, html: string) {
-    const apiKey = this.configService.get<string>("SENDGRID_API_KEY");
-    if (!apiKey) {
-      this.logger.warn(`Email not sent (SendGrid not configured): ${to}`);
+    if (!this.transporter) {
+      this.logger.warn(`Email not sent (Brevo not configured): ${to}`);
       return { success: false, message: "Email service not configured" };
     }
 
     try {
-      const msg = {
+      const result = await this.transporter.sendMail({
+        from: this.configService.get<string>("BREVO_EMAIL") || "noreply@flyfree.co.in",
         to,
-        from: this.configService.get<string>("SENDGRID_FROM_EMAIL") || "noreply@flyfree.co.in",
         subject,
         html
-      };
+      });
 
-      const result = await sgMail.send(msg as any);
       this.logger.log(`Email sent to ${to}`);
-      return { success: true, messageId: result[0].headers["x-message-id"] };
+      return { success: true, messageId: result.messageId };
     } catch (error: any) {
       this.logger.error(`Failed to send email to ${to}:`, error.message);
       return { success: false, error: error.message };
