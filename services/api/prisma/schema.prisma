@@ -57,12 +57,15 @@ model EmailVerification {
 }
 
 model AdminUser {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  roleId    String
-  role      Role     @relation(fields: [roleId], references: [id])
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  // Nullable so existing rows survive the migration. Login rejects an admin
+  // without a hash: set one with `npm run admin:set-password`.
+  passwordHash String?
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id])
+  createdAt    DateTime @default(now())
 }
 
 model Role {

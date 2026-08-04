@@ -313,9 +313,11 @@ export class EcommerceService {
   }
 
   async trackOrder(orderId: string, token?: string) {
-    const userId = token ? this.extractUserId(token) : undefined;
+    // Was optional, which let anyone read any order - name, phone and full
+    // address - just by knowing its id.
+    const userId = this.extractUserId(token);
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, ...(userId ? { userId } : {}) },
+      where: { id: orderId, userId },
       include: {
         items: { include: { product: { include: { images: true } } } },
         payment: true,
@@ -329,9 +331,10 @@ export class EcommerceService {
     return { data: this.toOrderDto(order) };
   }
 
-  async getOrderInvoice(orderId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
+  async getOrderInvoice(orderId: string, token?: string) {
+    const userId = this.extractUserId(token);
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
       include: {
         items: { include: { product: true } }
       }
@@ -364,7 +367,7 @@ export class EcommerceService {
   }
 
   // ==================== HELPER METHODS ====================
-  private extractUserId(token: string): string {
+  private extractUserId(token?: string): string {
     if (!token) {
       throw new UnauthorizedException("Login required");
     }

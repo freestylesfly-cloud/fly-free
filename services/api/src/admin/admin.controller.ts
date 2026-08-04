@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Header, StreamableFile } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Header, StreamableFile, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { AdminService } from "./admin.service";
+import { AdminGuard } from "../auth/admin.guard";
 
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller("admin")
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}

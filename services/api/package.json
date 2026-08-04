@@ -11,6 +11,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "admin:set-password": "tsx prisma/set-admin-password.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

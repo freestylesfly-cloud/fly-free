@@ -1,8 +1,11 @@
-import { Controller, Post, Get, Body } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailAdminService } from './email-admin.service';
+import { AdminGuard } from '../auth/admin.guard';
 
 @ApiTags("📧 Email")
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller('admin/email')
 export class EmailAdminController {
   constructor(private emailAdminService: EmailAdminService) {}

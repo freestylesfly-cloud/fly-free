@@ -8,8 +8,8 @@ export class CommerceController {
   constructor(private readonly commerceService: CommerceService) {}
 
   @Get("orders/:id")
-  getOrder(@Param("id") id: string) {
-    return this.commerceService.getOrder(id);
+  getOrder(@Param("id") id: string, @Headers("authorization") token: string) {
+    return this.commerceService.getOrder(id, token);
   }
 
   @Post("checkout")

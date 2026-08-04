@@ -1,8 +1,11 @@
 import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { LoggerService } from './logger.service';
+import { AdminGuard } from '../auth/admin.guard';
 
 @ApiTags('📊 Admin Logs')
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller('admin/logs')
 export class LoggerController {
   constructor(private readonly loggerService: LoggerService) {}

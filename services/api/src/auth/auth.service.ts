@@ -5,6 +5,9 @@ import { EmailService } from "../email/email.service";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
 
+/** Compared against when no admin matches, so a miss costs the same time as a hit. */
+const DUMMY_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8DEuheGRE3IBOaGCFsPfMTQAaTzZ0K";
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -310,8 +313,25 @@ export class AuthService {
         include: { role: { include: { permissions: true } } }
       });
 
+      // One message for every failure: a distinct "admin not found" lets anyone
+      // enumerate valid admin addresses.
+      const invalid = { error: "Invalid email or password", status: 401 };
+
       if (!admin) {
-        return { error: "Admin not found", status: 404 };
+        // Spend the same time as a real comparison so timing does not leak either.
+        await bcrypt.compare(password || "", DUMMY_PASSWORD_HASH);
+        return invalid;
+      }
+
+      if (!admin.passwordHash) {
+        this.logger.error(
+          `Admin ${admin.email} has no password set. Run: npm run admin:set-password -- ${admin.email} <password>`
+        );
+        return { error: "Password not set for this admin account. Contact your administrator.", status: 403 };
+      }
+
+      if (!password || !(await bcrypt.compare(password, admin.passwordHash))) {
+        return invalid;
       }
 
       const token = this.generateToken({ userId: admin.id, email: admin.email, isAdmin: true });

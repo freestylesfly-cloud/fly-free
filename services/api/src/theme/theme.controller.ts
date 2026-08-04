@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { ThemeService } from "./theme.service";
+import { AdminGuard } from "../auth/admin.guard";
 
 @ApiTags("🎨 Admin Themes")
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller("admin/themes")
 export class ThemeController {
   constructor(private readonly themeService: ThemeService) {}

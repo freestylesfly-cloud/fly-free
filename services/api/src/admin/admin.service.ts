@@ -105,6 +105,18 @@ export class AdminService {
 
   async createProduct(data: any) {
     const categoryId = data.categoryId || (await this.ensureDefaultCategory()).id;
+
+    if (Array.isArray(data.variants)) {
+      data = {
+        ...data,
+        variants: data.variants.map((variant: any, index: number) => ({
+          ...variant,
+          sku: this.variantSku(variant, data, index)
+        }))
+      };
+      await this.assertVariantSkusAvailable(data.variants, "");
+    }
+
     return this.prisma.product.create({
       data: {
         name: data.name,
@@ -126,8 +138,9 @@ export class AdminService {
         isTrending: data.isTrending ?? false,
         isNewArrival: data.isNewArrival ?? false,
         categoryId,
-        collectionId: data.collectionId,
-        themeId: data.themeId,
+        collectionId: data.collectionId || null,
+        // Themes are optional: a product with no theme still lists on the site.
+        themeId: data.themeId || null,
         variants: Array.isArray(data.variants) ? {
           create: data.variants.map((variant: any) => ({
             sku: variant.sku,
@@ -170,10 +183,10 @@ export class AdminService {
    */
   async updateProduct(id: string, data: any) {
     const variants = Array.isArray(data.variants)
-      ? data.variants.map((variant: any) => ({
+      ? data.variants.map((variant: any, index: number) => ({
           id: randomUUID(),
           productId: id,
-          sku: variant.sku,
+          sku: this.variantSku(variant, data, index),
           color: variant.color,
           size: variant.size,
           price: variant.price ? Number(variant.price) : null,
@@ -183,6 +196,12 @@ export class AdminService {
           barcode: variant.barcode || null
         }))
       : null;
+
+    // ProductVariant.sku is globally unique. Checked up front so a clash is a
+    // clear 400 naming the SKU, not a 500 from a half-run transaction.
+    if (variants) {
+      await this.assertVariantSkusAvailable(variants, id);
+    }
 
     await this.prisma.$transaction(
       async (tx: any) => {
@@ -222,8 +241,9 @@ export class AdminService {
             isTrending: data.isTrending,
             isNewArrival: data.isNewArrival,
             categoryId: data.categoryId,
-            collectionId: data.collectionId,
-            themeId: data.themeId,
+            // "" from an unset dropdown must clear the link, not fail the FK.
+            collectionId: data.collectionId === undefined ? undefined : data.collectionId || null,
+            themeId: data.themeId === undefined ? undefined : data.themeId || null,
             images: Array.isArray(data.images) ? { createMany: { data: data.images } } : undefined,
             hampers: Array.isArray(data.hampers)
               ? {
@@ -266,6 +286,56 @@ export class AdminService {
       await tx.productHamper.deleteMany({ where: { productId: id } });
       return tx.product.delete({ where: { id } });
     }, TRANSACTION_OPTIONS);
+  }
+
+  /**
+   * Falls back to a derived SKU when the editor leaves the field blank, so a
+   * row of empty strings cannot collide with the next one.
+   */
+  private variantSku(variant: any, product: any, index: number) {
+    const provided = String(variant?.sku ?? "").trim();
+    if (provided) return provided;
+
+    const base = String(product?.sku || this.slugify(product?.name || "product")).toUpperCase();
+    const parts = [variant?.color, variant?.size]
+      .map((part) => String(part ?? "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-"))
+      .filter(Boolean);
+
+    return [base, ...(parts.length ? parts : [`V${index + 1}`])].join("-");
+  }
+
+  /**
+   * Rejects duplicates inside the payload and SKUs already held by a different
+   * product. Runs before the transaction so it costs nothing on the deadline.
+   */
+  private async assertVariantSkusAvailable(variants: Array<{ sku: string }>, productId: string) {
+    const seen = new Set<string>();
+    const duplicated = new Set<string>();
+
+    for (const { sku } of variants) {
+      if (seen.has(sku)) duplicated.add(sku);
+      seen.add(sku);
+    }
+
+    if (duplicated.size) {
+      throw new BadRequestException(
+        `Duplicate variant SKU in this product: ${[...duplicated].join(", ")}. Every variant needs its own SKU.`
+      );
+    }
+
+    if (!seen.size) return;
+
+    const clashes = await this.prisma.productVariant.findMany({
+      where: { sku: { in: [...seen] }, productId: { not: productId } },
+      select: { sku: true, product: { select: { name: true } } }
+    });
+
+    if (clashes.length) {
+      const detail = clashes
+        .map((clash: any) => `${clash.sku} (used by "${clash.product?.name ?? "another product"}")`)
+        .join(", ");
+      throw new BadRequestException(`These variant SKUs already exist: ${detail}.`);
+    }
   }
 
   private normalizeProductHamperData(hamper: any, index = 0) {

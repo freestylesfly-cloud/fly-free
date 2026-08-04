@@ -1,8 +1,11 @@
-import { Body, Controller, Delete, Get, Query } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Delete, Get, Query, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { ActivityLogService } from "./activity-log.service";
+import { AdminGuard } from "../auth/admin.guard";
 
 @ApiTags("📊 Admin Logs")
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller("admin/activity-logs")
 export class ActivityLogController {
   constructor(private readonly activityLog: ActivityLogService) {}

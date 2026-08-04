@@ -141,7 +141,7 @@ export class EcommerceController {
   }
 
   @Get("orders/:orderId/invoice")
-  getOrderInvoice(@Param("orderId") orderId: string) {
-    return this.commerceService.getOrderInvoice(orderId);
+  getOrderInvoice(@Param("orderId") orderId: string, @Headers("authorization") token: string) {
+    return this.commerceService.getOrderInvoice(orderId, token);
   }
 }

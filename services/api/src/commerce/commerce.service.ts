@@ -13,13 +13,17 @@ export class CommerceService {
     private readonly config: ConfigService
   ) {}
 
-  async getOrder(id: string) {
+  async getOrder(id: string, token?: string) {
+    const userId = this.extractUserId(token);
+
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: { items: true, payment: true }
     });
 
-    if (!order) {
+    // Someone else's order is reported as missing rather than forbidden, so ids
+    // cannot be probed for existence.
+    if (!order || order.userId !== userId) {
       throw new NotFoundException("Order not found");
     }
 
