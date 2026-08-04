@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret } from "./jwt-secret";
 
 /**
  * Requires a valid admin JWT on every request.
@@ -21,10 +22,12 @@ export class AdminGuard implements CanActivate {
       throw new UnauthorizedException("Authentication required");
     }
 
-    const secret = this.config.get<string>("JWT_SECRET");
-    if (!secret) {
+    let secret: string;
+    try {
       // Never fall back to a default secret: a predictable one is the same as no auth.
-      throw new UnauthorizedException("Server authentication is not configured");
+      secret = requireJwtSecret(this.config);
+    } catch {
+      throw new UnauthorizedException("Server authentication is not configured (JWT_SECRET missing)");
     }
 
     let decoded: any;

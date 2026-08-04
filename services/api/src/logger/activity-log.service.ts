@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret } from "../auth/jwt-secret";
 
 export type ActivityLevel = "INFO" | "WARN" | "ERROR";
 
@@ -56,7 +57,7 @@ export class ActivityLogService {
     if (!authorization) return { userId: null, userEmail: null };
 
     try {
-      const secret = process.env.JWT_SECRET || "dev-secret-key";
+      const secret = requireJwtSecret();
       const decoded = jwt.verify(authorization.replace("Bearer ", ""), secret) as any;
       return { userId: decoded?.userId ?? null, userEmail: decoded?.email ?? null };
     } catch {

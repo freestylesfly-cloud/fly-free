@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/co
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret } from "../auth/jwt-secret";
 
 @Injectable()
 export class EcommerceService {
@@ -373,7 +374,7 @@ export class EcommerceService {
     }
 
     try {
-      const secret = this.config.get<string>("JWT_SECRET") || "dev-secret-key";
+      const secret = requireJwtSecret(this.config);
       const decoded = jwt.verify(token.replace("Bearer ", ""), secret) as any;
       if (!decoded.userId) throw new Error("Missing userId");
       return decoded.userId;

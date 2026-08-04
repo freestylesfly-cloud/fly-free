@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import * as bcrypt from "bcrypt";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret, warnIfJwtSecretMissing } from "./jwt-secret";
 
 /** Compared against when no admin matches, so a miss costs the same time as a hit. */
 const DUMMY_PASSWORD_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8DEuheGRE3IBOaGCFsPfMTQAaTzZ0K";
@@ -17,7 +18,9 @@ export class AuthService {
     private prisma: PrismaService,
     private config: ConfigService,
     private emailService: EmailService
-  ) {}
+  ) {
+    warnIfJwtSecretMissing(this.config);
+  }
 
   // ==================== USER AUTHENTICATION ====================
 
@@ -434,13 +437,13 @@ export class AuthService {
   // ==================== HELPER METHODS ====================
 
   private generateToken(payload: any): string {
-    const secret = this.config.get<string>("JWT_SECRET") || "dev-secret-key";
+    const secret = requireJwtSecret(this.config);
     return jwt.sign(payload, secret, { expiresIn: "30d" });
   }
 
   private validateToken(token: string, isAdmin = false): string {
     try {
-      const secret = this.config.get<string>("JWT_SECRET") || "dev-secret-key";
+      const secret = requireJwtSecret(this.config);
       const bearer = token.replace("Bearer ", "");
       const decoded = jwt.verify(bearer, secret) as any;
 

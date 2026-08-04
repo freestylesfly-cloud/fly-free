@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, UnauthorizedException, Logger } from "
 import { PrismaService } from "../prisma/prisma.service";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret } from "../auth/jwt-secret";
 
 const REVIEW_BUCKET = "product-images";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -74,7 +75,7 @@ export class ReviewService {
       throw new UnauthorizedException("Login required to submit a review");
     }
     try {
-      const secret = process.env.JWT_SECRET || "dev-secret-key";
+      const secret = requireJwtSecret();
       const decoded = jwt.verify(authHeader.replace("Bearer ", ""), secret) as any;
       if (!decoded.userId) throw new Error("Missing userId");
       return decoded.userId;

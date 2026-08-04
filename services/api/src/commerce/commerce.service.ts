@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as jwt from "jsonwebtoken";
+import { requireJwtSecret } from "../auth/jwt-secret";
 import * as path from "path";
 
 @Injectable()
@@ -494,7 +495,7 @@ export class CommerceService {
     }
 
     try {
-      const secret = this.config.get<string>("JWT_SECRET") || "dev-secret-key";
+      const secret = requireJwtSecret(this.config);
       const decoded = jwt.verify(token.replace("Bearer ", ""), secret) as any;
       if (!decoded.userId) throw new Error("Missing userId");
       return decoded.userId;
