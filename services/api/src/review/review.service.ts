@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException, Logger } from "@nestjs/common";
+import { Injectable, BadRequestException, NotFoundException, UnauthorizedException, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as jwt from "jsonwebtoken";
@@ -210,7 +210,10 @@ export class ReviewService {
   }
 
   // Update review
-  async updateReview(id: string, data: any) {
+  async updateReview(id: string, data: any, authHeader?: string) {
+    // Was unauthenticated: anyone could rewrite anyone's review by id.
+    await this.assertOwnsReview(id, authHeader);
+
     return await this.prisma.review.update({
       where: { id },
       data: {
@@ -222,8 +225,20 @@ export class ReviewService {
     });
   }
 
+  /** Editing and deleting are for the review's author; moderation lives on the admin routes. */
+  private async assertOwnsReview(id: string, authHeader?: string) {
+    const userId = this.extractUserId(authHeader);
+    const review = await this.prisma.review.findUnique({ where: { id }, select: { userId: true } });
+
+    if (!review || review.userId !== userId) {
+      throw new NotFoundException("Review not found");
+    }
+  }
+
   // Delete review
-  async deleteReview(id: string) {
+  async deleteReview(id: string, authHeader?: string) {
+    await this.assertOwnsReview(id, authHeader);
+
     return await this.prisma.review.delete({
       where: { id },
     });

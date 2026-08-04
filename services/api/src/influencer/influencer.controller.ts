@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { InfluencerService } from "./influencer.service";
+import { AdminGuard } from "../auth/admin.guard";
 
 @Controller("influencers")
 export class InfluencerController {
@@ -21,31 +22,36 @@ export class InfluencerController {
 
   // Admin: Get all influencers (including inactive)
   @ApiTags("👨‍💼 Admin Influencers")
-  @Get("admin/all")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Get("admin/all")
   async getAllInfluencers() {
     return await this.influencerService.getAllInfluencers();
   }
 
   @ApiTags("👨‍💼 Admin Influencers")
-  @Post("admin/create")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Post("admin/create")
   async createInfluencer(@Body() body: any) {
     return await this.influencerService.createInfluencer(body);
   }
 
   @ApiTags("👨‍💼 Admin Influencers")
-  @Put("admin/:id")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Put("admin/:id")
   async updateInfluencer(@Param("id") id: string, @Body() body: any) {
     return await this.influencerService.updateInfluencer(id, body);
   }
 
   @ApiTags("👨‍💼 Admin Influencers")
-  @Delete("admin/:id")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Delete("admin/:id")
   async deleteInfluencer(@Param("id") id: string) {
     return await this.influencerService.deleteInfluencer(id);
   }
 
   @ApiTags("👨‍💼 Admin Influencers")
-  @Get("admin/:id/stats")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Get("admin/:id/stats")
   async getInfluencerStats(@Param("id") id: string) {
     return await this.influencerService.getInfluencerStats(id);
   }

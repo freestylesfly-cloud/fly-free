@@ -1,8 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { EmailService } from './email.service';
+import { AdminGuard } from '../auth/admin.guard';
 
+// Every route here sends mail as Fly Free, so the whole controller is admin only.
 @ApiTags("📧 Email")
+@ApiBearerAuth()
+@UseGuards(AdminGuard)
 @Controller('email')
 export class EmailController {
   constructor(private emailService: EmailService) {}

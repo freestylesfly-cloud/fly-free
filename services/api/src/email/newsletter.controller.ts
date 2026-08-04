@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { NewsletterService } from './newsletter.service';
+import { AdminGuard } from '../auth/admin.guard';
 
 @ApiTags('Newsletter')
 @Controller()
@@ -22,12 +23,14 @@ export class NewsletterController {
     return this.newsletterService.unsubscribe(email);
   }
 
-  @Get('admin/newsletter/subscribers')
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Get('admin/newsletter/subscribers')
   async getSubscribers(@Query('activeOnly') activeOnly?: string) {
     return this.newsletterService.listSubscribers(activeOnly === 'true');
   }
 
-  @Get('admin/newsletter/stats')
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Get('admin/newsletter/stats')
   async getStats() {
     return this.newsletterService.getStats();
   }

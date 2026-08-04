@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { ReviewService } from "./review.service";
+import { AdminGuard } from "../auth/admin.guard";
 
 @Controller("reviews")
 export class ReviewController {
@@ -42,21 +43,24 @@ export class ReviewController {
 
   // Get pending reviews (admin)
   @ApiTags("📋 Admin Reviews")
-  @Get("admin/pending")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Get("admin/pending")
   async getPendingReviews(@Query("page") page?: string) {
     return await this.reviewService.getPendingReviews(parseInt(page || "1"));
   }
 
   // Approve review
   @ApiTags("📋 Admin Reviews")
-  @Put("admin/:id/approve")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Put("admin/:id/approve")
   async approveReview(@Param("id") id: string) {
     return await this.reviewService.approveReview(id);
   }
 
   // Reject review
   @ApiTags("📋 Admin Reviews")
-  @Put("admin/:id/reject")
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)  @Put("admin/:id/reject")
   async rejectReview(@Param("id") id: string) {
     return await this.reviewService.rejectReview(id);
   }
@@ -64,14 +68,14 @@ export class ReviewController {
   // Update review
   @ApiTags("⭐ Reviews")
   @Put(":id")
-  async updateReview(@Param("id") id: string, @Body() body: any) {
-    return await this.reviewService.updateReview(id, body);
+  async updateReview(@Param("id") id: string, @Body() body: any, @Headers("authorization") auth?: string) {
+    return await this.reviewService.updateReview(id, body, auth);
   }
 
   // Delete review
   @ApiTags("⭐ Reviews")
   @Delete(":id")
-  async deleteReview(@Param("id") id: string) {
-    return await this.reviewService.deleteReview(id);
+  async deleteReview(@Param("id") id: string, @Headers("authorization") auth?: string) {
+    return await this.reviewService.deleteReview(id, auth);
   }
 }

@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { InstagramService } from './instagram.service';
+import { AdminGuard } from '../auth/admin.guard';
 
 @ApiTags('📸 Instagram Feed')
 @Controller('instagram-posts')
@@ -27,6 +28,8 @@ export class InstagramController {
   }
 
   // Admin: Create Instagram post
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Post()
   async create(
     @Body()
@@ -42,6 +45,8 @@ export class InstagramController {
   }
 
   // Admin: Update Instagram post
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -58,6 +63,8 @@ export class InstagramController {
   }
 
   // Admin: Delete Instagram post
+  @ApiBearerAuth()
+  @UseGuards(AdminGuard)
   @Delete(':id')
   async delete(@Param('id') id: string) {
     return await this.instagramService.delete(id);
