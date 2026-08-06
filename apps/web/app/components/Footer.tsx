@@ -132,21 +132,31 @@ export function Footer() {
 
           <div>
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Support</h3>
+            {/* Every row comes from Admin → Settings. Anything unset is omitted
+                rather than rendered as a dead link. */}
             <ul className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li className="flex gap-2"><Mail size={16} /> <a href={`mailto:${support.email}`}>{support.email}</a></li>
-              <li className="flex gap-2"><Phone size={16} /> <a href={`tel:${support.phone.replace(/[^\d+]/g, '')}`}>{support.phone}</a></li>
-              <li className="flex gap-2"><MapPin size={16} /> <span>{support.address}</span></li>
-              <li>
-                <a
-                  href={support.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 font-bold"
-                  style={{ border: '2px solid var(--border-color)', color: 'var(--text-primary)' }}
-                >
-                  <Instagram size={16} /> Instagram
-                </a>
-              </li>
+              {support.email && (
+                <li className="flex gap-2"><Mail size={16} /> <a href={`mailto:${support.email}`}>{support.email}</a></li>
+              )}
+              {support.phone && (
+                <li className="flex gap-2"><Phone size={16} /> <a href={`tel:${support.phone.replace(/[^\d+]/g, '')}`}>{support.phone}</a></li>
+              )}
+              {support.address && (
+                <li className="flex gap-2"><MapPin size={16} /> <span>{support.address}</span></li>
+              )}
+              {support.instagram && (
+                <li>
+                  <a
+                    href={support.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 font-bold"
+                    style={{ border: '2px solid var(--border-color)', color: 'var(--text-primary)' }}
+                  >
+                    <Instagram size={16} /> Instagram
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

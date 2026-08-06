@@ -24,9 +24,15 @@ export class EcommerceService {
   async addToWishlist(productId: string, token: string) {
     const userId = this.extractUserId(token);
 
-    const product = await this.prisma.product.findUnique({ where: { id: productId } });
-    if (!product) {
-      throw new NotFoundException("Product not found");
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, isVisible: true }
+    });
+
+    // A deactivated product can still be sitting in an open tab or a stale
+    // recommendation, so the save is refused here rather than at checkout.
+    if (!product || !product.isVisible) {
+      throw new NotFoundException("This product is no longer available.");
     }
 
     const existing = await this.prisma.wishlist.findFirst({ where: { userId, productId } });
@@ -64,6 +70,17 @@ export class EcommerceService {
 
   async addToCart(productId: string, variantId: string, quantity: number, token: string) {
     const userId = this.extractUserId(token);
+
+    // Same guard as the wishlist: a product pulled from the store cannot be
+    // added to a cart, however the customer arrived at it.
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true, product: { select: { isVisible: true } } }
+    });
+
+    if (!variant || !variant.product?.isVisible) {
+      throw new NotFoundException("This product is no longer available.");
+    }
 
     // Get or create cart
     let cart = await this.prisma.cart.findFirst({ where: { userId } });

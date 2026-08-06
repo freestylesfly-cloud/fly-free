@@ -26,9 +26,11 @@ async function getContactData() {
 
 export default async function ContactPage() {
   const { page, settings } = await getContactData();
-  const email = settings.supportEmail || settings.contactEmail || "support@flyfree.com";
-  const phone = settings.contactPhone || "9876543210";
-  const address = settings.businessAddress || "Guwahati, Assam, India";
+  // Admin → Settings is the only source. A channel that is not configured is
+  // left off the page instead of shown as a placeholder nobody answers.
+  const email = String(settings.supportEmail || settings.contactEmail || "").trim();
+  const phone = String(settings.contactPhone || "").trim();
+  const address = String(settings.businessAddress || "").trim();
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
@@ -42,21 +44,27 @@ export default async function ContactPage() {
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-4 px-5 py-12 md:grid-cols-3">
-        <a href={`mailto:${email}`} className="rounded border p-5 transition hover:-translate-y-1" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
-          <Mail size={24} style={{ color: "var(--color-primary)" }} />
-          <h2 className="mt-4 font-black">Email</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{email}</p>
-        </a>
-        <a href={`tel:+91${phone}`} className="rounded border p-5 transition hover:-translate-y-1" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
-          <Phone size={24} style={{ color: "var(--color-primary)" }} />
-          <h2 className="mt-4 font-black">Phone</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>+91 {phone}</p>
-        </a>
-        <div className="rounded border p-5" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
-          <MapPin size={24} style={{ color: "var(--color-primary)" }} />
-          <h2 className="mt-4 font-black">Address</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{address}</p>
-        </div>
+        {email && (
+          <a href={`mailto:${email}`} className="rounded border p-5 transition hover:-translate-y-1" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
+            <Mail size={24} style={{ color: "var(--color-primary)" }} />
+            <h2 className="mt-4 font-black">Email</h2>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{email}</p>
+          </a>
+        )}
+        {phone && (
+          <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="rounded border p-5 transition hover:-translate-y-1" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
+            <Phone size={24} style={{ color: "var(--color-primary)" }} />
+            <h2 className="mt-4 font-black">Phone</h2>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{phone}</p>
+          </a>
+        )}
+        {address && (
+          <div className="rounded border p-5" style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-secondary)" }}>
+            <MapPin size={24} style={{ color: "var(--color-primary)" }} />
+            <h2 className="mt-4 font-black">Address</h2>
+            <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>{address}</p>
+          </div>
+        )}
       </section>
     </main>
   );

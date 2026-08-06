@@ -71,6 +71,12 @@ interface InstagramPost {
   instagramLink: string;
 }
 
+/** Admin → Settings → Social links. Null for anything left unset. */
+interface SocialLinks {
+  instagram?: string | null;
+  instagramHandle?: string | null;
+}
+
 function unwrap<T>(payload: any): T[] {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -87,13 +93,14 @@ async function getJson(path: string) {
 }
 
 async function getHomeData() {
-  const [themes, products, reviews, hampers, instagram, influencers] = await Promise.all([
+  const [themes, products, reviews, hampers, instagram, influencers, social] = await Promise.all([
     getJson('/cms/themes'),
     getJson('/catalog/products'),
     getJson('/reviews/latest?limit=12'),
     getJson('/cms/hampers'),
     getJson('/instagram-posts'),
     getJson('/influencers'),
+    getJson('/cms/settings/social'),
   ]);
 
   return {
@@ -103,6 +110,7 @@ async function getHomeData() {
     hampers: unwrap<Hamper>(hampers),
     instagram: unwrap<InstagramPost>(instagram),
     influencers: unwrap<Influencer>(influencers),
+    social: (social || {}) as SocialLinks,
   };
 }
 
@@ -113,7 +121,7 @@ const rupees = (paise: number) => Math.round((paise || 0) / 100);
 const PRODUCT_CARD = 'mo-slide w-[46vw] flex-shrink-0 sm:w-[240px]';
 
 export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram, influencers } = await getHomeData();
+  const { themes, products, reviews, hampers, instagram, influencers, social } = await getHomeData();
 
   // The hero is simply the active product themes — each theme's banner is one
   // slide. There is no separate site-wide hero to configure.
@@ -311,8 +319,8 @@ export default async function HomePage() {
 
       {instagram.length > 0 && (
         <Rail
-          title="@flyfree_styles"
-          viewAllHref="https://instagram.com/flyfree"
+          title={social.instagramHandle || 'Instagram'}
+          viewAllHref={social.instagram || undefined}
           viewAllLabel="Follow"
           external
           intervalMs={5000}
@@ -321,7 +329,7 @@ export default async function HomePage() {
             <a
               key={post.id}
               data-rail-item
-              href={post.instagramLink}
+              href={post.instagramLink || social.instagram || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="mo-slide group relative w-[60vw] flex-shrink-0 overflow-hidden sm:w-[260px]"

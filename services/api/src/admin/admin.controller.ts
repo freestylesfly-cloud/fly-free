@@ -55,6 +55,13 @@ export class AdminController {
     return this.adminService.updateProduct(id, data);
   }
 
+  // Active / inactive. Kept apart from the full update so the list screen can
+  // toggle a product without resending its variants and images.
+  @Patch("products/:id/visibility")
+  setProductVisibility(@Param("id") id: string, @Body() body: { isVisible?: boolean }) {
+    return this.adminService.setProductVisibility(id, body?.isVisible === true);
+  }
+
   @Delete("products/:id")
   deleteProduct(@Param("id") id: string) {
     return this.adminService.deleteProduct(id);

@@ -52,6 +52,46 @@ export class CmsService {
     };
   }
 
+  /**
+   * Social profiles as configured in Admin → Settings. Anything the admin has
+   * not filled in comes back absent, and the storefront then renders nothing —
+   * there are no compiled-in profile URLs to fall back to.
+   *
+   * `instagramHandle` is derived from the URL so the admin only maintains one
+   * field and the feed heading can never disagree with the Follow button.
+   */
+  async getSocialLinks() {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const links = ((setting?.value as any)?.socialLinks || {}) as Record<string, string>;
+
+    const clean = (value?: string) => {
+      const trimmed = String(value ?? "").trim();
+      return trimmed || null;
+    };
+
+    const instagram = clean(links.instagram);
+
+    return {
+      instagram,
+      instagramHandle: this.instagramHandle(instagram),
+      facebook: clean(links.facebook),
+      twitter: clean(links.twitter),
+      youtube: clean(links.youtube),
+      whatsapp: clean(links.whatsapp)
+    };
+  }
+
+  /** "https://www.instagram.com/flyfree.ne/" -> "@flyfree.ne". */
+  private instagramHandle(url: string | null) {
+    if (!url) return null;
+    try {
+      const path = new URL(url).pathname.split("/").filter(Boolean)[0];
+      return path ? `@${path}` : null;
+    } catch {
+      return null;
+    }
+  }
+
   getSizeGuides() {
     return this.prisma.sizeGuide.findMany({
       where: { active: true },

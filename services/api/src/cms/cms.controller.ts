@@ -22,6 +22,11 @@ export class CmsController {
     return this.cmsService.getDeliverySettings();
   }
 
+  @Get("settings/social")
+  getSocialLinks() {
+    return this.cmsService.getSocialLinks();
+  }
+
   @Get("size-guides")
   getSizeGuides() {
     return this.cmsService.getSizeGuides();

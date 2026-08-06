@@ -346,7 +346,9 @@ model Payment {
   id                String        @id @default(cuid())
   orderId           String        @unique
   provider          String        @default("RAZORPAY")
-  providerPaymentId String?
+  /// Unique so a replayed or double-submitted gateway callback cannot turn one
+  /// payment into two orders — the second insert loses on this constraint.
+  providerPaymentId String?       @unique
   status            PaymentStatus @default(PENDING)
   amount            Int
   rawPayload        Json?

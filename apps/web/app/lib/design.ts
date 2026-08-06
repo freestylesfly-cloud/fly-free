@@ -68,17 +68,18 @@ export const MEDIA = {
 } as const;
 
 /**
- * Fallback support details, used until the API answers.
+ * Placeholders shown only until the API answers.
  *
- * The live values come from Admin → Settings (`supportEmail`, `contactPhone`,
- * `businessAddress`, `socialLinks.instagram`). These are only what renders
- * before that request lands — keep them truthful, they ship in the HTML.
+ * The real values live in Admin → Settings (`supportEmail`, `contactPhone`,
+ * `businessAddress`, `socialLinks.*`) and are fetched at runtime. Nothing here
+ * is a real contact detail or a real link: anything left blank is simply not
+ * rendered, so an unconfigured store never ships a dead address to customers.
  */
 export const SUPPORT = {
-  email: 'support@flyfree.com',
-  phone: '+91 98765 43210',
-  address: 'Guwahati, Assam, India',
-  instagram: 'https://instagram.com/flyfree'
+  email: '',
+  phone: '',
+  address: '',
+  instagram: ''
 };
 
 /** Copy shown over the hero when a theme supplies no description of its own. */

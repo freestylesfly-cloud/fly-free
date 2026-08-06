@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
-import { api } from '../services/api';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { apiService } from '../services/api';
 
 interface SizeGuide {
   id: string;
@@ -20,6 +20,8 @@ export function SizeGuideManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     size: '',
     chest: '',
@@ -34,16 +36,17 @@ export function SizeGuideManager() {
     loadSizes();
   }, []);
 
+  // Goes through apiService so the admin bearer token is attached — these
+  // routes sit behind AdminGuard and a bare fetch just gets a silent 401.
   const loadSizes = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${api.getBaseUrl()}/api/admin/size-guides`);
-      if (response.ok) {
-        const data = await response.json();
-        setSizes(data);
-      }
-    } catch (error) {
-      console.error('Failed to load sizes:', error);
+      setError('');
+      const data = await apiService.getSizeGuides();
+      setSizes(Array.isArray(data) ? data : (data as any)?.data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load size guides');
+      setSizes([]);
     } finally {
       setLoading(false);
     }
@@ -52,25 +55,21 @@ export function SizeGuideManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setSaving(true);
+      setError('');
       if (editingId) {
-        await fetch(`${api.getBaseUrl()}/api/admin/size-guides/${editingId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
+        await apiService.updateSizeGuide(editingId, formData);
       } else {
-        await fetch(`${api.getBaseUrl()}/api/admin/size-guides`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
+        await apiService.createSizeGuide(formData);
       }
       setFormData({ size: '', chest: '', shoulder: '', length: '', sleeve: '', priority: 0, active: true });
       setEditingId(null);
       setShowForm(false);
-      loadSizes();
-    } catch (error) {
-      console.error('Failed to save size guide:', error);
+      await loadSizes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save size guide');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -91,10 +90,11 @@ export function SizeGuideManager() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this size guide?')) return;
     try {
-      await fetch(`${api.getBaseUrl()}/api/admin/size-guides/${id}`, { method: 'DELETE' });
-      loadSizes();
-    } catch (error) {
-      console.error('Failed to delete size guide:', error);
+      setError('');
+      await apiService.deleteSizeGuide(id);
+      await loadSizes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete size guide');
     }
   };
 
@@ -113,6 +113,13 @@ export function SizeGuideManager() {
           <Plus size={18} /> Add Size
         </button>
       </div>
+
+      {error && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <p className="font-bold">{error}</p>
+          <button onClick={() => setError('')} className="shrink-0 text-sm font-bold underline">Dismiss</button>
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-lg border border-black/10 bg-white p-6 space-y-4">
@@ -174,8 +181,12 @@ export function SizeGuideManager() {
             <span>Active</span>
           </label>
           <div className="flex gap-3">
-            <button type="submit" className="rounded-lg bg-black text-white px-4 py-2 font-bold hover:bg-black/90">
-              {editingId ? 'Update' : 'Create'}
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-black text-white px-4 py-2 font-bold hover:bg-black/90 disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
             </button>
             <button
               type="button"
@@ -206,6 +217,13 @@ export function SizeGuideManager() {
               </tr>
             </thead>
             <tbody>
+              {sizes.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-black/60">
+                    No size guides yet. Use &ldquo;Add Size&rdquo; to create one.
+                  </td>
+                </tr>
+              )}
               {sizes.map((size) => (
                 <tr key={size.id} className="border-b border-black/5 hover:bg-black/2">
                   <td className="px-4 py-3 font-bold">{size.size}</td>

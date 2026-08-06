@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { PrismaService } from "../prisma/prisma.service";
 
 type MailAttachment = {
   filename: string;
@@ -27,14 +28,62 @@ type SendOptions = {
 
 const BREVO_API_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
+/** Contact block printed in every email footer. Blank fields are not rendered. */
+type ContactDetails = {
+  supportEmail: string;
+  supportPhone: string;
+  businessAddress: string;
+  instagramUrl: string;
+};
+
+const EMPTY_CONTACT: ContactDetails = {
+  supportEmail: "",
+  supportPhone: "",
+  businessAddress: "",
+  instagramUrl: ""
+};
+
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter | null = null;
   private httpApiKey: string | null = null;
 
-  constructor(private readonly configService: ConfigService) {
+  /**
+   * Cached copy of Admin → Settings. `renderEmail` is synchronous and called
+   * from ~20 places, so the footer reads this snapshot rather than the database;
+   * `refreshContactDetails()` re-reads it on boot and whenever an admin saves.
+   */
+  private contact: ContactDetails = EMPTY_CONTACT;
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
     this.initializeBrevo();
+  }
+
+  async onModuleInit() {
+    await this.refreshContactDetails();
+  }
+
+  /** Reloads the footer contact block from Admin → Settings. */
+  async refreshContactDetails() {
+    try {
+      const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+      const value = (setting?.value || {}) as any;
+      const text = (raw: unknown) => String(raw ?? "").trim();
+
+      this.contact = {
+        supportEmail: text(value.supportEmail || value.contactEmail || this.configService.get("SUPPORT_EMAIL")),
+        supportPhone: text(value.contactPhone || this.configService.get("SUPPORT_PHONE")),
+        businessAddress: text(value.businessAddress),
+        instagramUrl: text(value.socialLinks?.instagram || this.configService.get("INSTAGRAM_URL"))
+      };
+    } catch (error) {
+      // A settings read failure must not stop an order confirmation going out.
+      this.logger.warn(`Could not load contact details for email footers: ${error}`);
+    }
   }
 
   /**
@@ -388,10 +437,16 @@ export class EmailService {
    */
   renderEmail(options: EmailTemplateOptions) {
     const { title, eyebrow, preheader, body, unsubscribeUrl } = options;
-    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "freestylesfly@gmail.com";
-    const supportPhone = this.configService.get<string>("SUPPORT_PHONE") || "+91 76388 89189";
-    const instagramUrl = this.configService.get<string>("INSTAGRAM_URL") || "https://instagram.com/flyfree";
+    const { supportEmail, supportPhone, businessAddress, instagramUrl } = this.contact;
     const webUrl = this.webUrl();
+
+    // "Write to X or call Y" has to survive either half being unconfigured.
+    const helpChannels = [
+      supportEmail &&
+        `write to <a href="mailto:${this.escape(supportEmail)}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportEmail)}</a>`,
+      supportPhone &&
+        `call <a href="tel:${this.escape(supportPhone.replace(/\s/g, ""))}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportPhone)}</a>`
+    ].filter(Boolean) as string[];
 
     const footerLinks = [
       ["Shop", `${webUrl}/products`],
@@ -450,18 +505,21 @@ export class EmailService {
           </tr>
 
           <!-- Support strip -->
-          <tr>
+          ${
+            helpChannels.length
+              ? `<tr>
             <td style="padding:28px 32px 0 32px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EDEDED;">
                 <tr>
                   <td style="padding-top:20px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#6A6A6A;">
-                    Need help? Write to <a href="mailto:${this.escape(supportEmail)}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportEmail)}</a>
-                    or call <a href="tel:${this.escape(supportPhone.replace(/\s/g, ""))}" style="color:#FF6B5B;text-decoration:none;">${this.escape(supportPhone)}</a>.
+                    Need help? ${helpChannels.join(" or ")}.
                   </td>
                 </tr>
               </table>
             </td>
-          </tr>
+          </tr>`
+              : ""
+          }
 
           <!-- Footer -->
           <tr>
@@ -471,13 +529,17 @@ export class EmailService {
                   <td align="center" style="padding:22px 20px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
                     <div style="font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#111111;">Fly Free</div>
                     <div style="font-size:12px;line-height:1.6;color:#6A6A6A;padding-top:6px;">
-                      Premium tees &amp; custom-crafted apparel<br />
-                      Guwahati, Assam, India
+                      Premium tees &amp; custom-crafted apparel
+                      ${businessAddress ? `<br />${this.escape(businessAddress)}` : ""}
                     </div>
                     <div style="padding:16px 0 4px 0;line-height:2;">${footerLinks}</div>
-                    <div style="padding-top:8px;">
+                    ${
+                      instagramUrl
+                        ? `<div style="padding-top:8px;">
                       <a href="${this.escape(instagramUrl)}" style="color:#FF6B5B;text-decoration:none;font-size:12px;font-weight:600;">Instagram</a>
-                    </div>
+                    </div>`
+                        : ""
+                    }
                     <div style="border-top:1px solid #E6E6E2;margin-top:18px;padding-top:14px;font-size:11px;line-height:1.7;color:#9A9A9A;">
                       Secure checkout &middot; 30-day exchange support<br />
                       &copy; ${new Date().getFullYear()} Fly Free. All rights reserved.

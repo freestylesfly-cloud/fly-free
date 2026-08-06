@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 
 /** Drawing primitives for the hand-rolled invoice PDF. Origin is bottom-left. */
 type PdfRgb = [number, number, number];
@@ -84,7 +84,16 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        include: { category: true, theme: true, collection: true, variants: { include: { inventory: true } }, images: true },
+        include: {
+          category: true,
+          theme: true,
+          collection: true,
+          variants: { include: { inventory: true } },
+          images: true,
+          // Lets the list warn before a delete instead of after it fails: a
+          // product with order lines can only be deactivated.
+          _count: { select: { orderItems: true, wishlistItems: true, reviews: true } }
+        },
         orderBy: { createdAt: "desc" }
       }),
       this.prisma.product.count({ where })
@@ -278,14 +287,79 @@ export class AdminService {
     return this.getProduct(id);
   }
 
+  /**
+   * Deletes a product along with everything that only exists to support it.
+   *
+   * Order items are the one hard stop: an order has to keep pointing at what
+   * was bought, so anything that has ever sold can only be deactivated. Carts,
+   * wishlists, reviews and influencer offers are disposable, so they are
+   * cleared rather than left to fail the delete with a foreign-key 500.
+   */
   async deleteProduct(id: string) {
-    return this.prisma.$transaction(async (tx: any) => {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: { id: true, name: true }
+    });
+
+    if (!product) {
+      throw new NotFoundException("That product has already been deleted. Refresh the list.");
+    }
+
+    const orderedCount = await this.prisma.orderItem.count({ where: { productId: id } });
+    if (orderedCount > 0) {
+      throw new ConflictException(
+        `"${product.name}" is part of ${orderedCount} past order line${orderedCount === 1 ? "" : "s"} and cannot be deleted without breaking them. ` +
+          "Set it to Inactive instead: it leaves the store immediately, shows as unavailable in customers' wishlists, and past orders keep working."
+      );
+    }
+
+    const variants = await this.prisma.productVariant.findMany({ where: { productId: id }, select: { id: true } });
+    const variantIds = variants.map((variant: { id: string }) => variant.id);
+
+    await this.prisma.$transaction(async (tx: any) => {
+      // Influencer offers are an implicit m2m, so they clear through the
+      // relation rather than a deleteMany on a join table Prisma hides.
+      await tx.product.update({ where: { id }, data: { influencers: { set: [] } } });
+      await tx.wishlist.deleteMany({ where: { productId: id } });
+      await tx.review.deleteMany({ where: { productId: id } });
+
+      if (variantIds.length) {
+        // CartItem.variantId carries no foreign key, so these would otherwise
+        // survive as rows pointing at a variant that no longer exists.
+        await tx.cartItem.deleteMany({ where: { variantId: { in: variantIds } } });
+      }
+
       await tx.inventory.deleteMany({ where: { variant: { productId: id } } });
       await tx.productVariant.deleteMany({ where: { productId: id } });
       await tx.productImage.deleteMany({ where: { productId: id } });
       await tx.productHamper.deleteMany({ where: { productId: id } });
-      return tx.product.delete({ where: { id } });
+      await tx.product.delete({ where: { id } });
     }, TRANSACTION_OPTIONS);
+
+    return { success: true, id, message: `"${product.name}" was deleted.` };
+  }
+
+  /**
+   * Active / inactive is the storefront switch. An inactive product is hidden
+   * from the catalogue, search, themes and its own product page, while staying
+   * in the database so order history and wishlists still resolve it.
+   */
+  async setProductVisibility(id: string, isVisible: boolean) {
+    const product = await this.prisma.product.findUnique({ where: { id }, select: { id: true } });
+    if (!product) {
+      throw new NotFoundException("That product has already been deleted. Refresh the list.");
+    }
+
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: { isVisible },
+      select: { id: true, name: true, isVisible: true }
+    });
+
+    return {
+      ...updated,
+      message: `"${updated.name}" is now ${isVisible ? "active and visible in the store" : "inactive and hidden from the store"}.`
+    };
   }
 
   /**
@@ -1115,11 +1189,20 @@ export class AdminService {
   }
 
   async updateSettings(data: any) {
+    // Merged, not replaced: each admin tab posts only the fields it renders, so
+    // a wholesale write would silently drop settings owned by another screen
+    // (business address, GST percent) that the storefront still reads.
+    const current = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const merged = { ...((current?.value as any) || {}), ...(data || {}) };
+
     const setting = await this.prisma.appSetting.upsert({
       where: { key: "admin_settings" },
-      update: { value: data },
-      create: { key: "admin_settings", value: data }
+      update: { value: merged },
+      create: { key: "admin_settings", value: merged }
     });
+
+    // Email footers render from a cached snapshot of these values.
+    await this.emailService.refreshContactDetails();
 
     return { data: setting.value };
   }
@@ -1134,9 +1217,11 @@ export class AdminService {
       appTitle: "Fly Free",
       seoTitle: "Fly Free - Custom T-shirts",
       seoDescription: "Shop custom, anime, gaming, Assam, and graphic t-shirts.",
-      contactEmail: "support@flyfree.com",
-      contactPhone: "9876543210",
-      supportEmail: "support@flyfree.com",
+      // Contact details start blank on purpose: the storefront hides a channel
+      // it has no value for, rather than publishing a placeholder nobody reads.
+      contactEmail: "",
+      contactPhone: "",
+      supportEmail: "",
       businessName: "Fly Free",
       ownerName: "",
       businessAddress: "",

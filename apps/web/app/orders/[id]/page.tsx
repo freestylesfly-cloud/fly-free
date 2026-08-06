@@ -42,81 +42,9 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [paying, setPaying] = useState(false);
-  const [payError, setPayError] = useState('');
 
-  /** Reopen Razorpay for an order that was never successfully paid. */
-  async function handleRetryPayment() {
-    if (!order || !token) return;
-
-    setPaying(true);
-    setPayError('');
-
-    try {
-      const res = await fetch('/api/commerce/payment/retry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId: order.id })
-      });
-
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.message || body?.error || 'Could not start the payment');
-
-      const data = body.data || body;
-      const key = data.razorpayKeyId;
-
-      if (typeof window === 'undefined' || !(window as any).Razorpay) {
-        throw new Error('Payment library failed to load. Please refresh and try again.');
-      }
-      if (!key || !data.razorpayOrderId) {
-        throw new Error('Payments are not configured. Please contact support.');
-      }
-
-      const razorpay = new (window as any).Razorpay({
-        key,
-        amount: Math.round(Number(data.amount) * 100),
-        currency: 'INR',
-        name: 'Fly Free',
-        description: `Order ${order.orderNumber || order.id}`,
-        order_id: data.razorpayOrderId,
-        handler: async (response: any) => {
-          const verify = await fetch('/api/commerce/checkout/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              orderId: order.id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            })
-          });
-
-          if (verify.ok) {
-            window.location.href = `/order-success?orderId=${order.id}`;
-          } else {
-            setPaying(false);
-            setPayError('We could not confirm that payment. Please contact support before retrying.');
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setPaying(false);
-            document.body.style.overflow = '';
-          }
-        }
-      });
-
-      razorpay.on('payment.failed', (event: any) => {
-        setPaying(false);
-        setPayError(event?.error?.description || 'Payment failed. Please try again.');
-      });
-
-      razorpay.open();
-    } catch (err) {
-      setPaying(false);
-      setPayError(err instanceof Error ? err.message : 'Could not start the payment');
-    }
-  }
+  // An order only exists once Razorpay has confirmed the payment, so there is
+  // no "pay for this order later" path to offer here.
 
   useEffect(() => {
     async function loadOrder() {
@@ -237,29 +165,6 @@ export default function OrderDetailPage() {
                 <span style={{ color: 'var(--color-primary)' }}>{formatRupees(order.total)}</span>
               </div>
 
-              {/* An unpaid order is not a dead end — let the customer pay for it. */}
-              {order.paymentStatus !== 'PAID' && (
-                <div className="mt-5 border-t pt-5" style={{ borderColor: 'var(--border-color)' }}>
-                  <p className="mb-3 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
-                    {order.paymentStatus === 'FAILED'
-                      ? 'The last payment attempt did not go through.'
-                      : 'This order has not been paid yet.'}
-                  </p>
-                  {payError && (
-                    <p className="mb-3 rounded border p-3 text-sm font-bold" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                      {payError}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleRetryPayment}
-                    disabled={paying}
-                    className="w-full rounded-lg px-4 py-3 font-black text-white transition hover:opacity-90 disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
-                    {paying ? 'Opening payment…' : 'Pay now'}
-                  </button>
-                </div>
-              )}
             </article>
 
             {order.shippingAddress && (

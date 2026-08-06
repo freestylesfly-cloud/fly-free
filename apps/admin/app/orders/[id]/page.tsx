@@ -8,6 +8,7 @@ import { ArrowLeft, Download, Mail, MessageSquare, ReceiptText, Send } from 'luc
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useFetch } from '../../hooks/useFetch';
+import { saveBlob } from '../../lib/download';
 import { apiService } from '../../services/api';
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,43 +16,54 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
   const { data: order, loading, error, refetch } = useFetch<any>(() => apiService.getOrder(id), { skip: false });
   const [statusNote, setStatusNote] = useState('');
   const [message, setMessage] = useState('');
+  const [actionError, setActionError] = useState('');
   const [busyAction, setBusyAction] = useState('');
 
-  async function updateStatus(status: string) {
-    setBusyAction('status');
+  /** Every action reports its own failure — these used to reject silently. */
+  async function run(action: string, work: () => Promise<string>) {
+    setBusyAction(action);
     setMessage('');
+    setActionError('');
     try {
+      setMessage(await work());
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setBusyAction('');
+    }
+  }
+
+  function updateStatus(status: string) {
+    return run('status', async () => {
       await apiService.updateOrderStatus(id, status, statusNote);
       setStatusNote('');
-      setMessage('Order status updated and logged.');
       refetch();
-    } finally {
-      setBusyAction('');
-    }
+      return 'Order status updated and logged.';
+    });
   }
 
-  async function sendInvoice() {
-    setBusyAction('invoice');
-    setMessage('');
-    try {
+  function sendInvoice() {
+    return run('invoice', async () => {
       await apiService.sendInvoice(id);
-      setMessage('Invoice email sent and saved on this order.');
       refetch();
-    } finally {
-      setBusyAction('');
-    }
+      return 'Invoice email sent and saved on this order.';
+    });
   }
 
-  async function sendReviewLink() {
-    setBusyAction('review');
-    setMessage('');
-    try {
+  function downloadInvoice() {
+    return run('download', async () => {
+      const { blob, filename } = await apiService.downloadInvoice(id);
+      saveBlob(blob, filename);
+      return 'Invoice downloaded.';
+    });
+  }
+
+  function sendReviewLink() {
+    return run('review', async () => {
       await apiService.sendReviewRequest(order.id);
-      setMessage('Review request link sent to the customer.');
       refetch();
-    } finally {
-      setBusyAction('');
-    }
+      return 'Review request link sent to the customer.';
+    });
   }
 
   return (
@@ -80,6 +92,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     <h2 className="text-lg font-black">Order {order.id}</h2>
                     <p className="text-sm text-black/60">{new Date(order.createdAt).toLocaleString()}</p>
                     {message && <p className="mt-2 rounded bg-mint/15 px-3 py-2 text-sm font-bold text-ink">{message}</p>}
+                    {actionError && (
+                      <p className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{actionError}</p>
+                    )}
                   </div>
                   <div className="grid w-full gap-2 sm:w-auto sm:min-w-[520px] sm:grid-cols-[1fr_180px]">
                     <input
@@ -101,9 +116,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     <Link href={`/invoices/${order.id}`} className="inline-flex items-center gap-2 rounded bg-black/5 px-4 py-2 font-bold text-ink hover:bg-black/10 border border-black/10">
                       <ReceiptText size={16} /> View invoice
                     </Link>
-                    <a href={apiService.generateInvoice(order.id)} target="_blank" className="inline-flex items-center gap-2 rounded bg-ink px-4 py-2 font-bold text-white">
-                      <Download size={16} /> Download invoice
-                    </a>
+                    <button disabled={busyAction === 'download'} onClick={downloadInvoice} className="inline-flex items-center gap-2 rounded bg-ink px-4 py-2 font-bold text-white disabled:opacity-60">
+                      <Download size={16} /> {busyAction === 'download' ? 'Preparing...' : 'Download invoice'}
+                    </button>
                     <button disabled={busyAction === 'invoice'} onClick={sendInvoice} className="inline-flex items-center gap-2 rounded bg-coral px-4 py-2 font-bold text-white disabled:opacity-60">
                       <Mail size={16} /> Send invoice
                     </button>
@@ -143,9 +158,13 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   <Info label="Number" value={order.invoice?.invoiceNumber || 'Generated on download'} />
                   <Info label="Status" value={order.invoice?.status || 'NOT_GENERATED'} />
                   <Info label="Sent at" value={order.invoice?.sentAt ? new Date(order.invoice.sentAt).toLocaleString() : 'Not sent'} />
-                  <a href={apiService.generateInvoice(order.id)} target="_blank" className="mt-3 inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-bold text-white">
-                    <Download size={15} /> Preview PDF
-                  </a>
+                  <button
+                    disabled={busyAction === 'download'}
+                    onClick={downloadInvoice}
+                    className="mt-3 inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
+                  >
+                    <Download size={15} /> {busyAction === 'download' ? 'Preparing...' : 'Download PDF'}
+                  </button>
                 </section>
 
                 <section className="rounded border border-black/10 bg-white p-5">

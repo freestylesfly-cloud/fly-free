@@ -8,6 +8,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { DataTable, Column } from '../components/DataTable';
 import { useFetch } from '../hooks/useFetch';
+import { saveBlob } from '../lib/download';
 import { apiService } from '../services/api';
 import { Search, Plus, Eye, Printer, Download, AlertCircle } from 'lucide-react';
 
@@ -52,6 +53,23 @@ export default function OrdersPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState('');
+
+  // Fetched with the admin token rather than linked: the PDF endpoint is behind
+  // AdminGuard, and a plain link sends no Authorization header.
+  async function downloadInvoice(orderId: string) {
+    try {
+      setDownloadingId(orderId);
+      setDownloadError('');
+      const { blob, filename } = await apiService.downloadInvoice(orderId);
+      saveBlob(blob, filename);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Could not download the invoice');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   const itemsPerPage = 10;
 
@@ -190,6 +208,13 @@ export default function OrdersPage() {
             </div>
           )}
 
+          {downloadError && (
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="font-bold text-red-700">{downloadError}</p>
+              <button onClick={() => setDownloadError('')} className="text-sm font-bold text-red-700 underline">Dismiss</button>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
@@ -251,14 +276,14 @@ export default function OrdersPage() {
                 >
                   <Eye size={18} />
                 </Link>
-                <a
-                  href={apiService.generateInvoice(row.id)}
-                  target="_blank"
-                  className="p-2 hover:bg-black/5 rounded-lg transition text-ink"
-                  title="Print Invoice"
+                <button
+                  onClick={() => downloadInvoice(row.id)}
+                  disabled={downloadingId === row.id}
+                  className="p-2 hover:bg-black/5 rounded-lg transition text-ink disabled:opacity-50"
+                  title="Download Invoice"
                 >
                   <Printer size={18} />
-                </a>
+                </button>
               </div>
             )}
           />
@@ -379,14 +404,12 @@ export default function OrdersPage() {
                 {/* Actions */}
                 <div className="border-t pt-6 flex gap-4">
                   <button
-                    onClick={() => {
-                      // Generate invoice PDF
-                      console.log('Generating invoice for order:', selectedOrder.orderNumber);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-coral text-white font-bold rounded-lg hover:bg-coral/90 transition"
+                    onClick={() => downloadInvoice(selectedOrder.id)}
+                    disabled={downloadingId === selectedOrder.id}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-coral text-white font-bold rounded-lg hover:bg-coral/90 transition disabled:opacity-60"
                   >
                     <Download size={18} />
-                    Download Invoice
+                    {downloadingId === selectedOrder.id ? 'Preparing...' : 'Download Invoice'}
                   </button>
                   <button
                     onClick={() => setShowDetails(false)}

@@ -13,6 +13,8 @@ interface WishlistItem {
     name: string;
     slug: string;
     price: number;
+    /** False once an admin deactivates the product. The row stays saved. */
+    isVisible?: boolean;
     images?: Array<{ url: string }>;
   };
 }
@@ -90,38 +92,72 @@ export default function WishlistPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-lg border border-black/10 bg-[#fafafa] transition hover:border-[#f04423]/40 hover:bg-white">
-              <Link href={`/products/${item.product.slug}`} className="block aspect-square bg-[#f0eee9]">
-                {item.product.images?.[0]?.url ? (
-                  <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
+          {items.map((item) => {
+            // Deactivated after it was saved: the card stays so the customer can
+            // see why, but nothing on it leads to a product page that 404s.
+            const unavailable = item.product.isVisible === false;
+
+            return (
+              <article key={item.id} className="overflow-hidden rounded-lg border border-black/10 bg-[#fafafa] transition hover:border-[#f04423]/40 hover:bg-white">
+                {unavailable ? (
+                  <div className="relative block aspect-square bg-[#f0eee9]">
+                    {item.product.images?.[0]?.url ? (
+                      <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover grayscale" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#888]">No image</div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                      <span className="rounded bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-[#1f1f1f]">
+                        Unavailable
+                      </span>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#888]">No image</div>
-                )}
-              </Link>
-
-              <div className="p-4">
-                <Link href={`/products/${item.product.slug}`} className="line-clamp-2 text-sm font-black text-[#1f1f1f] hover:text-[#f04423]">
-                  {item.product.name}
-                </Link>
-                <p className="mt-2 text-lg font-black text-[#1f1f1f]">{formatRupees(normalizePrice(item.product.price))}</p>
-
-                <div className="mt-4 flex gap-2">
-                  <Link href={`/products/${item.product.slug}`} className="flex-1 rounded-md bg-[#1f1f1f] px-3 py-2 text-center text-xs font-black text-white transition hover:bg-[#f04423]">
-                    View Product
+                  <Link href={`/products/${item.product.slug}`} className="block aspect-square bg-[#f0eee9]">
+                    {item.product.images?.[0]?.url ? (
+                      <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#888]">No image</div>
+                    )}
                   </Link>
-                  <button
-                    onClick={() => removeFromWishlist(item.productId)}
-                    disabled={removing === item.productId}
-                    className="inline-flex w-10 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                    aria-label="Remove saved item"
-                  >
-                    {removing === item.productId ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                  </button>
+                )}
+
+                <div className="p-4">
+                  {unavailable ? (
+                    <p className="line-clamp-2 text-sm font-black text-[#888]">{item.product.name}</p>
+                  ) : (
+                    <Link href={`/products/${item.product.slug}`} className="line-clamp-2 text-sm font-black text-[#1f1f1f] hover:text-[#f04423]">
+                      {item.product.name}
+                    </Link>
+                  )}
+                  <p className={`mt-2 text-lg font-black ${unavailable ? 'text-[#888]' : 'text-[#1f1f1f]'}`}>
+                    {formatRupees(normalizePrice(item.product.price))}
+                  </p>
+                  {unavailable && <p className="mt-1 text-xs font-bold text-[#888]">No longer sold.</p>}
+
+                  <div className="mt-4 flex gap-2">
+                    {unavailable ? (
+                      <span className="flex-1 cursor-not-allowed rounded-md bg-black/10 px-3 py-2 text-center text-xs font-black text-[#888]">
+                        Unavailable
+                      </span>
+                    ) : (
+                      <Link href={`/products/${item.product.slug}`} className="flex-1 rounded-md bg-[#1f1f1f] px-3 py-2 text-center text-xs font-black text-white transition hover:bg-[#f04423]">
+                        View Product
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => removeFromWishlist(item.productId)}
+                      disabled={removing === item.productId}
+                      className="inline-flex w-10 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      aria-label="Remove saved item"
+                    >
+                      {removing === item.productId ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

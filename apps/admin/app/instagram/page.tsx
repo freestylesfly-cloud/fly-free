@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
@@ -18,24 +19,48 @@ interface InstagramPost {
   createdAt: string;
 }
 
+const emptyForm = {
+  imageUrl: '',
+  videoUrl: '',
+  caption: '',
+  instagramLink: '',
+  displayOrder: 1
+};
+
+/** "https://www.instagram.com/flyfree.ne/" -> "@flyfree.ne". */
+function instagramHandle(url: string) {
+  try {
+    const path = new URL(url).pathname.split('/').filter(Boolean)[0];
+    return path ? `@${path}` : '';
+  } catch {
+    return '';
+  }
+}
+
 export default function InstagramPage() {
   const { data: posts, loading, refetch } = useFetch<InstagramPost[]>(
     () => apiService.getInstagramPosts(),
     { skip: false }
   );
 
-  const [formData, setFormData] = useState({
-    imageUrl: '',
-    videoUrl: '',
-    caption: '',
-    instagramLink: '',
-    displayOrder: 1
-  });
+  // The store's own profile URL is a setting, not a constant — a new post
+  // starts there so a link is never left pointing nowhere.
+  const { data: settings } = useFetch<any>(() => apiService.getSettings(), { skip: false });
+  const profileUrl = String(settings?.socialLinks?.instagram || '').trim();
+
+  const [formData, setFormData] = useState(emptyForm);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Only ever fills a blank field, so it cannot stomp on what is being typed
+  // or on the link of a post being edited.
+  useEffect(() => {
+    if (!profileUrl) return;
+    setFormData((current) => (current.instagramLink ? current : { ...current, instagramLink: profileUrl }));
+  }, [profileUrl]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,13 +76,7 @@ export default function InstagramPage() {
         setMessage('Post created successfully');
       }
 
-      setFormData({
-        imageUrl: '',
-        videoUrl: '',
-        caption: '',
-        instagramLink: '',
-        displayOrder: 1
-      });
+      setFormData({ ...emptyForm, instagramLink: profileUrl });
       setEditingId(null);
       refetch();
     } catch (error) {
@@ -116,17 +135,17 @@ export default function InstagramPage() {
               <h2 className="mb-4 text-lg font-black">{editingId ? 'Edit Post' : 'Add New Post'}</h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold uppercase">Image URL</label>
-                  <input
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-black/60">JPG, PNG (3:4 aspect ratio recommended)</p>
-                </div>
+                <ImageUploadField
+                  label="Image"
+                  value={formData.imageUrl}
+                  onChange={(url) => setFormData((current) => ({ ...current, imageUrl: url }))}
+                  bucket="product-images"
+                  folder="instagram"
+                  aspect={3 / 4}
+                  targetWidth={900}
+                  alt={formData.caption}
+                  hint="Upload from your device or paste a URL. Use the real post crop."
+                />
 
                 <div>
                   <label className="text-xs font-bold uppercase">Video URL (optional)</label>
@@ -158,10 +177,15 @@ export default function InstagramPage() {
                     type="url"
                     value={formData.instagramLink}
                     onChange={(e) => setFormData({ ...formData, instagramLink: e.target.value })}
-                    placeholder="https://instagram.com/p/..."
+                    placeholder={profileUrl ? `${profileUrl.replace(/\/?$/, '/')}p/...` : 'https://www.instagram.com/<handle>/p/...'}
                     className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
                     required
                   />
+                  <p className="mt-1 text-xs text-black/60">
+                    {profileUrl
+                      ? `Link to the actual post. Leave the profile URL (${instagramHandle(profileUrl) || profileUrl}) if the post has no permalink yet.`
+                      : 'Link to the actual post. Set your profile URL in Settings → Social links to have this prefilled.'}
+                  </p>
                 </div>
 
                 <div>
@@ -190,13 +214,7 @@ export default function InstagramPage() {
                       type="button"
                       onClick={() => {
                         setEditingId(null);
-                        setFormData({
-                          imageUrl: '',
-                          videoUrl: '',
-                          caption: '',
-                          instagramLink: '',
-                          displayOrder: 1
-                        });
+                        setFormData({ ...emptyForm, instagramLink: profileUrl });
                       }}
                       className="rounded border border-black/10 px-4 py-2 font-bold hover:bg-black/5"
                     >

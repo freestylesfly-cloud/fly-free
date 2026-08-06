@@ -17,13 +17,10 @@ export class CommerceController {
     return this.commerceService.createCheckout(body, token);
   }
 
+  // Creates the order. There is no "retry payment" endpoint: a failed payment
+  // leaves nothing behind, so the customer simply checks out again.
   @Post("checkout/verify")
   verifyCheckout(@Body() body: any, @Headers("authorization") token: string) {
     return this.commerceService.verifyCheckout(body, token);
-  }
-
-  @Post("payment/retry")
-  retryPayment(@Body() body: any, @Headers("authorization") token: string) {
-    return this.commerceService.retryPayment(body, token);
   }
 }

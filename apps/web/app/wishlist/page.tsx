@@ -17,6 +17,8 @@ type WishlistItem = {
     name: string;
     price: number;
     mrp: number;
+    /** False once an admin deactivates the product. The row stays saved. */
+    isVisible?: boolean;
     images?: Array<{ url: string; alt?: string | null }>;
     theme?: { name: string } | null;
     category?: { name: string } | null;
@@ -122,18 +124,60 @@ export default function WishlistPage() {
             {items.map((item) => {
               const product = item.product;
               if (!product) return null;
+
+              // Saved before the store pulled it. The card stays so the customer
+              // can see what happened and clear it themselves — it just stops
+              // behaving like something they can still buy.
+              const unavailable = product.isVisible === false;
+              const image = product.images?.[0];
+
               return (
-                <article key={item.id} className="overflow-hidden rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-                  <Link href={`/products/${product.slug}`} className="block aspect-[4/5] bg-black/[0.04]">
-                    {product.images?.[0]?.url ? <img src={product.images[0].url} alt={product.images[0].alt || product.name} className="h-full w-full object-cover" /> : null}
-                  </Link>
+                <article
+                  key={item.id}
+                  className="overflow-hidden rounded border"
+                  style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+                >
+                  {unavailable ? (
+                    <div className="relative block aspect-[4/5] bg-black/[0.04]">
+                      {image?.url ? (
+                        <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover grayscale" />
+                      ) : null}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/45">
+                        <span className="rounded bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-black">
+                          Unavailable
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Link href={`/products/${product.slug}`} className="block aspect-[4/5] bg-black/[0.04]">
+                      {image?.url ? (
+                        <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                      ) : null}
+                    </Link>
+                  )}
+
                   <div className="space-y-3 p-4">
                     <div>
-                      <p className="text-xs font-black uppercase text-coral">{product.theme?.name || product.category?.name || 'Fly Free'}</p>
-                      <Link href={`/products/${product.slug}`} className="font-black hover:text-coral">{product.name}</Link>
+                      <p className="text-xs font-black uppercase text-coral">
+                        {product.theme?.name || product.category?.name || 'Fly Free'}
+                      </p>
+                      {unavailable ? (
+                        <p className="font-black" style={{ color: 'var(--text-muted)' }}>{product.name}</p>
+                      ) : (
+                        <Link href={`/products/${product.slug}`} className="font-black hover:text-coral">{product.name}</Link>
+                      )}
                     </div>
+
+                    {unavailable && (
+                      <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                        No longer sold. Remove it to tidy up your list.
+                      </p>
+                    )}
+
                     <div className="flex items-center justify-between">
-                      <p className="font-black">Rs {Math.round(product.price / 100)}</p>
+                      <p className="font-black" style={unavailable ? { color: 'var(--text-muted)' } : undefined}>
+                        Rs {Math.round(product.price / 100)}
+                      </p>
                       <button onClick={() => removeItem(product.id)} className="rounded border border-red-200 p-2 text-red-600" aria-label="Remove from wishlist">
                         <Trash2 size={16} />
                       </button>

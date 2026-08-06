@@ -28,7 +28,10 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
   const [shareText, setShareText] = useState('Share');
   const addItem = useCartStore((state) => state.addItem);
   const token = useAuthStore((state) => state.token);
-  const discountPercent = originalPrice && originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+  // Kept a boolean on purpose: `originalPrice && ...` yields the number when the
+  // MRP is 0, and JSX renders that 0 as a stray character next to the price.
+  const hasDiscount = Boolean(originalPrice) && (originalPrice as number) > price;
+  const discountPercent = hasDiscount ? Math.round(((originalPrice! - price) / originalPrice!) * 100) : 0;
 
   const handleAddToCart = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -146,7 +149,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-lg font-black" style={{ color: 'var(--text-primary)' }}>{formatCurrency(price)}</p>
-            {originalPrice && originalPrice > price && <p className="text-xs line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(originalPrice)}</p>}
+            {hasDiscount && <p className="text-xs line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(originalPrice!)}</p>}
           </div>
           <div className="flex items-center gap-1">
             <button

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, Mail, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
@@ -276,7 +277,17 @@ export default function InfluencersPage() {
             <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
             <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
             <Field label="Code" value={form.code} onChange={(value) => setForm({ ...form, code: value.toUpperCase() })} placeholder="Auto if blank" />
-            <Field label="Image URL" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} />
+            <ImageUploadField
+              label="Photo"
+              value={form.imageUrl}
+              onChange={(value) => setForm((current) => ({ ...current, imageUrl: value }))}
+              bucket="product-images"
+              folder="influencers"
+              aspect={1}
+              targetWidth={800}
+              alt={form.name}
+              hint="Square avatar in the creators row. Centre the face."
+            />
             <Field label="Instagram URL" value={form.instagramUrl} onChange={(value) => setForm({ ...form, instagramUrl: value })} />
             <Field label="Facebook URL" value={form.facebookUrl} onChange={(value) => setForm({ ...form, facebookUrl: value })} />
             <Field label="X URL" value={form.xUrl} onChange={(value) => setForm({ ...form, xUrl: value })} />

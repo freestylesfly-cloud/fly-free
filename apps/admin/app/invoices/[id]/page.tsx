@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, Printer, Download, X } from 'lucide-react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { saveBlob } from '../../lib/download';
 import { apiService } from '../../services/api';
 
 interface OrderData {
@@ -55,6 +56,23 @@ export default function InvoicePreviewPage({ params }: { params: Promise<{ id: s
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+
+  // Fetched with the admin token rather than linked: the PDF endpoint is behind
+  // AdminGuard, and a plain link sends no Authorization header.
+  async function downloadInvoice() {
+    try {
+      setDownloading(true);
+      setDownloadError('');
+      const { blob, filename } = await apiService.downloadInvoice(id);
+      saveBlob(blob, filename);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Could not download the invoice');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   useEffect(() => {
     async function loadOrder() {
@@ -116,14 +134,18 @@ export default function InvoicePreviewPage({ params }: { params: Promise<{ id: s
             >
               <Printer size={16} /> Print
             </button>
-            <a
-              href={apiService.generateInvoice(id)}
-              target="_blank"
-              className="inline-flex items-center gap-2 rounded bg-coral px-4 py-2 text-sm font-bold text-white hover:bg-coral/90"
+            <button
+              onClick={downloadInvoice}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 rounded bg-coral px-4 py-2 text-sm font-bold text-white hover:bg-coral/90 disabled:opacity-60"
             >
-              <Download size={16} /> Download PDF
-            </a>
+              <Download size={16} /> {downloading ? 'Preparing...' : 'Download PDF'}
+            </button>
           </div>
+
+          {downloadError && (
+            <div className="rounded border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{downloadError}</div>
+          )}
 
           {/* Invoice Preview */}
           <div className="rounded border border-black/10 bg-white p-8 print:border-0 print:p-0">

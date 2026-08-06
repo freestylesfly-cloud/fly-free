@@ -179,7 +179,7 @@ export default function CheckoutPage() {
       }
 
       const order = await orderRes.json();
-      const orderData = order.data || order;
+      const checkout = order.data || order;
 
       if (typeof window === 'undefined' || !(window as any).Razorpay) {
         throw new Error('Payment library failed to load. Please refresh and try again.');
@@ -187,39 +187,43 @@ export default function CheckoutPage() {
 
       // Prefer the key the API used to create this order; a mismatch between
       // the two is what produces "Authentication key was missing".
-      const razorpayKey = orderData.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-      if (!razorpayKey || !orderData.razorpayOrderId) {
+      const razorpayKey = checkout.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!razorpayKey || !checkout.razorpayOrderId) {
         throw new Error('Payments are not configured. Please contact support.');
       }
 
-      const amountInPaise = Math.round((total || orderData.amount) * 100);
-
       const razorpay = new (window as any).Razorpay({
         key: razorpayKey,
-        amount: amountInPaise,
+        // The API priced this; sending our own number risks a mismatch.
+        amount: Math.round(checkout.amount * 100),
         currency: 'INR',
         name: 'Fly Free',
         description: `${cartItems.length} item(s)`,
-        order_id: orderData.razorpayOrderId,
+        order_id: checkout.razorpayOrderId,
         prefill: {
           name: user?.name || '',
           email: user?.email || '',
           contact: user?.phone || ''
         },
+        // The order is created here, by the API, only once payment lands. The
+        // quote token carries the price we were just charged, signed by the
+        // server, so the order is billed at exactly that.
         handler: async (response: any) => {
-          await verifyPayment(response, orderData.orderId);
+          await verifyPayment(response, checkout.quoteToken);
         },
         modal: {
           ondismiss: () => {
             releaseCheckoutUi();
-            setError('Payment cancelled. Your order is saved — you can pay for it from your orders page.');
+            setError('Payment cancelled. Nothing was charged and no order was placed — press Place Order to try again.');
           }
         }
       });
 
       razorpay.on('payment.failed', (event: any) => {
         releaseCheckoutUi();
-        setError(event?.error?.description || 'Payment failed. You can retry from your orders page.');
+        setError(
+          `${event?.error?.description || 'Payment failed'}. Nothing was charged and no order was placed — press Place Order to try again.`
+        );
       });
 
       razorpay.open();
@@ -243,7 +247,11 @@ export default function CheckoutPage() {
     }
   }
 
-  async function verifyPayment(response: any, orderId: string) {
+  /**
+   * The API creates the order here, after checking the payment signature, the
+   * quote signature, and what Razorpay actually collected.
+   */
+  async function verifyPayment(response: any, quoteToken: string) {
     try {
       const verifyRes = await fetch(`/api/commerce/checkout/verify`, {
         method: 'POST',
@@ -252,29 +260,31 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          orderId,
+          quoteToken,
           razorpayOrderId: response.razorpay_order_id,
           razorpayPaymentId: response.razorpay_payment_id,
           razorpaySignature: response.razorpay_signature
         })
       });
 
+      const body = await verifyRes.json().catch(() => null);
+
       if (verifyRes.ok) {
+        const created = body?.data || body;
         clearCart();
-        window.location.href = `/order-success?orderId=${orderId}`;
+        window.location.href = `/order-success?orderId=${created?.id ?? ''}`;
         return;
       }
 
-      const body = await verifyRes.json().catch(() => null);
       releaseCheckoutUi();
       setError(
         body?.message ||
           body?.error ||
-          'We could not confirm your payment. If money was deducted it will be refunded, or you can retry from your orders page.'
+          'We could not confirm your payment. If money was deducted it will be refunded automatically.'
       );
     } catch (err) {
       releaseCheckoutUi();
-      setError('We could not confirm your payment. Please check your orders page before paying again.');
+      setError('We could not confirm your payment. If money was deducted it will be refunded automatically.');
       console.error('Payment verification error:', err);
     }
   }
@@ -350,7 +360,7 @@ export default function CheckoutPage() {
                 Delivery Address
               </h2>
 
-              {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-semibold">✕ {error}</div>}
+              {error && <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm font-semibold text-red-700">✕ {error}</div>}
 
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>

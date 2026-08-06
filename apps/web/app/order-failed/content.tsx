@@ -1,207 +1,65 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Loader2 } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
-import { getApiBaseUrl } from '../lib/api';
+import { AlertCircle } from 'lucide-react';
 
-const API_URL = getApiBaseUrl();
-
+/**
+ * Payments are confirmed before an order is created, so a failed payment leaves
+ * nothing to look up or pay for later — the cart is untouched and the customer
+ * simply checks out again.
+ */
 export default function OrderFailedContent() {
-  const searchParams = useSearchParams();
-  const orderId = searchParams.get('orderId');
-  const token = useAuthStore((state) => state.token);
-
-  const [order, setOrder] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [retrying, setRetrying] = useState(false);
-
-  useEffect(() => {
-    if (!orderId || !token) {
-      setLoading(false);
-      return;
-    }
-
-    async function loadOrder() {
-      try {
-        const res = await fetch(`${API_URL}/ecommerce/orders/${orderId}/track`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOrder(data.data || data);
-        }
-      } catch {
-        setOrder(null);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadOrder();
-  }, [orderId, token]);
-
-  async function handleRetry() {
-    if (!order || !token) return;
-
-    setRetrying(true);
-    try {
-      const retryRes = await fetch(`${API_URL}/commerce/payment/retry`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          orderId: order.id
-        })
-      });
-
-      if (retryRes.ok) {
-        const data = await retryRes.json();
-        const newOrderData = data.data || data;
-
-        if (typeof window !== 'undefined' && (window as any).Razorpay) {
-          const razorpay = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: Math.round(newOrderData.amount * 100),
-            currency: 'INR',
-            name: 'Fly Free',
-            order_id: newOrderData.razorpayOrderId,
-            prefill: {
-              email: order.user?.email || '',
-              contact: order.user?.phone || ''
-            },
-            handler: async (response: any) => {
-              const verifyRes = await fetch(`${API_URL}/commerce/checkout/verify`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  orderId: order.id,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature
-                })
-              });
-
-              window.location.href = verifyRes.ok
-                ? `/order-success?orderId=${order.id}`
-                : `/order-failed?orderId=${order.id}`;
-            }
-          });
-          razorpay.open();
-        }
-      }
-    } catch (err) {
-      console.error('Retry failed');
-    } finally {
-      setRetrying(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 mx-auto mb-4 animate-spin" />
-          <p className="text-black/60">Loading order details...</p>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen pb-20 px-4 py-8 bg-gradient-to-b from-red-50 to-transparent">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-12">
+    <main className="min-h-screen bg-gradient-to-b from-red-50 to-transparent px-4 py-8 pb-20">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-10 text-center">
           <AlertCircle size={64} className="mx-auto mb-4 text-red-600" />
-          <h1 className="text-4xl font-black mb-2">Payment Failed</h1>
-          <p className="text-black/60 text-lg">We couldn't process your payment</p>
+          <h1 className="mb-2 text-4xl font-black">Payment Failed</h1>
+          <p className="text-lg text-black/60">We couldn&apos;t process your payment</p>
         </div>
 
-        {order && (
-          <>
-            <div className="bg-white border border-black/10 rounded-lg p-8 mb-6">
-              <div className="grid md:grid-cols-2 gap-8 mb-8">
-                <div>
-                  <p className="text-black/60 text-sm font-bold mb-2">ORDER NUMBER</p>
-                  <p className="text-2xl font-black break-all">{order.id}</p>
-                </div>
-                <div>
-                  <p className="text-black/60 text-sm font-bold mb-2">ORDER AMOUNT</p>
-                  <p className="text-2xl font-black">₹{order.total?.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-                <p className="font-bold text-red-900 mb-2">Why this happened:</p>
-                <ul className="text-sm text-red-800 space-y-2 list-disc list-inside">
-                  <li>Payment gateway rejected the transaction</li>
-                  <li>Card details may be incorrect</li>
-                  <li>Insufficient funds or card limit exceeded</li>
-                  <li>Payment gateway timeout or connection issue</li>
-                </ul>
-              </div>
-
-              <div className="border-t border-black/10 pt-6">
-                <h3 className="font-black mb-4">Items in this order:</h3>
-                <div className="space-y-3">
-                  {order.items?.map((item: any, idx: number) => (
-                    <div key={idx} className="text-sm flex justify-between">
-                      <span>{item.name} (Qty: {item.quantity})</span>
-                      <span>₹{(item.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={handleRetry}
-                disabled={retrying}
-                className="w-full px-6 py-4 bg-primary text-white font-black rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {retrying ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    Retrying...
-                  </>
-                ) : (
-                  'Try Payment Again'
-                )}
-              </button>
-
-              <Link
-                href="/cart"
-                className="block w-full px-6 py-4 bg-black/10 text-black font-black rounded-lg hover:opacity-90 text-center"
-              >
-                Back to Cart
-              </Link>
-
-              <Link
-                href="/"
-                className="block w-full px-6 py-4 bg-black/5 text-black font-black rounded-lg hover:opacity-90 text-center"
-              >
-                Continue Shopping
-              </Link>
-            </div>
-          </>
-        )}
-
-        {!order && !loading && (
-          <div className="text-center">
-            <p className="text-black/60 mb-4">Order not found</p>
-            <Link href="/" className="text-primary font-bold hover:underline">
-              Go home
-            </Link>
+        <div className="mb-6 rounded-lg border border-black/10 bg-white p-8">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-5">
+            <p className="font-black text-green-900">Nothing was charged and no order was placed.</p>
+            <p className="mt-2 text-sm text-green-800">
+              Your cart is exactly as you left it. If your bank shows a pending amount it is released automatically,
+              usually within a few working days.
+            </p>
           </div>
-        )}
+
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-5">
+            <p className="mb-2 font-bold text-red-900">Common reasons a payment fails:</p>
+            <ul className="list-inside list-disc space-y-2 text-sm text-red-800">
+              <li>The payment gateway rejected the transaction</li>
+              <li>Card details were entered incorrectly</li>
+              <li>Insufficient funds, or the card limit was exceeded</li>
+              <li>A gateway timeout or connection problem</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Link
+            href="/checkout"
+            className="block w-full rounded-lg bg-primary px-6 py-4 text-center font-black text-white hover:opacity-90"
+          >
+            Try Payment Again
+          </Link>
+
+          <Link
+            href="/cart"
+            className="block w-full rounded-lg bg-black/10 px-6 py-4 text-center font-black text-black hover:opacity-90"
+          >
+            Back to Cart
+          </Link>
+
+          <Link
+            href="/"
+            className="block w-full rounded-lg bg-black/5 px-6 py-4 text-center font-black text-black hover:opacity-90"
+          >
+            Continue Shopping
+          </Link>
+        </div>
       </div>
     </main>
   );

@@ -12,6 +12,32 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+/**
+ * A failed request, carrying the server's own sentence as `message` so a page
+ * can render it straight into the UI. The endpoint and status stay on the
+ * object (and in the console) instead of being glued onto the text.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly endpoint: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/** Nest sends `{ statusCode, message, error }`; `message` is the useful half. */
+function readErrorMessage(body: any): string {
+  if (!body) return '';
+  if (typeof body === 'string') return body;
+  if (Array.isArray(body.message)) return body.message.join(' ');
+  if (typeof body.message === 'string' && body.message.trim()) return body.message;
+  if (typeof body.error === 'string' && body.error.trim()) return body.error;
+  return '';
+}
+
 interface PaginationParams {
   page?: number;
   limit?: number;
@@ -60,19 +86,22 @@ class ApiService {
       });
 
       if (!response.ok) {
-        let details = response.statusText;
+        let details = '';
         try {
-          const body = await response.json();
-          details = body?.error || body?.message || JSON.stringify(body);
+          details = readErrorMessage(await response.json());
         } catch {
           try {
-            details = await response.text();
+            details = (await response.text()).trim();
           } catch {
-            details = response.statusText;
+            details = '';
           }
         }
 
-        throw new Error(`${endpoint} failed: HTTP ${response.status} ${details}`);
+        throw new ApiError(
+          details || response.statusText || `Request failed with status ${response.status}`,
+          response.status,
+          endpoint
+        );
       }
 
       const text = await response.text();
@@ -156,8 +185,19 @@ class ApiService {
     });
   }
 
+  /** Active / inactive: hides the product from the storefront, keeps the row. */
+  async setProductVisibility(id: string, isVisible: boolean) {
+    return this.request<{ id: string; name: string; isVisible: boolean; message: string }>(
+      `/api/admin/products/${id}/visibility`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ isVisible }),
+      }
+    );
+  }
+
   async deleteProduct(id: string) {
-    return this.request(`/api/admin/products/${id}`, {
+    return this.request<{ success: boolean; id: string; message: string }>(`/api/admin/products/${id}`, {
       method: 'DELETE',
     });
   }
@@ -203,8 +243,31 @@ class ApiService {
     });
   }
 
-  generateInvoice(id: string) {
-    return `${this.baseUrl}/api/admin/orders/${id}/invoice`;
+  /**
+   * Fetches the invoice PDF with the admin token attached.
+   *
+   * This cannot be an `<a href>`: the endpoint is behind AdminGuard and a
+   * browser navigation sends no Authorization header, so a plain link always
+   * came back as 401 "Authentication required".
+   */
+  async downloadInvoice(id: string): Promise<{ blob: Blob; filename: string }> {
+    const endpoint = `/api/admin/orders/${id}/invoice`;
+    const response = await fetch(`${this.baseUrl}${endpoint}`, { headers: this.authHeaders() });
+
+    if (!response.ok) {
+      let details = '';
+      try {
+        details = readErrorMessage(await response.json());
+      } catch {
+        details = '';
+      }
+      throw new ApiError(details || 'Could not generate the invoice', response.status, endpoint);
+    }
+
+    const disposition = response.headers.get('content-disposition') || '';
+    const match = /filename="?([^"]+)"?/i.exec(disposition);
+
+    return { blob: await response.blob(), filename: match?.[1] || `invoice-${id}.pdf` };
   }
 
   async sendInvoice(id: string) {
