@@ -17,6 +17,10 @@ type AppSettings = {
   contactPhone: string;
   supportEmail: string;
   footerText: string;
+  newsletterTitle: string;
+  newsletterText: string;
+  newsletterSuccessMessage: string;
+  whatsappMessage: string;
   /** Prefix for generated order numbers, e.g. FF -> FF-2026-000123 */
   orderPrefix: string;
   /** Rupees. Charged when the order total is below the free threshold. */
@@ -41,6 +45,10 @@ const emptySettings: AppSettings = {
   contactPhone: '',
   supportEmail: '',
   footerText: '',
+  newsletterTitle: '',
+  newsletterText: '',
+  newsletterSuccessMessage: '',
+  whatsappMessage: '',
   orderPrefix: 'FF',
   deliveryFee: 60,
   freeDeliveryAbove: 1000,
@@ -49,7 +57,7 @@ const emptySettings: AppSettings = {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(emptySettings);
-  const [activeTab, setActiveTab] = useState<'general' | 'delivery' | 'social'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'messages' | 'delivery' | 'social'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -64,7 +72,8 @@ export default function SettingsPage() {
       setLoading(true);
       setError('');
       const result: any = await apiService.getSettings();
-      setSettings({ ...emptySettings, ...(result.data || {}) });
+      const loaded = result.data || {};
+      setSettings({ ...emptySettings, ...loaded, socialLinks: loaded.socialLinks || {} });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings from database');
     } finally {
@@ -98,6 +107,7 @@ export default function SettingsPage() {
 
           <div className="flex gap-2 border-b border-black/10">
             <button onClick={() => setActiveTab('general')} className={`px-4 py-3 font-bold ${activeTab === 'general' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>General</button>
+            <button onClick={() => setActiveTab('messages')} className={`px-4 py-3 font-bold ${activeTab === 'messages' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Storefront Messages</button>
             <button onClick={() => setActiveTab('delivery')} className={`px-4 py-3 font-bold ${activeTab === 'delivery' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Delivery &amp; Orders</button>
             <button onClick={() => setActiveTab('social')} className={`px-4 py-3 font-bold ${activeTab === 'social' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Social Links</button>
           </div>
@@ -117,10 +127,14 @@ export default function SettingsPage() {
                   App Description
                   <textarea value={settings.appDescription} onChange={(event) => update('appDescription', event.target.value)} rows={4} className="rounded border border-black/10 px-3 py-2" />
                 </label>
-                <label className="grid gap-2 text-sm font-bold md:col-span-2">
-                  Footer Text
-                  <textarea value={settings.footerText} onChange={(event) => update('footerText', event.target.value)} rows={3} className="rounded border border-black/10 px-3 py-2" />
-                </label>
+              </div>
+            ) : activeTab === 'messages' ? (
+              <div className="grid gap-4">
+                <TextareaField label="Footer Message" value={settings.footerText} onChange={(value) => update('footerText', value)} rows={3} />
+                <TextareaField label="Subscriber Heading" value={settings.newsletterTitle} onChange={(value) => update('newsletterTitle', value)} rows={2} />
+                <TextareaField label="Subscriber Message" value={settings.newsletterText} onChange={(value) => update('newsletterText', value)} rows={3} />
+                <TextareaField label="Subscriber Success Message" value={settings.newsletterSuccessMessage} onChange={(value) => update('newsletterSuccessMessage', value)} rows={2} />
+                <TextareaField label="WhatsApp Message" value={settings.whatsappMessage} onChange={(value) => update('whatsappMessage', value)} rows={3} />
               </div>
             ) : activeTab === 'delivery' ? (
               <div className="grid gap-4 md:grid-cols-2">
@@ -311,6 +325,22 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
     <label className="grid gap-2 text-sm font-bold">
       {label}
       <input value={value} onChange={(event) => onChange(event.target.value)} className="rounded border border-black/10 px-3 py-2" />
+    </label>
+  );
+}
+
+function TextareaField({ label, value, rows, onChange }: { label: string; value: string; rows: number; onChange: (value: string) => void }) {
+  return (
+    <label className="grid gap-2 text-sm font-bold">
+      <span className="flex items-center justify-between gap-3">
+        {label}
+        {value && (
+          <button type="button" onClick={() => onChange('')} className="text-xs font-black uppercase text-black/45 hover:text-coral">
+            Clear
+          </button>
+        )}
+      </span>
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="rounded border border-black/10 px-3 py-2" />
     </label>
   );
 }

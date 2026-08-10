@@ -1232,6 +1232,10 @@ export class AdminService {
       deliveryFee: 60,
       freeDeliveryAbove: 1000,
       footerText: "Fly Free. Designed for comfort and self-expression.",
+      newsletterTitle: "Ready to wear your fandom?",
+      newsletterText: "Get first access to new theme drops, restocks, and subscriber-only offers.",
+      newsletterSuccessMessage: "Thanks. You are on the drop list.",
+      whatsappMessage: "Hi Fly Free, I would like more information about your products.",
       socialLinks: {}
     };
   }

@@ -60,6 +60,10 @@ const DEFAULT_SETTINGS = {
   deliveryFee: 60,
   freeDeliveryAbove: 1000,
   footerText: '',
+  newsletterTitle: '',
+  newsletterText: '',
+  newsletterSuccessMessage: '',
+  whatsappMessage: '',
   socialLinks: {} as Record<string, string>
 };
 

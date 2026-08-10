@@ -2,10 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Instagram, Mail, MapPin, Phone } from 'lucide-react';
+import { Facebook, Instagram, Mail, MapPin, MessageCircle, Phone, Twitter, Youtube } from 'lucide-react';
 import { Logo } from './Logo';
 import { getApiBaseUrl } from '../lib/api';
 import { SUPPORT } from '../lib/design';
+
+type FooterSupport = typeof SUPPORT & {
+  footerText: string;
+  newsletterTitle: string;
+  newsletterText: string;
+  newsletterSuccessMessage: string;
+  whatsappMessage: string;
+  socialLinks: {
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+    whatsapp?: string;
+  };
+};
+
+const DEFAULT_FOOTER_TEXT = 'Freedom, culture, comfort, and self-expression through premium tees and custom-crafted apparel.';
+const DEFAULT_NEWSLETTER_TITLE = 'Ready to wear your fandom?';
+const DEFAULT_NEWSLETTER_TEXT = 'Get first access to new theme drops, restocks, and subscriber-only offers.';
+const DEFAULT_NEWSLETTER_SUCCESS_MESSAGE = 'Thanks. You are on the drop list.';
+const WHATSAPP_MESSAGE = 'Hi Fly Free, I would like more information about your products.';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -14,7 +35,15 @@ export function Footer() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   // Same source the Contact page reads, so the two can never disagree.
-  const [support, setSupport] = useState(SUPPORT);
+  const [support, setSupport] = useState<FooterSupport>({
+    ...SUPPORT,
+    footerText: DEFAULT_FOOTER_TEXT,
+    newsletterTitle: DEFAULT_NEWSLETTER_TITLE,
+    newsletterText: DEFAULT_NEWSLETTER_TEXT,
+    newsletterSuccessMessage: DEFAULT_NEWSLETTER_SUCCESS_MESSAGE,
+    whatsappMessage: WHATSAPP_MESSAGE,
+    socialLinks: {}
+  });
 
   useEffect(() => {
     fetch(`${getApiBaseUrl()}/cms/home`)
@@ -25,7 +54,13 @@ export function Footer() {
           email: settings.supportEmail || settings.contactEmail || SUPPORT.email,
           phone: settings.contactPhone || SUPPORT.phone,
           address: settings.businessAddress || SUPPORT.address,
-          instagram: settings.socialLinks?.instagram || SUPPORT.instagram
+          instagram: settings.socialLinks?.instagram || SUPPORT.instagram,
+          footerText: settings.footerText || settings.appDescription || DEFAULT_FOOTER_TEXT,
+          newsletterTitle: settings.newsletterTitle || DEFAULT_NEWSLETTER_TITLE,
+          newsletterText: settings.newsletterText || DEFAULT_NEWSLETTER_TEXT,
+          newsletterSuccessMessage: settings.newsletterSuccessMessage || DEFAULT_NEWSLETTER_SUCCESS_MESSAGE,
+          whatsappMessage: settings.whatsappMessage || WHATSAPP_MESSAGE,
+          socialLinks: settings.socialLinks || {}
         });
       })
       .catch(() => {
@@ -51,7 +86,7 @@ export function Footer() {
         throw new Error(data.error || data.message || 'Could not subscribe right now');
       }
 
-      setMessage('Thanks. You are on the drop list.');
+      setMessage(support.newsletterSuccessMessage);
       setEmail('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not subscribe right now');
@@ -66,10 +101,10 @@ export function Footer() {
         <div className="grid items-end gap-6 pb-8 md:grid-cols-2 md:pb-10" style={{ borderBottom: '2px solid var(--border-color)' }}>
           <div>
             <h2 className="text-3xl font-black uppercase leading-tight tracking-tight md:text-4xl" style={{ color: 'var(--text-primary)' }}>
-              Ready to wear your fandom?
+              {support.newsletterTitle}
             </h2>
             <p className="mt-3 max-w-md text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Get first access to new theme drops, restocks, and subscriber-only offers.
+              {support.newsletterText}
             </p>
           </div>
 
@@ -102,7 +137,7 @@ export function Footer() {
               <Logo size="lg" showText={false} />
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-              Freedom, culture, comfort, and self-expression through premium tees and custom-crafted apparel.
+              {support.footerText}
             </p>
           </div>
 
@@ -144,19 +179,7 @@ export function Footer() {
               {support.address && (
                 <li className="flex gap-2"><MapPin size={16} /> <span>{support.address}</span></li>
               )}
-              {support.instagram && (
-                <li>
-                  <a
-                    href={support.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-2 font-bold"
-                    style={{ border: '2px solid var(--border-color)', color: 'var(--text-primary)' }}
-                  >
-                    <Instagram size={16} /> Instagram
-                  </a>
-                </li>
-              )}
+              <SocialLinks links={support.socialLinks} whatsappMessage={support.whatsappMessage} />
             </ul>
           </div>
         </div>
@@ -195,4 +218,65 @@ async function parseNewsletterResponse(response: Response) {
   }
 
   return { error: await response.text() };
+}
+
+function SocialLinks({ links, whatsappMessage }: { links: FooterSupport['socialLinks']; whatsappMessage: string }) {
+  const items = [
+    { key: 'instagram', label: 'Instagram', href: cleanUrl(links.instagram), icon: <Instagram size={16} /> },
+    { key: 'facebook', label: 'Facebook', href: cleanUrl(links.facebook), icon: <Facebook size={16} /> },
+    { key: 'whatsapp', label: 'WhatsApp', href: whatsappHref(links.whatsapp, whatsappMessage), icon: <MessageCircle size={16} /> },
+    { key: 'twitter', label: 'Twitter', href: cleanUrl(links.twitter), icon: <Twitter size={16} /> },
+    { key: 'youtube', label: 'YouTube', href: cleanUrl(links.youtube), icon: <Youtube size={16} /> }
+  ].filter((item) => item.href);
+
+  if (!items.length) return null;
+
+  return (
+    <li className="flex flex-wrap gap-2 pt-1">
+      {items.map((item) => (
+        <a
+          key={item.key}
+          href={item.href || '#'}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={item.label}
+          title={item.label}
+          className="inline-flex h-10 w-10 items-center justify-center transition hover:opacity-75"
+          style={{ border: '2px solid var(--border-color)', color: 'var(--text-primary)' }}
+        >
+          {item.icon}
+        </a>
+      ))}
+    </li>
+  );
+}
+
+function cleanUrl(value?: string) {
+  const trimmed = String(value || '').trim();
+  return trimmed || null;
+}
+
+function whatsappHref(value?: string, message = WHATSAPP_MESSAGE) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return null;
+
+  const textValue = String(message || WHATSAPP_MESSAGE).trim() || WHATSAPP_MESSAGE;
+  const text = encodeURIComponent(textValue);
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      if (!url.searchParams.has('text')) {
+        url.searchParams.set('text', textValue);
+      }
+      return url.toString();
+    } catch {
+      return trimmed;
+    }
+  }
+
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return null;
+  const phone = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${phone}?text=${text}`;
 }

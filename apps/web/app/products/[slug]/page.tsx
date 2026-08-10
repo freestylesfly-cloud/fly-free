@@ -51,6 +51,7 @@ type Variant = {
 
 
 const API_URL = getApiBaseUrl();
+const DEFAULT_PRODUCT_WHATSAPP_MESSAGE = 'Check out {productName} at Fly Free! {url}';
 
 export default function ProductDetailPage({ params }: ProductDetailProps) {
   const { slug } = use(params);
@@ -76,6 +77,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [whatsappShareMessage, setWhatsappShareMessage] = useState(DEFAULT_PRODUCT_WHATSAPP_MESSAGE);
 
   const variants: Variant[] = useMemo(() => {
     if (!product?.variants) return [];
@@ -149,6 +151,11 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           setHampers(productData.hampers);
         }
 
+        if (homeResponse?.ok) {
+          const homeData = await homeResponse.json();
+          const message = String(homeData?.settings?.whatsappMessage || '').trim();
+          setWhatsappShareMessage(message || DEFAULT_PRODUCT_WHATSAPP_MESSAGE);
+        }
 
         if (sizeChartResponse?.ok) {
           const sizeChartData = await sizeChartResponse.json();
@@ -252,7 +259,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }
 
   function handleShareWhatsApp() {
-    const text = `Check out ${product.name} at Fly Free! ${typeof window !== 'undefined' ? window.location.href : ''}`;
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const text = whatsappShareMessage
+      .replace(/\{productName\}/g, product.name)
+      .replace(/\{url\}/g, url);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 
