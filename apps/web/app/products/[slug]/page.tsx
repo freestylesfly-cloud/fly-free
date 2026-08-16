@@ -29,6 +29,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
 import { MEDIA } from '../../lib/design';
 import { SITE_URL } from '../../lib/site';
+import { ProductCard } from '../../components/ProductCard';
 
 interface ProductDetailProps {
   params: Promise<{ slug: string }>;
@@ -63,6 +64,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const addItem = useCartStore((state) => state.addItem);
   const [product, setProduct] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [hampers, setHampers] = useState<any[]>([]);
   const [sizeChart, setSizeChart] = useState('');
   const [loading, setLoading] = useState(true);
@@ -128,12 +130,11 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       try {
         setLoading(true);
         setError('');
+        setProduct(null);
+        setRecommendations([]);
+        setRecommendationsLoading(false);
 
-        const [productResponse, homeResponse, sizeChartResponse] = await Promise.all([
-          fetch(`${API_URL}/catalog/products/${slug}`, { cache: 'no-store' }),
-          fetch(`${API_URL}/cms/home`, { cache: 'no-store' }).catch(() => null),
-          fetch(`${API_URL}/cms/pages/size-chart`, { cache: 'no-store' }).catch(() => null)
-        ]);
+        const productResponse = await fetch(`${API_URL}/catalog/products/${slug}`, { cache: 'no-store' });
 
         if (!productResponse.ok) {
           throw new Error('This product could not be loaded right now.');
@@ -156,20 +157,6 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         if (productData?.hampers?.length > 0) {
           setHampers(productData.hampers);
         }
-
-        const similarProducts = await fetchSimilarProducts(productData);
-        setRecommendations(similarProducts);
-
-        if (homeResponse?.ok) {
-          const homeData = await homeResponse.json();
-          const message = String(homeData?.settings?.whatsappMessage || '').trim();
-          setWhatsappShareMessage(message || DEFAULT_PRODUCT_WHATSAPP_MESSAGE);
-        }
-
-        if (sizeChartResponse?.ok) {
-          const sizeChartData = await sizeChartResponse.json();
-          setSizeChart(sizeChartData?.content || '');
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load product');
       } finally {
@@ -179,6 +166,43 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
     fetchProductFlow();
   }, [slug]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchShareSettings() {
+      const homeResponse = await fetch(`${API_URL}/cms/home`, { cache: 'force-cache' }).catch(() => null);
+      if (!homeResponse?.ok || cancelled) return;
+
+      const homeData = await homeResponse.json().catch(() => null);
+      const message = String(homeData?.settings?.whatsappMessage || '').trim();
+      if (!cancelled) setWhatsappShareMessage(message || DEFAULT_PRODUCT_WHATSAPP_MESSAGE);
+    }
+
+    fetchShareSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    let cancelled = false;
+
+    async function fetchRecommendations() {
+      setRecommendationsLoading(true);
+      const similarProducts = await fetchSimilarProducts(product);
+      if (!cancelled) {
+        setRecommendations(similarProducts);
+        setRecommendationsLoading(false);
+      }
+    }
+
+    fetchRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.id]);
 
   useEffect(() => {
     if (!product?.id || !token) return;
@@ -279,6 +303,17 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     const subject = `Check out: ${product.name}`;
     const body = `I found this product at Fly Free: ${product.name}\n\n${typeof window !== 'undefined' ? window.location.href : ''}`;
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  async function openSizeChart() {
+    setShowSizeChart(true);
+    if (sizeChart) return;
+
+    const sizeChartResponse = await fetch(`${API_URL}/cms/pages/size-chart`, { cache: 'force-cache' }).catch(() => null);
+    if (!sizeChartResponse?.ok) return;
+
+    const sizeChartData = await sizeChartResponse.json().catch(() => null);
+    setSizeChart(sizeChartData?.content || '');
   }
 
   function shiftImage(direction: -1 | 1) {
@@ -505,7 +540,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <ChoiceBlock
             title="Size"
             subtitle={selectedVariant ? `${stock} in stock` : 'Choose an available size.'}
-            action={<button type="button" onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 rounded border px-3 py-2 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
+            action={<button type="button" onClick={openSizeChart} className="inline-flex items-center gap-1 rounded border px-3 py-2 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
           >
             <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
@@ -633,7 +668,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       </section>
 
       {/* Recommendations */}
-      {recommendations.length > 0 && (
+      {(recommendationsLoading || recommendations.length > 0) && (
         <section className="mx-auto max-w-7xl px-4 pb-10">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
@@ -653,44 +688,21 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {recommendations.map((rec) => (
-              <Link
-                key={rec.id}
-                href={`/products/${rec.slug}`}
-                className="group overflow-hidden rounded-lg border transition hover:-translate-y-0.5 hover:shadow-lg"
-                style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
-              >
-                <div className="relative overflow-hidden" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }}>
-                  <img
-                    src={rec.images?.[0]?.url || `https://via.placeholder.com/300?text=${encodeURIComponent(rec.name)}`}
-                    alt={rec.name}
-                    className="h-full w-full object-cover transition group-hover:scale-110"
-                  />
-                  {rec.reviews?.length > 0 && (
-                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-white/95 px-2 py-1 text-xs font-black shadow-sm" style={{ color: 'var(--text-primary)' }}>
-                      <Star size={13} fill="currentColor" style={{ color: 'var(--accent-tertiary)' }} />
-                      {averageProductRating(rec).toFixed(1)}
-                    </span>
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-                    {rec.theme?.name || rec.category?.name || 'Fly Free'}
-                  </p>
-                  <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-black leading-snug" style={{ color: 'var(--text-primary)' }}>{rec.name}</h3>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <p className="font-black" style={{ color: 'var(--text-primary)' }}>
-                      {formatCurrency(Math.round((rec.price || 0) / 100))}
-                    </p>
-                    {rec.mrp > rec.price && (
-                      <p className="text-xs line-through" style={{ color: 'var(--text-tertiary)' }}>
-                        {formatCurrency(Math.round((rec.mrp || 0) / 100))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+            {recommendationsLoading && recommendations.length === 0
+              ? Array.from({ length: 4 }).map((_, index) => <SimilarProductSkeleton key={index} />)
+              : recommendations.map((rec) => (
+                <ProductCard
+                  key={rec.id}
+                  id={rec.id}
+                  name={rec.name}
+                  price={Math.round((rec.price || 0) / 100)}
+                  originalPrice={rec.mrp ? Math.round((rec.mrp || 0) / 100) : undefined}
+                  slug={rec.slug}
+                  image={rec.images?.[0]?.url}
+                  hoverImage={rec.images?.[1]?.url}
+                  tag={rec.theme?.name || rec.category?.name}
+                />
+              ))}
           </div>
         </section>
       )}
@@ -940,6 +952,20 @@ function ProductSkeleton() {
   );
 }
 
+function SimilarProductSkeleton() {
+  return (
+    <div className="overflow-hidden border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+      <div className="animate-pulse" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }} />
+      <div className="space-y-3 p-3 md:p-4">
+        <div className="h-4 w-2/3 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+        <div className="h-4 w-full animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+        <div className="h-5 w-20 animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+        <div className="h-10 w-full animate-pulse rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+      </div>
+    </div>
+  );
+}
+
 function normalizeImages(rawImages: ProductImage[] = [], productName: string): ProductImage[] {
   const images = [...rawImages].sort((a, b) => Number(a.priority || 0) - Number(b.priority || 0));
   if (images.length > 0) return images;
@@ -970,43 +996,78 @@ function uniqueValues(values: Array<string | null | undefined>) {
 }
 
 async function fetchSimilarProducts(product: any) {
+  const cacheKey = [
+    'similar-products',
+    product.id,
+    product.category?.slug || 'no-category',
+    product.theme?.slug || 'no-theme'
+  ].join(':');
+  const cached = readCachedProducts(cacheKey);
+  if (cached) return cached;
+
   const seen = new Set<string>([product.id]);
   const results: any[] = [];
 
-  async function addProducts(params: URLSearchParams) {
-    const response = await fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }).catch(() => null);
-    if (!response?.ok) return;
+  const params = new URLSearchParams();
+  if (product.category?.slug) params.set('category', product.category.slug);
+  else if (product.theme?.slug) params.set('theme', product.theme.slug);
+  else return [];
 
-    const data = await response.json().catch(() => null);
-    const items = Array.isArray(data) ? data : data?.data || [];
-    items.forEach((item: any) => {
+  const response = await fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'force-cache' }).catch(() => null);
+  if (!response?.ok) return [];
+
+  const data = await response.json().catch(() => null);
+  const items = Array.isArray(data) ? data : data?.data || [];
+  items
+    .sort((a: any, b: any) => {
+      const aSameTheme = Number(Boolean(product.theme?.slug && a.theme?.slug === product.theme.slug));
+      const bSameTheme = Number(Boolean(product.theme?.slug && b.theme?.slug === product.theme.slug));
+      return bSameTheme - aSameTheme;
+    })
+    .forEach((item: any) => {
       if (!item?.id || seen.has(item.id)) return;
       seen.add(item.id);
       results.push(item);
     });
-  }
 
-  if (product.category?.slug) {
-    const params = new URLSearchParams({ category: product.category.slug });
-    if (product.theme?.slug) params.set('theme', product.theme.slug);
-    await addProducts(params);
-  }
-
-  if (results.length < 8 && product.category?.slug) {
-    await addProducts(new URLSearchParams({ category: product.category.slug }));
-  }
-
-  if (results.length < 8 && product.theme?.slug) {
-    await addProducts(new URLSearchParams({ theme: product.theme.slug }));
-  }
-
-  return results.slice(0, 12);
+  const sliced = results.slice(0, 12);
+  writeCachedProducts(cacheKey, sliced);
+  return sliced;
 }
 
-function averageProductRating(product: any) {
-  const ratings = (product.reviews || []).map((review: any) => Number(review.rating || 0)).filter(Boolean);
-  if (!ratings.length) return 0;
-  return ratings.reduce((sum: number, rating: number) => sum + rating, 0) / ratings.length;
+function readCachedProducts(key: string) {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw);
+    if (!cached?.expiresAt || cached.expiresAt < Date.now()) {
+      window.sessionStorage.removeItem(key);
+      return null;
+    }
+
+    return Array.isArray(cached.products) ? cached.products : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProducts(key: string, products: any[]) {
+  if (typeof window === 'undefined' || products.length === 0) return;
+
+  try {
+    window.sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        products,
+        expiresAt: Date.now() + 10 * 60 * 1000
+      })
+    );
+  } catch {
+    // Ignore storage quota/private-mode failures; recommendations are optional.
+  }
 }
 
 function productJsonLd(product: any, image: string | undefined, url: string, totalPrice: number, rating: number, reviewCount: number, stock: number) {
