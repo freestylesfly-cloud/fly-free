@@ -2,7 +2,7 @@
   "name": "Fly Free Admin",
   "short_name": "FF Admin",
   "description": "Mobile operations dashboard for Fly Free orders, products, reviews, and settings.",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f8f5ef",

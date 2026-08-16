@@ -1,4 +1,4 @@
-const CACHE_NAME = "flyfree-admin-shell-v1";
+const CACHE_NAME = "flyfree-admin-shell-v2";
 const SHELL_URLS = [
   "/manifest.json",
   "/favicon_io/android-chrome-192x192.png",
