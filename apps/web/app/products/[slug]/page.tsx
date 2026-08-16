@@ -3,6 +3,7 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArrowRight,
   ChevronLeft,
   ChevronRight,
   Heart,
@@ -73,7 +74,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [selectedHamperId, setSelectedHamperId] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [showZoom, setShowZoom] = useState(false);
-  const [isMagnifying, setIsMagnifying] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [notice, setNotice] = useState('');
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -97,6 +98,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const hamperImages = useMemo(() => normalizeHamperImages(selectedHamper), [selectedHamper]);
   const galleryImages = useMemo(() => (hamperImages.length ? [...hamperImages, ...images] : images), [hamperImages, images]);
   const activeImage = selectedImage || galleryImages[0];
+  const activeImageIndex = Math.max(0, galleryImages.findIndex((image) => image.url === activeImage?.url));
 
   const selectedVariant = useMemo(
     () =>
@@ -154,6 +156,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         if (productData?.hampers?.length > 0) {
           setHampers(productData.hampers);
         }
+
+        const similarProducts = await fetchSimilarProducts(productData);
+        setRecommendations(similarProducts);
 
         if (homeResponse?.ok) {
           const homeData = await homeResponse.json();
@@ -308,66 +313,47 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       {/* Product Hero */}
       <section className="mx-auto mb-10 grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
         {/* Image Gallery */}
-        <div className="flex flex-col gap-4">
+        <div className="h-fit lg:sticky lg:top-24">
+          <div className="grid gap-3 lg:grid-cols-[88px_minmax(0,1fr)]">
+            {galleryImages.length > 1 && (
+              <div className="order-2 flex gap-3 overflow-x-auto pb-2 lg:order-1 lg:max-h-[calc(100vh-140px)] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pb-0 lg:pr-1">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={`${img.url}-${idx}`}
+                    onClick={() => setSelectedImage(img)}
+                    className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border transition hover:shadow-sm lg:h-24 lg:w-20"
+                    style={{
+                      borderColor: activeImage?.url === img.url ? 'var(--color-primary)' : 'var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)'
+                    }}
+                    aria-label={`View product image ${idx + 1}`}
+                  >
+                    <img src={img.url} alt={img.alt || `${product.name} ${idx + 1}`} className="h-full w-full object-cover" />
+                    <span className="absolute bottom-1 right-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-black shadow-sm" style={{ color: 'var(--text-primary)' }}>
+                      {idx + 1}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
           <div
-            className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-xl border"
+            className="order-1 relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-lg border shadow-sm sm:min-h-[560px] lg:order-2 lg:min-h-[calc(100vh-160px)]"
             style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
           >
             {activeImage?.url && (
               <>
-                {/* Marketplace-style zoom: a lens follows the cursor over the
-                    image and the magnified crop renders in a panel beside it.
-                    Touch devices skip the lens and use the full-screen view. */}
                 <div
-                  className="relative h-full w-full cursor-crosshair"
-                  onMouseMove={(event) => {
-                    const box = event.currentTarget.getBoundingClientRect();
-                    const x = ((event.clientX - box.left) / box.width) * 100;
-                    const y = ((event.clientY - box.top) / box.height) * 100;
-                    setZoomOrigin({
-                      x: Math.min(Math.max(x, 0), 100),
-                      y: Math.min(Math.max(y, 0), 100)
-                    });
-                  }}
-                  onMouseEnter={() => setIsMagnifying(true)}
-                  onMouseLeave={() => setIsMagnifying(false)}
+                  className="relative flex h-full w-full cursor-zoom-in items-center justify-center"
+                  onClick={() => setShowZoom(true)}
                 >
                   <img
                     src={activeImage.url}
                     alt={activeImage.alt || product.name}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
+                    draggable={false}
                   />
-
-                  {isMagnifying && (
-                    <span
-                      className="pointer-events-none absolute hidden border-2 lg:block"
-                      style={{
-                        width: '140px',
-                        height: '140px',
-                        left: `calc(${zoomOrigin.x}% - 70px)`,
-                        top: `calc(${zoomOrigin.y}% - 70px)`,
-                        borderColor: 'var(--color-primary)',
-                        backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
-                      }}
-                    />
-                  )}
                 </div>
-
-                {isMagnifying && (
-                  <div
-                    className="pointer-events-none absolute left-full top-0 z-30 ml-4 hidden overflow-hidden rounded-lg border-2 shadow-2xl lg:block"
-                    style={{
-                      width: '420px',
-                      height: '420px',
-                      borderColor: 'var(--border-color)',
-                      backgroundColor: 'var(--bg-primary)',
-                      backgroundImage: `url('${activeImage.url}')`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundSize: '250%',
-                      backgroundPosition: `${zoomOrigin.x}% ${zoomOrigin.y}%`
-                    }}
-                  />
-                )}
                 {galleryImages.length > 1 && (
                   <>
                     <button
@@ -390,36 +376,24 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     </button>
                   </>
                 )}
+                <div
+                  className="absolute left-3 top-3 z-20 rounded-full border bg-white/95 px-3 py-1 text-xs font-black shadow-sm"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                >
+                  {activeImageIndex + 1} / {galleryImages.length}
+                </div>
                 <button
                   onClick={() => setShowZoom(true)}
-                  className="absolute right-3 top-3 z-20 rounded-lg border p-2 transition hover:opacity-70"
+                  className="absolute right-3 top-3 z-20 inline-flex items-center gap-2 rounded-full border bg-white/95 px-3 py-2 text-xs font-black shadow-sm transition hover:opacity-70"
                   style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
                   aria-label="Zoom image"
                 >
-                  <Maximize2 size={18} />
+                  <Maximize2 size={16} /> View
                 </button>
               </>
             )}
           </div>
-
-          {galleryImages.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {galleryImages.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImage(img)}
-                  className="flex-shrink-0 overflow-hidden rounded-xl border-2 p-1 transition"
-                  style={{
-                    borderColor: activeImage?.url === img.url ? 'var(--color-primary)' : 'var(--border-color)',
-                    backgroundColor: 'var(--bg-secondary)'
-                  }}
-                  aria-label={`View product image ${idx + 1}`}
-                >
-                  <img src={img.url} alt={img.alt || `${product.name} ${idx}`} className="h-20 w-20 rounded-lg object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Product Info Sidebar */}
@@ -661,29 +635,60 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       {/* Recommendations */}
       {recommendations.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 pb-10">
-          <h2 className="mb-6 text-2xl font-black">You Might Like</h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+                Similar products
+              </p>
+              <h2 className="mt-1 text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
+                More {product.category?.name || 'styles'} like this
+              </h2>
+            </div>
+            <Link
+              href={`/products${product.category?.slug ? `?category=${encodeURIComponent(product.category.slug)}` : ''}`}
+              className="hidden items-center gap-2 rounded border px-4 py-2 text-sm font-black transition hover:shadow-sm sm:inline-flex"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            >
+              View all <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {recommendations.map((rec) => (
               <Link
                 key={rec.id}
                 href={`/products/${rec.slug}`}
-                className="group rounded-lg border p-4 transition hover:shadow-lg"
+                className="group overflow-hidden rounded-lg border transition hover:-translate-y-0.5 hover:shadow-lg"
                 style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
               >
-                <div className="relative mb-4 overflow-hidden rounded-lg" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }}>
+                <div className="relative overflow-hidden" style={{ aspectRatio: MEDIA.product.css, backgroundColor: 'var(--bg-tertiary)' }}>
                   <img
                     src={rec.images?.[0]?.url || `https://via.placeholder.com/300?text=${encodeURIComponent(rec.name)}`}
                     alt={rec.name}
                     className="h-full w-full object-cover transition group-hover:scale-110"
                   />
+                  {rec.reviews?.length > 0 && (
+                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-white/95 px-2 py-1 text-xs font-black shadow-sm" style={{ color: 'var(--text-primary)' }}>
+                      <Star size={13} fill="currentColor" style={{ color: 'var(--accent-tertiary)' }} />
+                      {averageProductRating(rec).toFixed(1)}
+                    </span>
+                  )}
                 </div>
-                <h3 className="font-black" style={{ color: 'var(--text-primary)' }}>{rec.name}</h3>
-                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {rec.theme?.name || 'Fly Free'}
-                </p>
-                <p className="mt-3 font-black" style={{ color: 'var(--color-primary)' }}>
-                  {formatCurrency(Math.round((rec.basePrice || 0) / 100))}
-                </p>
+                <div className="p-3">
+                  <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+                    {rec.theme?.name || rec.category?.name || 'Fly Free'}
+                  </p>
+                  <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-black leading-snug" style={{ color: 'var(--text-primary)' }}>{rec.name}</h3>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <p className="font-black" style={{ color: 'var(--text-primary)' }}>
+                      {formatCurrency(Math.round((rec.price || 0) / 100))}
+                    </p>
+                    {rec.mrp > rec.price && (
+                      <p className="text-xs line-through" style={{ color: 'var(--text-tertiary)' }}>
+                        {formatCurrency(Math.round((rec.mrp || 0) / 100))}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
@@ -698,61 +703,91 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           title={product.name}
           onClose={() => {
             setShowZoom(false);
-            setIsMagnifying(false);
+            setZoomScale(1);
             setZoomOrigin({ x: 50, y: 50 });
           }}
           wide
         >
-          <div className="space-y-4">
-            <div className="relative flex min-h-[60vh] items-center justify-center rounded border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+          <div className="grid min-h-0 gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-full border px-3 py-1 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
+                {activeImageIndex + 1} / {galleryImages.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setZoomScale((value) => Math.max(1, Number((value - 0.25).toFixed(2))))}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white"
+                  style={{ borderColor: 'var(--border-color)' }}
+                  aria-label="Zoom out"
+                >
+                  <Minus size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomScale(1)}
+                  className="rounded-full border bg-white px-3 py-2 text-xs font-black"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  {Math.round(zoomScale * 100)}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomScale((value) => Math.min(3, Number((value + 0.25).toFixed(2))))}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white"
+                  style={{ borderColor: 'var(--border-color)' }}
+                  aria-label="Zoom in"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+            </div>
+            <div
+              className="relative flex h-[62vh] min-h-[420px] items-center justify-center overflow-hidden rounded-2xl border"
+              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)', cursor: zoomScale > 1 ? 'move' : 'default' }}
+              onMouseMove={(event) => {
+                if (zoomScale <= 1) return;
+                const box = event.currentTarget.getBoundingClientRect();
+                setZoomOrigin({
+                  x: ((event.clientX - box.left) / box.width) * 100,
+                  y: ((event.clientY - box.top) / box.height) * 100
+                });
+              }}
+            >
               {galleryImages.length > 1 && (
                 <>
-                  <button onClick={() => shiftImage(-1)} className="absolute left-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Previous image">
+                  <button onClick={(event) => { event.stopPropagation(); shiftImage(-1); setZoomScale(1); }} className="absolute left-3 top-1/2 z-10 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Previous image">
                     <ChevronLeft size={20} />
                   </button>
-                  <button onClick={() => shiftImage(1)} className="absolute right-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Next image">
+                  <button onClick={(event) => { event.stopPropagation(); shiftImage(1); setZoomScale(1); }} className="absolute right-3 top-1/2 z-10 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Next image">
                     <ChevronRight size={20} />
                   </button>
                 </>
               )}
-              {/* Click toggles a 2.5x zoom; then drag the pointer to pan. */}
               <img
                 src={activeImage.url}
                 alt={activeImage.alt || product.name}
-                onClick={() => setIsMagnifying((value) => !value)}
-                onMouseMove={(event) => {
-                  if (!isMagnifying) return;
-                  const box = event.currentTarget.getBoundingClientRect();
-                  setZoomOrigin({
-                    x: ((event.clientX - box.left) / box.width) * 100,
-                    y: ((event.clientY - box.top) / box.height) * 100
-                  });
-                }}
-                className="max-h-[75vh] w-full rounded object-contain transition-transform duration-200"
+                className="h-full w-full rounded object-contain p-3 transition-transform duration-200 sm:p-6"
                 style={{
-                  cursor: isMagnifying ? 'zoom-out' : 'zoom-in',
-                  transform: isMagnifying ? 'scale(2.5)' : 'scale(1)',
+                  transform: `scale(${zoomScale})`,
                   transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                 }}
               />
-              <span
-                className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold"
-                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
-              >
-                {isMagnifying ? 'Click to zoom out · move to pan' : 'Click image to zoom'}
-              </span>
             </div>
             {galleryImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex justify-center gap-2 overflow-x-auto pb-1">
                 {galleryImages.map((image, index) => (
                   <button
                     key={`${image.url}-${index}`}
-                    onClick={() => setSelectedImage(image)}
-                    className="h-16 w-16 flex-shrink-0 overflow-hidden rounded border-2"
-                    style={{ borderColor: activeImage?.url === image.url ? 'var(--color-primary)' : 'var(--border-color)' }}
+                    onClick={() => { setSelectedImage(image); setZoomScale(1); }}
+                    className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border-2 p-1"
+                    style={{
+                      borderColor: activeImage?.url === image.url ? 'var(--color-primary)' : 'var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)'
+                    }}
                     aria-label={`View image ${index + 1}`}
                   >
-                    <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                    <img src={image.url} alt={image.alt || product.name} className="h-full w-full rounded-lg object-cover" />
                   </button>
                 ))}
               </div>
@@ -868,13 +903,22 @@ function InfoRow({ icon, title, text }: { icon: React.ReactNode; title: string; 
 
 function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className={`max-h-[90vh] overflow-auto rounded-lg shadow-2xl p-5 ${wide ? 'w-full max-w-4xl' : 'w-full max-w-lg'}`} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-black">{title}</h2>
-          <button onClick={onClose} className="rounded border p-2" style={{ borderColor: 'var(--border-color)' }}><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-5">
+      <div className={`relative max-h-[94vh] overflow-auto rounded-2xl shadow-2xl ${wide ? 'w-full max-w-6xl' : 'w-full max-w-lg'}`} style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b px-4 py-3 backdrop-blur sm:px-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 94%, transparent)' }}>
+          <h2 className="min-w-0 truncate text-base font-black sm:text-lg">{title}</h2>
+          <button
+            onClick={onClose}
+            className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border bg-white shadow-sm"
+            style={{ borderColor: 'var(--border-color)' }}
+            aria-label="Close viewer"
+          >
+            <X size={20} />
+          </button>
         </div>
-        {children}
+        <div className="p-4 sm:p-5">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -923,6 +967,46 @@ function normalizeHamperImages(hamper: any): ProductImage[] {
 
 function uniqueValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean).map((value) => String(value))));
+}
+
+async function fetchSimilarProducts(product: any) {
+  const seen = new Set<string>([product.id]);
+  const results: any[] = [];
+
+  async function addProducts(params: URLSearchParams) {
+    const response = await fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }).catch(() => null);
+    if (!response?.ok) return;
+
+    const data = await response.json().catch(() => null);
+    const items = Array.isArray(data) ? data : data?.data || [];
+    items.forEach((item: any) => {
+      if (!item?.id || seen.has(item.id)) return;
+      seen.add(item.id);
+      results.push(item);
+    });
+  }
+
+  if (product.category?.slug) {
+    const params = new URLSearchParams({ category: product.category.slug });
+    if (product.theme?.slug) params.set('theme', product.theme.slug);
+    await addProducts(params);
+  }
+
+  if (results.length < 8 && product.category?.slug) {
+    await addProducts(new URLSearchParams({ category: product.category.slug }));
+  }
+
+  if (results.length < 8 && product.theme?.slug) {
+    await addProducts(new URLSearchParams({ theme: product.theme.slug }));
+  }
+
+  return results.slice(0, 12);
+}
+
+function averageProductRating(product: any) {
+  const ratings = (product.reviews || []).map((review: any) => Number(review.rating || 0)).filter(Boolean);
+  if (!ratings.length) return 0;
+  return ratings.reduce((sum: number, rating: number) => sum + rating, 0) / ratings.length;
 }
 
 function productJsonLd(product: any, image: string | undefined, url: string, totalPrice: number, rating: number, reviewCount: number, stock: number) {

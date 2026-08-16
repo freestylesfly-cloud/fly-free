@@ -51,21 +51,25 @@ export class CmsService {
       }), [])
     ]);
 
-    const pagesBySlug = new Map(pages.map((page) => [page.slug, page]));
-    const storefrontPages = STANDARD_PAGES
-      .map((standardPage) => {
-        const page = pagesBySlug.get(standardPage.slug);
-        if (!standardPage.route.startsWith("/")) return null;
+    const standardPagesBySlug = new Map(STANDARD_PAGES.map((page) => [page.slug, page]));
+    const storefrontPages = pages
+      .map((page) => {
+        const standardPage = standardPagesBySlug.get(page.slug);
+        if (!standardPage?.route.startsWith("/")) return null;
 
         return {
-          id: page?.id,
-          slug: page?.slug || standardPage.slug,
-          title: page?.title || standardPage.title,
+          id: page.id,
+          slug: page.slug,
+          title: page.title || standardPage.title,
           route: standardPage.route,
-          updatedAt: page?.updatedAt
+          updatedAt: page.updatedAt
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a: any, b: any) =>
+        STANDARD_PAGES.findIndex((page) => page.slug === a.slug) -
+        STANDARD_PAGES.findIndex((page) => page.slug === b.slug)
+      );
 
     return {
       settings: settings?.value || null,

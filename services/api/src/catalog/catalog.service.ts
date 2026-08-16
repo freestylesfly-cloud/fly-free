@@ -7,7 +7,7 @@ export class CatalogService {
 
   // `category` is the fit / product type (regular, oversized, jersey, polo, hoodie).
   // There is no gender or seasonal-collection filtering: the catalogue is unisex.
-  listProducts(filters: {
+  async listProducts(filters: {
     category?: string;
     theme?: string;
     q?: string;
@@ -33,7 +33,7 @@ export class CatalogService {
             ? { updatedAt: "desc" as const }
             : { createdAt: "desc" as const };
 
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         isVisible: true,
         category: filters.category ? { slug: filters.category } : undefined,
@@ -43,7 +43,6 @@ export class CatalogService {
           lte: maxPrice
         } : undefined,
         tags: filters.tag ? { has: filters.tag } : undefined,
-        reviews: minRating ? { some: { rating: { gte: minRating }, status: "APPROVED" } } : undefined,
         OR: filters.q ? [
           { name: { contains: filters.q, mode: "insensitive" } },
           { description: { contains: filters.q, mode: "insensitive" } },
@@ -56,9 +55,22 @@ export class CatalogService {
         category: true,
         theme: true,
         images: { orderBy: { priority: "asc" } },
-        variants: { include: { inventory: true } }
+        variants: { include: { inventory: true } },
+        reviews: {
+          where: { status: "APPROVED" },
+          select: { rating: true }
+        }
       },
       orderBy
+    });
+
+    if (!minRating) return products;
+
+    return products.filter((product) => {
+      const ratings = product.reviews.map((review) => Number(review.rating || 0));
+      if (!ratings.length) return false;
+      const averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+      return averageRating >= minRating;
     });
   }
 
