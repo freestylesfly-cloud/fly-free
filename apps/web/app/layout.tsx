@@ -1,13 +1,50 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Providers } from "./providers";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { ContentProtection } from "./components/ContentProtection";
 import { BRAND, designTokensCss } from "./lib/design";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fly Free - Premium T-Shirts & Streetwear",
-  description: "Explore our collection of stylish and comfortable t-shirts with unique designs. Custom t-shirt designer, multiple themes, and secure checkout.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Fly Free | Northeast India T-Shirts, Streetwear & Custom Apparel",
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "Fly Free",
+    "Northeast India t-shirt brand",
+    "custom t-shirt design India",
+    "Assam streetwear",
+    "oversized t-shirts India",
+    "anime t-shirts India",
+    "custom apparel Northeast India",
+    "printed t-shirts India",
+    "polo t-shirts India",
+    "jersey t-shirts India"
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: "Fly Free | Northeast India T-Shirts, Streetwear & Custom Apparel",
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/brand/logo.png", width: 512, height: 512, alt: "Fly Free logo" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fly Free | Northeast India T-Shirts, Streetwear & Custom Apparel",
+    description: SITE_DESCRIPTION,
+    images: ["/brand/logo.png"],
+  },
   manifest: "/manifest.json",
   // Generated favicon set lives in /public/favicon_io.
   icons: {
@@ -42,9 +79,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         className="min-h-screen flex flex-col"
       >
         <Providers>
+          <ContentProtection />
           <Header />
           <main className="flex-1 pb-28 md:pb-0">{children}</main>
           <Footer />
+          <Analytics />
+          <SpeedInsights />
         </Providers>
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
       </body>

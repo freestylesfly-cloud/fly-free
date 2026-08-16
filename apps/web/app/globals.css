@@ -81,6 +81,22 @@ body {
   font-family: 'Times New Roman', Georgia, serif;
 }
 
+img,
+picture,
+video {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@media print {
+  img,
+  picture,
+  video {
+    visibility: hidden !important;
+  }
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Times New Roman', Georgia, serif;
   font-weight: 600;

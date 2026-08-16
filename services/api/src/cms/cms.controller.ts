@@ -12,6 +12,11 @@ export class CmsController {
     return this.cmsService.getHomePage();
   }
 
+  @Get("footer")
+  getFooter() {
+    return this.cmsService.getFooter();
+  }
+
   @Get("settings/logo")
   getSettingsLogo() {
     return this.cmsService.getSettingsLogo();

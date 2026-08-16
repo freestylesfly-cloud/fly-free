@@ -3,6 +3,8 @@
 import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Info,
   Maximize2,
@@ -25,6 +27,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
 import { MEDIA } from '../../lib/design';
+import { SITE_URL } from '../../lib/site';
 
 interface ProductDetailProps {
   params: Promise<{ slug: string }>;
@@ -116,6 +119,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     reviewCount > 0
       ? product.reviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0) / reviewCount
       : 0;
+  const productUrl = `${SITE_URL}/products/${slug}`;
 
   useEffect(() => {
     async function fetchProductFlow() {
@@ -297,12 +301,16 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
   return (
     <main className="min-h-screen px-4 py-6 pb-20 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, activeImage?.url, productUrl, totalPrice, averageRating, reviewCount, stock)) }}
+      />
       {/* Product Hero */}
       <section className="mx-auto mb-10 grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1fr)_440px]">
         {/* Image Gallery */}
         <div className="flex flex-col gap-4">
           <div
-            className="relative flex min-h-96 items-center justify-center rounded-lg border"
+            className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-xl border"
             style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
           >
             {activeImage?.url && (
@@ -360,9 +368,31 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     }}
                   />
                 )}
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => shiftImage(-1)}
+                      className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border bg-white/95 shadow transition hover:scale-105"
+                      style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                      aria-label="Previous product image"
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => shiftImage(1)}
+                      className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border bg-white/95 shadow transition hover:scale-105"
+                      style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                      aria-label="Next product image"
+                    >
+                      <ChevronRight size={22} />
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setShowZoom(true)}
-                  className="absolute right-3 top-3 rounded-lg border p-2 transition hover:opacity-70"
+                  className="absolute right-3 top-3 z-20 rounded-lg border p-2 transition hover:opacity-70"
                   style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
                   aria-label="Zoom image"
                 >
@@ -378,13 +408,14 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(img)}
-                  className="flex-shrink-0 rounded-lg border-2 transition"
+                  className="flex-shrink-0 overflow-hidden rounded-xl border-2 p-1 transition"
                   style={{
                     borderColor: activeImage?.url === img.url ? 'var(--color-primary)' : 'var(--border-color)',
                     backgroundColor: 'var(--bg-secondary)'
                   }}
+                  aria-label={`View product image ${idx + 1}`}
                 >
-                  <img src={img.url} alt={img.alt || `${product.name} ${idx}`} className="h-20 w-20 object-cover" />
+                  <img src={img.url} alt={img.alt || `${product.name} ${idx}`} className="h-20 w-20 rounded-lg object-cover" />
                 </button>
               ))}
             </div>
@@ -500,7 +531,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <ChoiceBlock
             title="Size"
             subtitle={selectedVariant ? `${stock} in stock` : 'Choose an available size.'}
-            action={<button onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 text-xs font-black" style={{ color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
+            action={<button type="button" onClick={() => setShowSizeChart(true)} className="inline-flex items-center gap-1 rounded border px-3 py-2 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--color-primary)' }}><Ruler size={14} /> Size chart</button>}
           >
             <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
@@ -677,10 +708,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
               {galleryImages.length > 1 && (
                 <>
                   <button onClick={() => shiftImage(-1)} className="absolute left-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Previous image">
-                    <Minus size={18} />
+                    <ChevronLeft size={20} />
                   </button>
                   <button onClick={() => shiftImage(1)} className="absolute right-3 top-1/2 rounded-full border bg-white/90 p-3 shadow" style={{ borderColor: 'var(--border-color)' }} aria-label="Next image">
-                    <Plus size={18} />
+                    <ChevronRight size={20} />
                   </button>
                 </>
               )}
@@ -892,4 +923,36 @@ function normalizeHamperImages(hamper: any): ProductImage[] {
 
 function uniqueValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean).map((value) => String(value))));
+}
+
+function productJsonLd(product: any, image: string | undefined, url: string, totalPrice: number, rating: number, reviewCount: number, stock: number) {
+  const price = Math.round(Number(totalPrice || product?.price || 0) / 100);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product?.name,
+    description: product?.seoDescription || product?.description,
+    image: image ? [image] : undefined,
+    brand: {
+      '@type': 'Brand',
+      name: product?.brand || 'Fly Free',
+    },
+    sku: product?.sku,
+    category: product?.category?.name,
+    url,
+    offers: {
+      '@type': 'Offer',
+      url,
+      priceCurrency: 'INR',
+      price,
+      availability: stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      itemCondition: 'https://schema.org/NewCondition',
+    },
+    aggregateRating: reviewCount > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: Number(rating.toFixed(1)),
+      reviewCount,
+    } : undefined,
+  };
 }

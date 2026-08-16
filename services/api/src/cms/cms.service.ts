@@ -1,30 +1,77 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { STANDARD_PAGES } from "./standard-pages";
 
 @Injectable()
 export class CmsService {
+  private readonly logger = new Logger(CmsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getHomePage() {
     const [collections, categories, themes, announcements, influencers, reviews, settings] = await Promise.all([
-      this.prisma.collection.findMany({ orderBy: { priority: "asc" } }),
-      this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
-      this.getActiveThemes(),
-      this.getActiveAnnouncements(),
-      this.prisma.influencer.findMany({ where: { isActive: true }, take: 6, orderBy: { createdAt: "desc" } }),
-      this.prisma.review.findMany({
-        where: { status: "APPROVED" },
-        include: {
-          user: { select: { name: true, image: true } },
-          product: { select: { name: true, slug: true, images: { take: 1, orderBy: { priority: "asc" } } } }
-        },
-        take: 8,
-        orderBy: { createdAt: "desc" }
-      }),
-      this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } })
+      this.safeQuery("home collections", () => this.prisma.collection.findMany({ orderBy: { priority: "asc" } }), []),
+      this.safeQuery("home categories", () => this.prisma.category.findMany({ orderBy: { priority: "asc" } }), []),
+      this.safeQuery("home themes", () => this.getActiveThemes(), []),
+      this.safeQuery("home announcements", () => this.getActiveAnnouncements(), []),
+      this.safeQuery(
+        "home influencers",
+        () => this.prisma.influencer.findMany({ where: { isActive: true }, take: 6, orderBy: { createdAt: "desc" } }),
+        []
+      ),
+      this.safeQuery(
+        "home reviews",
+        () => this.prisma.review.findMany({
+          where: { status: "APPROVED" },
+          include: {
+            user: { select: { name: true, image: true } },
+            product: { select: { name: true, slug: true, images: { take: 1, orderBy: { priority: "asc" } } } }
+          },
+          take: 8,
+          orderBy: { createdAt: "desc" }
+        }),
+        []
+      ),
+      this.safeQuery("home settings", () => this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } }), null)
     ]);
 
     return { collections, categories, themes, announcements, influencers, reviews, settings: settings?.value || null };
+  }
+
+  async getFooter() {
+    const [settings, categories, pages] = await Promise.all([
+      this.safeQuery("footer settings", () => this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } }), null),
+      this.safeQuery("footer categories", () => this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] }), []),
+      this.safeQuery("footer pages", () => this.prisma.page.findMany({
+        where: {
+          isPublished: true,
+          slug: { in: STANDARD_PAGES.map((page) => page.slug) }
+        },
+        select: { id: true, slug: true, title: true, updatedAt: true }
+      }), [])
+    ]);
+
+    const pagesBySlug = new Map(pages.map((page) => [page.slug, page]));
+    const storefrontPages = STANDARD_PAGES
+      .map((standardPage) => {
+        const page = pagesBySlug.get(standardPage.slug);
+        if (!standardPage.route.startsWith("/")) return null;
+
+        return {
+          id: page?.id,
+          slug: page?.slug || standardPage.slug,
+          title: page?.title || standardPage.title,
+          route: standardPage.route,
+          updatedAt: page?.updatedAt
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      settings: settings?.value || null,
+      categories,
+      pages: storefrontPages
+    };
   }
 
   getActiveAnnouncements() {
@@ -161,7 +208,37 @@ export class CmsService {
   }
 
   /** Drafts stay private — only published pages reach the storefront. */
-  getPage(slug: string) {
-    return this.prisma.page.findFirst({ where: { slug, isPublished: true } });
+  async getPage(slug: string) {
+    const page = await this.safeQuery(
+      `page ${slug}`,
+      () => this.prisma.page.findFirst({ where: { slug, isPublished: true } }),
+      null
+    );
+
+    if (page) return page;
+
+    const standardPage = STANDARD_PAGES.find((item) => item.slug === slug);
+    if (!standardPage) return null;
+
+    return {
+      id: null,
+      slug: standardPage.slug,
+      title: standardPage.title,
+      content: standardPage.content,
+      metaTitle: standardPage.title,
+      metaDesc: null,
+      isPublished: true,
+      createdAt: null,
+      updatedAt: null
+    };
+  }
+
+  private async safeQuery<T>(label: string, query: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await query();
+    } catch (error: any) {
+      this.logger.warn(`CMS ${label} fallback used: ${error?.message || error}`);
+      return fallback;
+    }
   }
 }

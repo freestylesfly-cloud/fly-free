@@ -22,6 +22,19 @@ type FooterSupport = typeof SUPPORT & {
   };
 };
 
+type FooterCategory = {
+  id?: string;
+  name: string;
+  slug: string;
+};
+
+type FooterPage = {
+  id?: string;
+  slug: string;
+  title: string;
+  route: string;
+};
+
 const DEFAULT_FOOTER_TEXT = 'Freedom, culture, comfort, and self-expression through premium tees and custom-crafted apparel.';
 const DEFAULT_NEWSLETTER_TITLE = 'Ready to wear your fandom?';
 const DEFAULT_NEWSLETTER_TEXT = 'Get first access to new theme drops, restocks, and subscriber-only offers.';
@@ -31,6 +44,8 @@ const WHATSAPP_MESSAGE = 'Hi Fly Free, I would like more information about your 
 export function Footer() {
   const currentYear = new Date().getFullYear();
   const linkStyle = { color: 'var(--text-secondary)' };
+  const [shopLinks, setShopLinks] = useState<FooterCategory[]>([]);
+  const [pageLinks, setPageLinks] = useState<FooterPage[]>([]);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,10 +61,10 @@ export function Footer() {
   });
 
   useEffect(() => {
-    fetch(`${getApiBaseUrl()}/cms/home`)
+    fetch(`${getApiBaseUrl()}/cms/footer`, { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : null))
-      .then((home) => {
-        const settings = home?.settings || {};
+      .then((footer) => {
+        const settings = footer?.settings || {};
         setSupport({
           email: settings.supportEmail || settings.contactEmail || SUPPORT.email,
           phone: settings.contactPhone || SUPPORT.phone,
@@ -62,6 +77,8 @@ export function Footer() {
           whatsappMessage: settings.whatsappMessage || WHATSAPP_MESSAGE,
           socialLinks: settings.socialLinks || {}
         });
+        setShopLinks(Array.isArray(footer?.categories) ? footer.categories.filter(hasLinkNameAndSlug) : []);
+        setPageLinks(Array.isArray(footer?.pages) ? footer.pages.filter(hasPageRoute) : []);
       })
       .catch(() => {
         /* Keep the compiled-in defaults. */
@@ -145,23 +162,24 @@ export function Footer() {
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Shop</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/products" style={linkStyle}>All products</Link></li>
-              <li><Link href="/products?category=regular" style={linkStyle}>Regular</Link></li>
-              <li><Link href="/products?category=oversized" style={linkStyle}>Oversized</Link></li>
-              <li><Link href="/products?category=jersey" style={linkStyle}>Jersey</Link></li>
-              <li><Link href="/products?category=polo" style={linkStyle}>Polo</Link></li>
-              <li><Link href="/products?category=hoodie" style={linkStyle}>Hoodie</Link></li>
+              {shopLinks.map((category) => (
+                <li key={category.id || category.slug}>
+                  <Link href={`/products?category=${encodeURIComponent(category.slug)}`} style={linkStyle}>
+                    {category.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--text-primary)' }}>Company</h3>
             <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/about" style={linkStyle}>About us</Link></li>
-              <li><Link href="/contact" style={linkStyle}>Contact us</Link></li>
-              <li><Link href="/returns" style={linkStyle}>Returns &amp; exchange</Link></li>
-              <li><Link href="/shipping" style={linkStyle}>Shipping</Link></li>
-              <li><Link href="/terms" style={linkStyle}>Terms</Link></li>
-              <li><Link href="/privacy" style={linkStyle}>Privacy</Link></li>
+              {pageLinks.map((page) => (
+                <li key={page.id || page.slug}>
+                  <Link href={page.route} style={linkStyle}>{page.title}</Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -202,9 +220,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 pb-6 text-xs uppercase tracking-wide sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text-tertiary)' }}>
+        <div className="pb-6 text-xs uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
           <span>&copy; {currentYear} Fly Free. All rights reserved.</span>
-          <span>Secure checkout &middot; 30-day exchange support</span>
         </div>
       </div>
     </footer>
@@ -254,6 +271,14 @@ function SocialLinks({ links, whatsappMessage }: { links: FooterSupport['socialL
 function cleanUrl(value?: string) {
   const trimmed = String(value || '').trim();
   return trimmed || null;
+}
+
+function hasLinkNameAndSlug(item: any): item is FooterCategory {
+  return Boolean(String(item?.name || '').trim() && String(item?.slug || '').trim());
+}
+
+function hasPageRoute(item: any): item is FooterPage {
+  return Boolean(String(item?.title || '').trim() && String(item?.route || '').trim().startsWith('/'));
 }
 
 function whatsappHref(value?: string, message = WHATSAPP_MESSAGE) {
