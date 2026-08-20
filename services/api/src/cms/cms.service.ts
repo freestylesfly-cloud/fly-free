@@ -195,20 +195,24 @@ export class CmsService {
   }
 
   getTheme(slug: string) {
-    return this.prisma.theme.findUnique({
-      where: { slug },
-      include: {
-        products: {
-          where: { isVisible: true },
-          include: { images: true, category: true, collection: true },
-          orderBy: { createdAt: "desc" }
-        },
-        announcements: {
-          where: { isActive: true },
-          orderBy: [{ priority: "asc" }, { createdAt: "desc" }]
+    return this.safeQuery(
+      `theme ${slug}`,
+      () => this.prisma.theme.findUnique({
+        where: { slug },
+        include: {
+          products: {
+            where: { isVisible: true },
+            include: { images: true, category: true, collection: true },
+            orderBy: { createdAt: "desc" }
+          },
+          announcements: {
+            where: { isActive: true },
+            orderBy: [{ priority: "asc" }, { createdAt: "desc" }]
+          }
         }
-      }
-    });
+      }),
+      null
+    );
   }
 
   /** Drafts stay private — only published pages reach the storefront. */
