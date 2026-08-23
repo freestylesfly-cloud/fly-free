@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Minus, Plus, ShieldCheck, ShoppingBag, ShoppingCart as CartIcon, Trash2, Truck } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { CartItem, useCartStore } from '../stores/cartStore';
+import { getApiBaseUrl } from '../lib/api';
 
 function cartLineKey(item: CartItem) {
   return `${item.productId}-${item.variantId || 'variant'}-${item.size}-${item.color}-${item.hamperId || 'no-hamper'}-${item.offerCode || 'no-offer'}`;
@@ -12,6 +13,7 @@ function cartLineKey(item: CartItem) {
 
 export default function CartPage() {
   const items = useCartStore((state) => state.items);
+  const hasHydrated = useCartStore((state) => state.hasHydrated);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -20,6 +22,7 @@ export default function CartPage() {
   const getAmountToFreeDelivery = useCartStore((state) => state.getAmountToFreeDelivery);
   const getTotal = useCartStore((state) => state.getTotal);
   const loadDeliverySettings = useCartStore((state) => state.loadDeliverySettings);
+  const updateProductSlug = useCartStore((state) => state.updateProductSlug);
   const freeDeliveryAbove = useCartStore((state) => state.freeDeliveryAbove);
   const subtotal = getSubtotal();
   const shipping = getShippingFee();
@@ -30,6 +33,37 @@ export default function CartPage() {
   useEffect(() => {
     void loadDeliverySettings();
   }, [loadDeliverySettings]);
+
+  useEffect(() => {
+    const itemsMissingSlug = items.filter((item) => !item.productSlug);
+    if (!hasHydrated || itemsMissingSlug.length === 0) return;
+
+    let cancelled = false;
+    async function resolveCartSlugs() {
+      await Promise.all(
+        itemsMissingSlug.map(async (item) => {
+          try {
+            const response = await fetch(`${getApiBaseUrl()}/catalog/products/${item.productId}`, { cache: 'force-cache' });
+            if (!response.ok || cancelled) return;
+            const body = await response.json();
+            const product = body?.data || body;
+            if (product?.slug) updateProductSlug(item.productId, String(product.slug));
+          } catch {
+            // Keep the item in cart; the fallback link goes to all products.
+          }
+        })
+      );
+    }
+
+    void resolveCartSlugs();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasHydrated, items, updateProductSlug]);
+
+  if (!hasHydrated) {
+    return <CartSkeleton />;
+  }
 
   if (items.length === 0) {
     return (
@@ -70,6 +104,7 @@ export default function CartPage() {
         <section className="space-y-4">
           {items.map((item) => {
             const linePrice = item.price * item.quantity;
+            const productHref = item.productSlug ? `/products/${item.productSlug}` : '/products';
 
             return (
               <article
@@ -77,7 +112,7 @@ export default function CartPage() {
                 className="grid gap-4 rounded-lg border p-3 shadow-sm transition hover:shadow-md sm:grid-cols-[116px_minmax(0,1fr)] lg:grid-cols-[128px_minmax(0,1fr)_150px]"
                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
               >
-                <div className="aspect-square overflow-hidden rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                <Link href={productHref} className="aspect-square overflow-hidden rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} aria-label={item.productSlug ? `Open ${item.productName}` : 'Open all products'}>
                   {item.image ? (
                     <img src={item.image} alt={item.productName} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
                   ) : (
@@ -85,12 +120,13 @@ export default function CartPage() {
                       <CartIcon size={32} />
                     </div>
                   )}
-                </div>
+                </Link>
 
                 <div className="min-w-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h2 className="line-clamp-2 text-lg font-black">{item.productName}</h2>
+                      <Link href={productHref} className="line-clamp-2 text-lg font-black transition hover:opacity-70">{item.productName}</Link>
+                      {!item.productSlug && <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>Opening product link...</p>}
                       <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>{item.color} / {item.size}</p>
                     </div>
                     <button
@@ -192,7 +228,7 @@ export default function CartPage() {
             <div className="grid gap-3 pt-2 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               <TrustRow icon={<Truck size={17} />} text={`Free delivery over ${formatCurrency(freeDeliveryAbove)}`} />
               <TrustRow icon={<ShieldCheck size={17} />} text="Secure Razorpay checkout" />
-              <TrustRow icon={<BadgeCheck size={17} />} text="30-day exchange on every order" />
+              <TrustRow icon={<BadgeCheck size={17} />} text="7-day exchange on eligible items" />
             </div>
           </div>
         </aside>
@@ -222,6 +258,41 @@ function SummaryRow({ label, value, highlight }: { label: string; value: string;
       <span>{label}</span>
       <span className={highlight ? 'font-black' : 'font-bold'} style={highlight ? { color: 'var(--color-primary)' } : { color: 'var(--text-primary)' }}>{value}</span>
     </div>
+  );
+}
+
+function CartSkeleton() {
+  return (
+    <main className="min-h-screen pb-28" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <section className="border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+          <div className="h-5 w-28 animate-pulse rounded bg-black/10" />
+          <div className="mt-3 h-10 w-56 animate-pulse rounded bg-black/10" />
+        </div>
+      </section>
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="space-y-4">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="grid gap-4 rounded-lg border p-3 sm:grid-cols-[116px_minmax(0,1fr)]" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div className="aspect-square animate-pulse rounded bg-black/10" />
+              <div className="space-y-3 py-2">
+                <div className="h-5 w-3/4 animate-pulse rounded bg-black/10" />
+                <div className="h-4 w-1/3 animate-pulse rounded bg-black/10" />
+                <div className="h-10 w-32 animate-pulse rounded bg-black/10" />
+              </div>
+            </div>
+          ))}
+        </section>
+        <aside className="hidden rounded-lg border p-5 lg:block" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="h-7 w-40 animate-pulse rounded bg-black/10" />
+          <div className="mt-6 space-y-3">
+            <div className="h-4 animate-pulse rounded bg-black/10" />
+            <div className="h-4 animate-pulse rounded bg-black/10" />
+            <div className="h-12 animate-pulse rounded bg-black/10" />
+          </div>
+        </aside>
+      </div>
+    </main>
   );
 }
 

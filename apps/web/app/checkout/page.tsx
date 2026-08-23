@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, ShoppingBag, Plus, Loader2, Tag, Check, Truck, ShieldCheck, RotateCcw, Headphones, CreditCard, Wallet, Mail, PackageCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { MapPin, ShoppingBag, Plus, Loader2, Tag, Check, Truck, ShieldCheck, RotateCcw, Headphones, CreditCard, Mail, PackageCheck, Percent, X } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { trackEvent } from '../lib/analytics';
@@ -35,6 +37,9 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponMessage, setCouponMessage] = useState('');
   const [couponValid, setCouponValid] = useState(false);
+  const [firstOrderOffer, setFirstOrderOffer] = useState<any>(null);
+  const [showOfferDialog, setShowOfferDialog] = useState(false);
+  const [pricePulse, setPricePulse] = useState(false);
 
   const [addressForm, setAddressForm] = useState({
     fullName: '',
@@ -83,7 +88,29 @@ export default function CheckoutPage() {
     }
     loadAddresses();
     void loadDeliverySettings();
+    void loadFirstOrderOffer();
   }, [user, token]);
+
+  async function loadFirstOrderOffer() {
+    try {
+      const res = await fetch(`/api/ecommerce/first-order-offer`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.eligible && data?.code) {
+        setFirstOrderOffer(data);
+        setCouponCode(String(data.code).toUpperCase());
+        const dialogKey = `flyfree_offer_dialog_${data.code}`;
+        if (typeof window !== 'undefined' && window.sessionStorage.getItem(dialogKey) !== 'seen') {
+          setShowOfferDialog(true);
+          window.sessionStorage.setItem(dialogKey, 'seen');
+        }
+      }
+    } catch {
+      // Optional marketing offer; checkout still works without it.
+    }
+  }
 
   async function loadAddresses() {
     try {
@@ -107,20 +134,22 @@ export default function CheckoutPage() {
   }
 
   // Validate coupon
-  async function validateCoupon() {
-    if (!couponCode.trim()) {
+  async function validateCoupon(nextCode?: string) {
+    const codeToApply = String(nextCode || couponCode).trim().toUpperCase();
+    if (!codeToApply) {
       setCouponMessage('Enter a coupon code');
       return;
     }
 
     setCouponLoading(true);
+    setCouponCode(codeToApply);
     setCouponMessage('');
     setCouponValid(false);
     setAppliedCoupon(null);
 
     try {
       const cartProductIds = cartItems.map(item => item.productId);
-      const res = await fetch(`/api/ecommerce/coupons/${couponCode}?productIds=${cartProductIds.join(',')}`, {
+      const res = await fetch(`/api/ecommerce/coupons/${codeToApply}?productIds=${cartProductIds.join(',')}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -156,6 +185,25 @@ export default function CheckoutPage() {
   const shipping = getShippingFee();
   const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal() - baseDiscount;
+  const couponFeedbackText = couponValid && appliedCoupon
+    ? appliedCoupon.type === 'INFLUENCER'
+      ? `${appliedCoupon.influencer?.name || 'Influencer'} code applied. Discount added to eligible products.`
+      : `Coupon applied. ${appliedCoupon.discountPercent}% off.`
+    : couponMessage
+      ? couponMessage.replace(/^â\S+\s*/, '').trim()
+      : '';
+
+  useEffect(() => {
+    if (!couponValid || !appliedCoupon) return;
+    setPricePulse(true);
+    toast.success('Coupon applied', {
+      description: appliedCoupon.type === 'INFLUENCER'
+        ? 'Influencer discount added to eligible products.'
+        : `${appliedCoupon.discountPercent}% off. Total updated.`,
+    });
+    const timer = window.setTimeout(() => setPricePulse(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, [couponValid, appliedCoupon?.code]);
 
   async function handleCheckout() {
     if (!selectedAddress) {
@@ -507,13 +555,6 @@ export default function CheckoutPage() {
                     <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>UPI, cards, net banking, and wallets through Razorpay.</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-                  <Wallet size={20} className="mt-0.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
-                  <div>
-                    <p className="font-black" style={{ color: 'var(--text-primary)' }}>Cash on Delivery</p>
-                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Not enabled yet. Add COD only when return risk and courier charges are clear.</p>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -523,6 +564,25 @@ export default function CheckoutPage() {
                 <Tag size={20} />
                 Have a coupon?
               </h2>
+              {firstOrderOffer?.eligible && !couponValid && (
+                <div className="mb-3 rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>{firstOrderOffer.title || 'First order offer'}</p>
+                      <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>First purchase only. Code {firstOrderOffer.code} is checked again before payment.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => validateCoupon(firstOrderOffer.code)}
+                      disabled={couponLoading}
+                      className="rounded px-4 py-2 text-xs font-black text-white transition hover:opacity-90 disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    >
+                      Apply offer
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -533,7 +593,7 @@ export default function CheckoutPage() {
                   className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm disabled:bg-slate-100"
                 />
                 <button
-                  onClick={validateCoupon}
+                  onClick={() => validateCoupon()}
                   disabled={couponLoading || couponValid}
                   className="px-4 py-2 text-white font-bold rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
                   style={{ backgroundColor: 'var(--color-primary)' }}
@@ -541,23 +601,28 @@ export default function CheckoutPage() {
                   {couponLoading ? <Loader2 size={16} className="inline animate-spin" /> : 'Apply'}
                 </button>
                 {couponValid && (
-                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); }} className="px-4 py-2 border rounded-lg text-sm hover:opacity-80 transition" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
+                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); setCouponMessage('Coupon removed.'); toast('Coupon removed', { description: 'Your total has been updated.' }); }} className="px-4 py-2 border rounded-lg text-sm hover:opacity-80 transition" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
                     Remove
                   </button>
                 )}
               </div>
-              {couponMessage && (
-                <div className={`text-sm font-semibold p-2 rounded ${couponValid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {couponMessage}
-                </div>
+              {couponFeedbackText && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-center gap-2 rounded-lg p-3 text-sm font-bold ${couponValid ? 'bg-green-50 text-green-700 ring-1 ring-green-200' : 'bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200'}`}
+                >
+                  {couponValid ? <Check size={16} /> : <Tag size={16} />}
+                  {couponFeedbackText}
+                </motion.div>
               )}
               {appliedCoupon?.type === 'INFLUENCER' && (
                 <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
                   Influencer discount applied only to eligible products from {appliedCoupon.influencer.name}.
                 </div>
               )}
-              {!couponMessage && (
-                <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>Have an influencer code? Enter it here.</p>
+              {!couponFeedbackText && (
+                <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>Have an influencer or first-order code? Enter it here.</p>
               )}
             </div>
           </div>
@@ -595,12 +660,20 @@ export default function CheckoutPage() {
                 <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
                 <span style={{ color: 'var(--text-primary)' }}>&#8377;{formatMoney(subtotal)}</span>
               </div>
-              {baseDiscount > 0 && (
-                <div className="flex justify-between text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
-                  <span>Discount ({appliedCoupon?.discountPercent}%)</span>
-                  <span>-&#8377;{formatMoney(baseDiscount)}</span>
-                </div>
-              )}
+              <AnimatePresence>
+                {baseDiscount > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -8 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -8 }}
+                    className="flex justify-between rounded-lg px-3 py-2 text-sm font-black"
+                    style={{ color: '#15803d', backgroundColor: '#f0fdf4' }}
+                  >
+                    <span>Discount ({appliedCoupon?.discountPercent}%)</span>
+                    <span>-&#8377;{formatMoney(baseDiscount)}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="flex justify-between text-sm">
                 <span style={{ color: 'var(--text-secondary)' }}>Delivery</span>
                 <span style={{ color: shipping === 0 ? 'var(--color-secondary)' : 'var(--text-primary)' }}>
@@ -612,7 +685,7 @@ export default function CheckoutPage() {
                   Add &#8377;{formatMoney(toFreeDelivery)} more to get free delivery.
                 </p>
               )}
-              <div className="flex justify-between text-lg font-black pt-3" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
+              <div className={`flex justify-between rounded-lg pt-3 text-lg font-black transition duration-500 ${pricePulse ? 'px-3 pb-3 ring-2 ring-green-200' : ''}`} style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px', backgroundColor: pricePulse ? '#f0fdf4' : 'transparent' }}>
                 <span style={{ color: 'var(--text-primary)' }}>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(total)}</span>
               </div>
@@ -621,7 +694,7 @@ export default function CheckoutPage() {
             <div className="mb-5 grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4" style={{ color: 'var(--text-secondary)' }}>
               <div className="flex items-center gap-1"><ShieldCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Secure</div>
               <div className="flex items-center gap-1"><Truck size={15} style={{ color: 'var(--color-secondary)' }} /> Free delivery</div>
-              <div className="flex items-center gap-1"><RotateCcw size={15} style={{ color: 'var(--color-secondary)' }} /> 30-day exchange</div>
+              <div className="flex items-center gap-1"><RotateCcw size={15} style={{ color: 'var(--color-secondary)' }} /> 7-day exchange</div>
               <div className="flex items-center gap-1"><PackageCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Quality checked</div>
             </div>
 
@@ -654,6 +727,50 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {showOfferDialog && firstOrderOffer?.eligible && !couponValid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl" style={{ color: 'var(--text-primary)' }}>
+            <button
+              type="button"
+              onClick={() => setShowOfferDialog(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border transition hover:bg-black/5"
+              style={{ borderColor: 'var(--border-color)' }}
+              aria-label="Close offer"
+            >
+              <X size={18} />
+            </button>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg" style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Percent size={38} />
+            </div>
+            <h2 className="mt-5 text-2xl font-black">{firstOrderOffer.title || 'Special Offer Unlocked'}</h2>
+            <p className="mx-auto mt-3 max-w-sm text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
+              Apply code <span className="font-black" style={{ color: 'var(--text-primary)' }}>{firstOrderOffer.code}</span> on this first order before payment.
+            </p>
+            <div className="mt-6 grid grid-cols-[1fr_1.4fr] gap-3">
+              <button
+                type="button"
+                onClick={() => setShowOfferDialog(false)}
+                className="rounded border px-4 py-3 text-sm font-black"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                Later
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOfferDialog(false);
+                  void validateCoupon(firstOrderOffer.code);
+                }}
+                className="rounded px-4 py-3 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5"
+                style={{ backgroundColor: 'var(--color-primary)' }}
+              >
+                Apply offer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

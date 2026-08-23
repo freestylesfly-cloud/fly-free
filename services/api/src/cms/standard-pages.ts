@@ -101,7 +101,7 @@ Order and invoice records are kept as long as required for tax and accounting.`
     content: `We want the fit to be right. If it is not, here is how to sort it.
 
 ## Exchange window
-Request an exchange within 30 days of delivery.
+Request a size or fit exchange within 7 days of delivery.
 
 ## Condition
 - Unworn and unwashed, with original tags attached
@@ -112,6 +112,9 @@ Request an exchange within 30 days of delivery.
 - Custom and personalised products made to your design
 - Items marked final sale
 - Innerwear and socks, for hygiene reasons
+
+## Returns and refunds
+We do not offer returns or refunds.
 
 ## How to request
 1. Contact support with your order number and the size you need

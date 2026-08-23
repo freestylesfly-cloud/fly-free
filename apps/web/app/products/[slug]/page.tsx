@@ -2,6 +2,8 @@
 
 import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   ArrowRight,
   ChevronLeft,
@@ -61,6 +63,7 @@ const DEFAULT_PRODUCT_WHATSAPP_MESSAGE = 'Check out {productName} at Fly Free! {
 
 export default function ProductDetailPage({ params }: ProductDetailProps) {
   const { slug } = use(params);
+  const router = useRouter();
   const token = useAuthStore((state) => state.token);
   const addItem = useCartStore((state) => state.addItem);
   const [product, setProduct] = useState<any>(null);
@@ -79,7 +82,6 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [showZoom, setShowZoom] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
-  const [notice, setNotice] = useState('');
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -144,6 +146,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         const productResponseData = await productResponse.json();
         const productData = productResponseData?.data || productResponseData;
         setProduct(productData);
+        if (productData?.slug && productData.slug !== slug) {
+          router.replace(`/products/${productData.slug}`);
+        }
 
         if (productData.images?.length > 0) {
           setSelectedImage(normalizeImages(productData.images, productData.name)[0]);
@@ -226,6 +231,16 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     setSelectedImage(galleryImages[0] || null);
   }, [galleryImages]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    galleryImages.slice(0, 6).forEach((image) => {
+      if (!image?.url || image.url === activeImage?.url) return;
+      const preload = new window.Image();
+      preload.src = image.url;
+    });
+  }, [galleryImages, activeImage?.url]);
+
   async function checkWishlistStatus() {
     if (!token) return;
     try {
@@ -253,6 +268,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       color: selectedVariant?.color || selectedColor || 'Default',
       size: selectedSize,
       image: activeImage?.url || '',
+      productSlug: product.slug || slug,
       hamperId: selectedHamperId || undefined,
       hamperName: selectedHamper?.name,
       offerCode: undefined
@@ -269,13 +285,18 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         price: Math.round(totalPrice / 100)
       }
     });
-    setNotice('Added to cart successfully!');
-    setTimeout(() => setNotice(''), 3000);
+    toast.success('Added to cart', { description: product.name });
+  }
+
+  function handleBuyNow() {
+    if (!canAdd) return;
+    handleAddToCart();
+    router.push('/checkout');
   }
 
   async function handleWishlist() {
     if (!token) {
-      setNotice('Please login to add to wishlist');
+      toast('Login required', { description: 'Please login to save this product.' });
       return;
     }
 
@@ -288,7 +309,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       });
 
       if (response.status === 401 || response.status === 403) {
-        setNotice('Your session expired. Please login again.');
+        toast.error('Session expired', { description: 'Please login again to save this product.' });
         return;
       }
 
@@ -299,11 +320,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       }
 
       setIsWishlisted(!isWishlisted);
-      setNotice(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
-      setTimeout(() => setNotice(''), 2000);
+      toast(isWishlisted ? 'Removed from wishlist' : 'Saved to wishlist', { description: product.name });
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not update wishlist');
-      setTimeout(() => setNotice(''), 4000);
+      toast.error('Wishlist update failed', { description: err instanceof Error ? err.message : 'Could not update wishlist' });
     } finally {
       setWishlistLoading(false);
     }
@@ -313,6 +332,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     const url = typeof window !== 'undefined' ? window.location.href : '';
     navigator.clipboard.writeText(url);
     setCopySuccess(true);
+    toast('Product link copied', { description: product.name });
     setTimeout(() => setCopySuccess(false), 2000);
   }
 
@@ -365,7 +385,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-20 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <main className="min-h-screen px-4 py-6 pb-48 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, activeImage?.url, productUrl, totalPrice, averageRating, reviewCount, stock)) }}
@@ -457,18 +477,46 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         </div>
 
         {/* Product Info Sidebar */}
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
           {/* Header */}
           <div>
-            <div className="mb-2 text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-              {product.theme?.name || 'Fly Free'} • {product.category?.name || 'Apparel'}
+            <div className="mb-2 flex items-start justify-between gap-4">
+              <div className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+                {product.theme?.name || 'Fly Free'} • {product.category?.name || 'Apparel'}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={handleWishlist}
+                  disabled={wishlistLoading}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-50"
+                  style={{
+                    borderColor: isWishlisted ? 'var(--color-primary)' : 'var(--border-color)',
+                    backgroundColor: isWishlisted ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'var(--bg-secondary)',
+                    color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)'
+                  }}
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  title={isWishlisted ? 'Saved' : 'Save'}
+                >
+                  <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
+                </button>
+                <button
+                  onClick={() => setShowShareMenu(!showShareMenu)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:shadow-sm"
+                  style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                  aria-label="Share product"
+                  title="Share"
+                >
+                  <Share2 size={18} />
+                </button>
+              </div>
             </div>
             <h1 className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{product.name}</h1>
             {product.tagline && <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>{product.tagline}</p>}
           </div>
 
           {/* Price & Rating */}
-          <div className="flex items-center justify-between gap-4 border-t border-b py-3" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-2xl font-black">
                 {formatCurrency(Math.round(totalPrice / 100))}
@@ -490,21 +538,32 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             <div className="text-right">
               {averageRating > 0 ? (
                 <>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-end gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star key={i} size={16} fill={i < Math.round(averageRating) ? 'currentColor' : 'none'} style={{ color: 'var(--accent-tertiary)' }} />
                   ))}
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>({reviewCount})</p>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{averageRating.toFixed(1)} ({reviewCount})</p>
                 </>
               ) : (
-                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>No reviews yet</p>
+                <div>
+                  <div className="flex items-center justify-end gap-1 opacity-45">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={15} fill="none" style={{ color: 'var(--text-tertiary)' }} />
+                    ))}
+                  </div>
+                  <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>No reviews yet</p>
+                </div>
               )}
             </div>
+            </div>
+            <a href="#reviews" className="mt-3 inline-flex items-center gap-1 text-xs font-black" style={{ color: 'var(--color-primary)' }}>
+              Reviews <ArrowRight size={13} />
+            </a>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div className="relative hidden gap-2">
             <button
               onClick={handleWishlist}
               disabled={wishlistLoading}
@@ -606,55 +665,92 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             </ChoiceBlock>
           )}
 
-          <ChoiceBlock title="Delivery Details" subtitle="Delivery and serviceability are calculated at checkout from admin settings.">
-            <div className="rounded border p-4 text-sm font-bold" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-              Add or choose your shipping address during checkout. Paid orders keep the address used at order time, so later profile address changes do not rewrite old invoices.
+          <div className="hidden overflow-hidden rounded-lg border shadow-sm lg:block" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="border-b p-4" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Ready to checkout</p>
+                  <p className="mt-1 text-lg font-black" style={{ color: 'var(--text-primary)' }}>{formatCurrency(Math.round(totalPrice / 100))}</p>
+                </div>
+                <div className="flex items-center rounded-full border p-1" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/5" aria-label="Decrease quantity"><Minus size={17} /></button>
+                  <span className="min-w-10 text-center text-sm font-black">{quantity}</span>
+                  <button onClick={() => setQuantity(quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/5" aria-label="Increase quantity"><Plus size={17} /></button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                {selectedSize ? `Size ${selectedSize}` : 'Choose size'} {selectedVariant?.color ? ` / ${selectedVariant.color}` : ''} {stock > 0 ? ` / ${stock} in stock` : ''}
+              </p>
             </div>
-          </ChoiceBlock>
-
-          <div className="flex items-center gap-3">
-            <div className="flex min-h-12 items-center rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3"><Minus size={18} /></button>
-              <span className="min-w-10 text-center font-black">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="p-3"><Plus size={18} /></button>
+            <div className="grid gap-3 p-4">
+              <button onClick={handleBuyNow} disabled={!canAdd} className="flex min-h-14 items-center justify-center gap-2 rounded px-5 py-4 text-base font-black text-white transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
+                Buy now <ArrowRight size={19} />
+              </button>
+              <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded border px-5 font-black transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50" style={{ borderColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)', color: canAdd ? 'var(--color-primary)' : 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}>
+                <ShoppingCart size={19} /> Add to cart
+              </button>
             </div>
-            <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded px-5 font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
-              <ShoppingCart size={20} /> Add to cart
-            </button>
           </div>
 
-          {notice && (
-            <p className="rounded border p-3 text-sm font-bold" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-              {notice}
-            </p>
-          )}
-
-          <div className="grid gap-3 border-t pt-5 text-sm" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-            <InfoRow icon={<Truck size={18} />} title="Delivery" text="Cart shows subtotal, delivery, hamper, and final total before checkout. No tax is added." />
-            <InfoRow icon={<PackageCheck size={18} />} title="Exchange Policy" text="Size or fit not right? Exchange within 30 days. We do not offer returns or refunds." />
-            <InfoRow icon={<Heart size={18} />} title="Wishlist" text="Save products after login. Guest cart still works before login." />
-            <InfoRow icon={<Share2 size={18} />} title="Share or influencer link" text="Referral and influencer links can be tracked when opened with a valid code." />
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            <TrustPill icon={<Truck size={15} />} text="Delivery calculated at checkout" />
+            <TrustPill icon={<PackageCheck size={15} />} text="7-day exchange" />
+            <TrustPill icon={<Heart size={15} />} text="Wishlist after login" />
+            <TrustPill icon={<Share2 size={15} />} text="Shareable product link" />
           </div>
         </aside>
       </section>
 
+      <div
+        className="fixed inset-x-3 bottom-[calc(88px+env(safe-area-inset-bottom))] z-30 rounded-2xl border p-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] lg:hidden"
+        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_1fr] gap-2">
+          <div className="flex min-h-12 items-center rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3" aria-label="Decrease quantity"><Minus size={17} /></button>
+            <span className="min-w-8 text-center text-sm font-black">{quantity}</span>
+            <button onClick={() => setQuantity(quantity + 1)} className="p-3" aria-label="Increase quantity"><Plus size={17} /></button>
+          </div>
+          <button onClick={handleBuyNow} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded px-3 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
+            Buy now
+          </button>
+          <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded border px-3 text-sm font-black disabled:opacity-50" style={{ borderColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)', color: canAdd ? 'var(--color-primary)' : 'var(--text-secondary)' }}>
+            <ShoppingCart size={17} /> Add
+          </button>
+        </div>
+      </div>
+
       {/* Product Details & Reviews */}
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1fr_0.9fr]">
-        <article className="rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <h2 className="text-2xl font-black">Product Details</h2>
-          <div className="mt-5 grid gap-3 text-sm">
-            <DetailRow label="Brand" value={product.brand || 'Fly Free'} />
-            <DetailRow label="Material" value={product.material || 'Premium cotton blend'} />
-            <DetailRow label="Fit / Type" value={product.category?.name || 'Regular'} />
-            <DetailRow label="Wash care" value={product.washCare || 'Gentle machine wash. Do not bleach.'} />
-            <DetailRow label="Wearer" value="Unisex" />
-            <DetailRow label="Theme" value={product.theme?.name || 'Fly Free'} />
+        <article className="rounded-lg border p-5 shadow-sm" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Specifications</p>
+              <h2 className="mt-1 text-2xl font-black">Product Details</h2>
+            </div>
+            <span className="rounded-full border px-3 py-1 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
+              {product.category?.name || 'Regular'}
+            </span>
           </div>
           {product.description && <p className="mt-5 leading-7" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>}
+          <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+            <SpecTile label="Brand" value={product.brand || 'Fly Free'} />
+            <SpecTile label="Material" value={product.material || 'Premium cotton blend'} />
+            <SpecTile label="Fit / Type" value={product.category?.name || 'Regular'} />
+            <SpecTile label="Wearer" value="Unisex" />
+            <SpecTile label="Theme" value={product.theme?.name || 'Fly Free'} />
+            <SpecTile label="Wash care" value={product.washCare || 'Gentle machine wash. Do not bleach.'} />
+          </div>
         </article>
 
-        <article id="reviews" className="scroll-mt-24 rounded border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <h2 className="text-2xl font-black">Customer Reviews</h2>
+        <article id="reviews" className="scroll-mt-24 rounded-lg border p-5 shadow-sm" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Reviews</p>
+              <h2 className="mt-1 text-2xl font-black">Customer Reviews</h2>
+            </div>
+            <RatingBadge rating={averageRating} count={reviewCount} />
+          </div>
           <div className="mt-5 grid gap-4">
             {(product.reviews || []).length > 0 ? (
               product.reviews.map((review: any) => (
@@ -686,7 +782,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 </div>
               ))
             ) : (
-              <p style={{ color: 'var(--text-secondary)' }}>No approved reviews yet. Verified customers can review after purchase.</p>
+              <EmptyReviews />
             )}
           </div>
         </article>
@@ -725,6 +821,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   slug={rec.slug}
                   image={rec.images?.[0]?.url}
                   hoverImage={rec.images?.[1]?.url}
+                  images={rec.images}
                   tag={rec.theme?.name || rec.category?.name}
                 />
               ))}
@@ -836,6 +933,48 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   );
 }
 
+function SpecTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+      <p className="text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+      <p className="mt-1 text-sm font-black leading-5" style={{ color: 'var(--text-primary)' }}>{value}</p>
+    </div>
+  );
+}
+
+function RatingBadge({ rating, count }: { rating: number; count: number }) {
+  return (
+    <div className="rounded-lg border px-4 py-3 text-right" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+      <div className="flex items-center justify-end gap-1">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star key={index} size={16} fill={rating > 0 && index < Math.round(rating) ? 'currentColor' : 'none'} style={{ color: 'var(--accent-tertiary)' }} />
+        ))}
+      </div>
+      <p className="mt-1 text-sm font-black" style={{ color: 'var(--text-primary)' }}>{rating > 0 ? rating.toFixed(1) : 'New'}</p>
+      <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{count} review{count === 1 ? '' : 's'}</p>
+    </div>
+  );
+}
+
+function EmptyReviews() {
+  return (
+    <div className="rounded-lg border p-5 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}>
+        <Star size={28} />
+      </div>
+      <div className="mt-4 flex justify-center gap-1 opacity-60">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star key={index} size={18} fill="none" style={{ color: 'var(--accent-tertiary)' }} />
+        ))}
+      </div>
+      <h3 className="mt-3 text-lg font-black" style={{ color: 'var(--text-primary)' }}>No reviews yet</h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+        Verified buyers can add ratings and photos after delivery. The first review will appear here after approval.
+      </p>
+    </div>
+  );
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
@@ -934,6 +1073,15 @@ function InfoRow({ icon, title, text }: { icon: React.ReactNode; title: string; 
         <span className="block font-black" style={{ color: 'var(--text-primary)' }}>{title}</span>
         <span style={{ color: 'var(--text-secondary)' }}>{text}</span>
       </span>
+    </div>
+  );
+}
+
+function TrustPill({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+      <span className="shrink-0" style={{ color: 'var(--color-primary)' }}>{icon}</span>
+      <span className="leading-4">{text}</span>
     </div>
   );
 }

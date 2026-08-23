@@ -267,13 +267,14 @@ export class EcommerceService {
   }
 
   // ==================== COUPONS ====================
-  async validateCoupon(code: string, cartProductIds?: string[]) {
+  async validateCoupon(code: string, cartProductIds?: string[], token?: string) {
     const normalized = String(code || "").trim().toUpperCase();
     const coupon = await this.prisma.coupon.findUnique({ where: { code: normalized } });
     const influencer = await this.prisma.influencer.findUnique({
       where: { code: normalized },
       include: { products: true }
     }).catch(() => null);
+    const firstOrderOffer = await this.getFirstOrderOfferForToken(token).catch(() => null);
 
     // Influencer coupon validation
     if (!coupon && influencer?.isActive) {
@@ -311,6 +312,10 @@ export class EcommerceService {
       return { valid: false, message: "Coupon is invalid or expired" };
     }
 
+    if (firstOrderOffer?.enabled && normalized === firstOrderOffer.code && !firstOrderOffer.eligible) {
+      return { valid: false, message: "This offer is only valid on your first order" };
+    }
+
     // Check if coupon is within date range
     const now = new Date();
     if ((coupon.startsAt && now < coupon.startsAt) || (coupon.endsAt && now > coupon.endsAt)) {
@@ -331,6 +336,16 @@ export class EcommerceService {
       where: { isActive: true },
       take: limit
     });
+  }
+
+  async getFirstOrderOffer(token: string) {
+    const offer = await this.getFirstOrderOfferForToken(token);
+    if (!offer.enabled || !offer.code) return { eligible: false };
+    return {
+      eligible: offer.eligible,
+      code: offer.code,
+      title: offer.title
+    };
   }
 
   // ==================== ORDER TRACKING ====================
@@ -442,6 +457,22 @@ export class EcommerceService {
     } catch {
       throw new UnauthorizedException("Invalid login session");
     }
+  }
+
+  private async getFirstOrderOfferForToken(token?: string) {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+    const enabled = value?.firstOrderOfferEnabled === true;
+    const code = String(value?.firstOrderOfferCode || "").trim().toUpperCase();
+    const title = String(value?.firstOrderOfferTitle || "First order offer").trim();
+
+    if (!enabled || !code || !token) {
+      return { enabled, eligible: false, code, title };
+    }
+
+    const userId = this.extractUserId(token);
+    const orderCount = await this.prisma.order.count({ where: { userId } });
+    return { enabled, eligible: orderCount === 0, code, title };
   }
 
   private toOrderDto(order: any): any {

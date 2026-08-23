@@ -94,7 +94,7 @@ export class CommerceService {
    */
   async createCheckout(body: any, token?: string) {
     const userId = this.extractUserId(token);
-    const quote = await this.priceCheckout(body);
+    const quote = await this.priceCheckout(body, userId);
 
     await this.assertStockAvailable(quote);
 
@@ -196,7 +196,7 @@ export class CommerceService {
    * it is verified, so the customer is charged and billed off the same numbers
    * and nothing the browser sends can set a price.
    */
-  private async priceCheckout(body: any) {
+  private async priceCheckout(body: any, userId: string) {
     if (!Array.isArray(body.items) || body.items.length === 0) {
       throw new BadRequestException("Checkout needs at least one cart item");
     }
@@ -244,7 +244,7 @@ export class CommerceService {
     );
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const coupon = body.couponCode || body.offerCode ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal) : null;
+    const coupon = body.couponCode || body.offerCode ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal, userId) : null;
     const discount = coupon?.discount || 0;
 
     // Delivery is the only charge on top of items; there is no tax line.
@@ -597,7 +597,7 @@ export class CommerceService {
     };
   }
 
-  private async resolveCoupon(code: string, subtotal: number) {
+  private async resolveCoupon(code: string, subtotal: number, userId: string) {
     const normalized = String(code || "").trim().toUpperCase();
     if (!normalized) return null;
 
@@ -608,6 +608,7 @@ export class CommerceService {
     if (coupon?.isActive) {
       if ((coupon.startsAt && now < coupon.startsAt) || (coupon.endsAt && now > coupon.endsAt)) return null;
       if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) return null;
+      if (await this.isBlockedFirstOrderOffer(normalized, userId)) return null;
 
       const percentDiscount = coupon.discountPercent ? Math.round(subtotal * (coupon.discountPercent / 100)) : 0;
       return {
@@ -626,6 +627,17 @@ export class CommerceService {
     }
 
     return null;
+  }
+
+  private async isBlockedFirstOrderOffer(code: string, userId: string) {
+    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
+    const value = setting?.value as any;
+    const offerEnabled = value?.firstOrderOfferEnabled === true;
+    const offerCode = String(value?.firstOrderOfferCode || "").trim().toUpperCase();
+    if (!offerEnabled || !offerCode || code !== offerCode) return false;
+
+    const previousOrders = await this.prisma.order.count({ where: { userId } });
+    return previousOrders > 0;
   }
 
   /** `reference` is only a receipt label — there is no order yet at this point. */

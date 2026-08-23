@@ -75,8 +75,13 @@ export class CatalogService {
   }
 
   async getProduct(slug: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
+    const product = await this.prisma.product.findFirst({
+      where: {
+        OR: [
+          { slug },
+          { id: slug }
+        ]
+      },
       include: {
         category: true,
         theme: true,

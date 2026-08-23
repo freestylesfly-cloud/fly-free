@@ -186,6 +186,7 @@ export function ThemeProductGrid({ products }: { products: ThemeProduct[] }) {
                 originalPrice={product.compareAtPrice ? Math.round(product.compareAtPrice / 100) : undefined}
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
+                images={product.images}
                 tag={product.category?.name}
               />
             ))}

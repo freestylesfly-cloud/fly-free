@@ -37,9 +37,9 @@ export const BRAND = {
 
   fonts: {
     /** Body copy. */
-    body: "'Times New Roman', Georgia, serif",
+    body: 'calibreFont, "calibreFont Fallback", Arial, sans-serif',
     /** Headings and display type. */
-    heading: "'Times New Roman', Georgia, serif"
+    heading: 'calibreFont, "calibreFont Fallback", Arial, sans-serif'
   },
 
   /** Section reveal style: 'fade' | 'rise' | 'none'. */

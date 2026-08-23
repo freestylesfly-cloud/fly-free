@@ -541,7 +541,7 @@ export class EmailService implements OnModuleInit {
                         : ""
                     }
                     <div style="border-top:1px solid #E6E6E2;margin-top:18px;padding-top:14px;font-size:11px;line-height:1.7;color:#9A9A9A;">
-                      Secure checkout &middot; 30-day exchange support<br />
+                      Secure checkout &middot; 7-day exchange support<br />
                       &copy; ${new Date().getFullYear()} Fly Free. All rights reserved.
                       ${
                         unsubscribeUrl

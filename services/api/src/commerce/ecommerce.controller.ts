@@ -123,14 +123,19 @@ export class EcommerceController {
   // ==================== COUPONS ====================
   @ApiTags("🎟️ Coupons")
   @Get("coupons/:code")
-  validateCoupon(@Param("code") code: string, @Query("productIds") productIds?: string) {
+  validateCoupon(@Param("code") code: string, @Query("productIds") productIds?: string, @Headers("authorization") token?: string) {
     const productIdList = productIds ? productIds.split(",") : [];
-    return this.commerceService.validateCoupon(code, productIdList);
+    return this.commerceService.validateCoupon(code, productIdList, token);
   }
 
   @Get("coupons")
   listCoupons(@Query("limit") limit?: string) {
     return this.commerceService.listCoupons(limit ? parseInt(limit) : 10);
+  }
+
+  @Get("first-order-offer")
+  getFirstOrderOffer(@Headers("authorization") token: string) {
+    return this.commerceService.getFirstOrderOffer(token);
   }
 
   // ==================== ORDER TRACKING ====================

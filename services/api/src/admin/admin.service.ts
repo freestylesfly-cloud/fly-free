@@ -742,7 +742,7 @@ export class AdminService {
     // ---- footer
     ops.push({ kind: "rect", x: 50, y: 96, width: 495, height: 0.8, color: hairline });
     ops.push({ kind: "text", text: "Prices are inclusive. No additional tax is charged.", x: 50, y: 78, size: 8, color: muted });
-    ops.push({ kind: "text", text: "Exchange available within 30 days of delivery. We do not offer returns or refunds.", x: 50, y: 65, size: 8, color: muted });
+    ops.push({ kind: "text", text: "Exchange available within 7 days of delivery. We do not offer returns or refunds.", x: 50, y: 65, size: 8, color: muted });
     ops.push({ kind: "text", text: `Questions? ${settings.supportEmail || settings.contactEmail || "support@flyfree.com"}`, x: 50, y: 52, size: 8, color: muted });
     ops.push({ kind: "text", text: `Thank you for shopping with ${brand}.`, x: 537, y: 52, size: 9, bold: true, color: ink, align: "right" });
 
@@ -1203,6 +1203,7 @@ export class AdminService {
 
     // Email footers render from a cached snapshot of these values.
     await this.emailService.refreshContactDetails();
+    await this.syncFirstOrderOfferCoupon(merged);
 
     return { data: setting.value };
   }
@@ -1231,6 +1232,10 @@ export class AdminService {
       // Orders at or above the threshold ship free. Values are in rupees.
       deliveryFee: 60,
       freeDeliveryAbove: 1000,
+      firstOrderOfferEnabled: false,
+      firstOrderOfferCode: "",
+      firstOrderOfferTitle: "First order offer",
+      firstOrderOfferDiscountPercent: 10,
       footerText: "Fly Free. Designed for comfort and self-expression.",
       newsletterTitle: "Ready to wear your fandom?",
       newsletterText: "Get first access to new theme drops, restocks, and subscriber-only offers.",
@@ -1238,6 +1243,30 @@ export class AdminService {
       whatsappMessage: "Hi Fly Free, I would like more information about your products.",
       socialLinks: {}
     };
+  }
+
+  private async syncFirstOrderOfferCoupon(settings: any) {
+    const enabled = settings?.firstOrderOfferEnabled === true;
+    const code = String(settings?.firstOrderOfferCode || "").trim().toUpperCase();
+    const discountPercent = Number(settings?.firstOrderOfferDiscountPercent || 0);
+
+    if (!code) return;
+
+    await this.prisma.coupon.upsert({
+      where: { code },
+      update: {
+        description: settings?.firstOrderOfferTitle || "First order offer",
+        discountPercent: discountPercent > 0 ? discountPercent : null,
+        discountAmount: null,
+        isActive: enabled
+      },
+      create: {
+        code,
+        description: settings?.firstOrderOfferTitle || "First order offer",
+        discountPercent: discountPercent > 0 ? discountPercent : null,
+        isActive: enabled
+      }
+    });
   }
 
   /**

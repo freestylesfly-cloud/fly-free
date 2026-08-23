@@ -4,6 +4,7 @@ import { getApiBaseUrl } from '../lib/api';
 
 export interface CartItem {
   productId: string;
+  productSlug?: string;
   productName: string;
   price: number;
   quantity: number;
@@ -20,6 +21,7 @@ export interface CartItem {
 interface CartStore {
   items: CartItem[];
   loading: boolean;
+  hasHydrated: boolean;
   /** Delivery pricing, managed by admin. Rupees. */
   deliveryFee: number;
   freeDeliveryAbove: number;
@@ -28,7 +30,9 @@ interface CartStore {
   addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
   removeItem: (productId: string, size: string, color: string, variantId?: string, hamperId?: string, offerCode?: string) => void;
   updateQuantity: (productId: string, size: string, color: string, quantity: number, variantId?: string, hamperId?: string, offerCode?: string) => void;
+  updateProductSlug: (productId: string, productSlug: string) => void;
   clearCart: () => void;
+  setHasHydrated: () => void;
 
   // Calculations — item total plus delivery. There is no tax line.
   getSubtotal: () => number;
@@ -49,6 +53,7 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       loading: false,
+      hasHydrated: false,
       deliveryFee: DEFAULT_DELIVERY_FEE,
       freeDeliveryAbove: DEFAULT_FREE_ABOVE,
 
@@ -110,8 +115,22 @@ export const useCartStore = create<CartStore>()(
         set({ items });
       },
 
+      updateProductSlug: (productId, productSlug) => {
+        if (!productSlug) return;
+        const items = get().items.map((item) =>
+          item.productId === productId && item.productSlug !== productSlug
+            ? { ...item, productSlug }
+            : item
+        );
+        set({ items });
+      },
+
       clearCart: () => {
         set({ items: [] });
+      },
+
+      setHasHydrated: () => {
+        set({ hasHydrated: true });
       },
 
       getSubtotal: () => {
@@ -157,6 +176,9 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: CART_KEY,
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated?.();
+      },
       partialize: (state) => ({
         items: state.items
       })

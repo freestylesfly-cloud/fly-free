@@ -157,6 +157,7 @@ export default async function HomePage() {
                 slug={product.slug}
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
+                images={product.images}
                 tag={product.theme?.name}
               />
             </div>
@@ -209,6 +210,7 @@ export default async function HomePage() {
                 slug={product.slug}
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
+                images={product.images}
                 tag={product.theme?.name || product.category?.name}
               />
             </div>

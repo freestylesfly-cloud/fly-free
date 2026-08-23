@@ -1,8 +1,9 @@
 'use client';
 
-import { Heart, Share2, Shirt, ShoppingCart, X } from 'lucide-react';
+import { CheckCircle2, Heart, Share2, Shirt, ShoppingCart, X } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { formatCurrency } from '../lib/utils';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
 import { trackEvent } from '../lib/analytics';
@@ -15,13 +16,15 @@ interface ProductCardProps {
   price: number;
   image?: string | null;
   hoverImage?: string | null;
+  images?: Array<{ url?: string | null; alt?: string | null }>;
   tag?: string;
   slug: string;
   originalPrice?: number;
 }
 
-export function ProductCard({ id, name, price, image, hoverImage, tag, slug, originalPrice }: ProductCardProps) {
+export function ProductCard({ id, name, price, image, hoverImage, images = [], tag, slug, originalPrice }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [wishlistError, setWishlistError] = useState('');
@@ -33,6 +36,20 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
   // MRP is 0, and JSX renders that 0 as a stray character next to the price.
   const hasDiscount = Boolean(originalPrice) && (originalPrice as number) > price;
   const discountPercent = hasDiscount ? Math.round(((originalPrice! - price) / originalPrice!) * 100) : 0;
+  const imageList = (images.length ? images : [{ url: image }, { url: hoverImage }])
+    .map((item) => item?.url)
+    .filter(Boolean) as string[];
+  const selectedImage = imageList[selectedImageIndex] || image || undefined;
+  const selectedHoverImage = hoverImage && hoverImage !== selectedImage ? hoverImage : imageList.find((url) => url !== selectedImage);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    imageList.slice(0, 5).forEach((url) => {
+      if (!url) return;
+      const preload = new window.Image();
+      preload.src = url;
+    });
+  }, [imageList.join('|')]);
 
   const handleAddToCart = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -45,13 +62,15 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       quantity: 1,
       size: 'M',
       color: 'Black',
-      image: image || undefined,
+      image: selectedImage || undefined,
+      productSlug: slug,
     });
     trackEvent('add_to_cart', {
       productId: id,
       productSlug: slug,
       metadata: { source: 'product_card', price, quantity: 1 }
     });
+    toast.success('Added to cart', { description: name });
     window.setTimeout(() => setIsAdding(false), 700);
   };
 
@@ -83,6 +102,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       if (!response.ok) throw new Error(data?.error || data?.message || 'Could not update wishlist');
 
       setIsWishlisted(!isWishlisted);
+      toast(isWishlisted ? 'Removed from wishlist' : 'Saved to wishlist', { description: name });
     } catch (error) {
       setWishlistError(error instanceof Error ? error.message : 'Could not update wishlist');
       window.setTimeout(() => setWishlistError(''), 3000);
@@ -102,6 +122,7 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       } else {
         await navigator.clipboard.writeText(url);
         setShareText('Copied');
+        toast('Product link copied', { description: name });
         window.setTimeout(() => setShareText('Share'), 1200);
       }
     } catch {
@@ -111,16 +132,16 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
 
   return (
     <article
-      className="group relative h-full overflow-hidden border bg-white transition hover:shadow-lg"
+      className="group relative h-full overflow-hidden border bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
       style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
     >
       <Link href={`/products/${slug}`} className="block">
         <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-          {image ? (
+          {selectedImage ? (
             <>
-              <img src={image} alt={name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105 group-hover:opacity-0" />
-              {hoverImage && hoverImage !== image && (
-                <img src={hoverImage} alt={`${name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+              <img src={selectedImage} alt={name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-0" />
+              {selectedHoverImage && (
+                <img src={selectedHoverImage} alt={`${name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-700 group-hover:scale-105 group-hover:opacity-100" />
               )}
             </>
           ) : (
@@ -148,6 +169,28 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       </Link>
 
       <div className="space-y-3 p-3 md:p-4">
+        {imageList.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-clean" aria-label="Product image choices">
+            {imageList.slice(0, 5).map((url, index) => (
+              <button
+                key={`${url}-${index}`}
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSelectedImageIndex(index);
+                }}
+                onMouseEnter={() => setSelectedImageIndex(index)}
+                className="h-9 w-9 shrink-0 overflow-hidden rounded border transition hover:-translate-y-0.5"
+                style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+                aria-label={`Show image ${index + 1}`}
+              >
+                <img src={url} alt="" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
         <Link href={`/products/${slug}`}>
           <h3 className="min-h-10 text-sm font-black leading-snug line-clamp-2 md:text-base" style={{ color: 'var(--text-primary)' }}>{name}</h3>
         </Link>
@@ -186,10 +229,10 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
           type="button"
           onClick={handleAddToCart}
           disabled={isAdding}
-          className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80"
           style={{ backgroundColor: 'var(--color-primary)' }}
         >
-          <ShoppingCart size={15} />
+          {isAdding ? <CheckCircle2 size={15} /> : <ShoppingCart size={15} />}
           {isAdding ? 'Added' : 'Add to cart'}
         </button>
 

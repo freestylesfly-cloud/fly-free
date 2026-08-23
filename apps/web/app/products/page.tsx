@@ -10,6 +10,8 @@ import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
 
 const API_URL = getApiBaseUrl();
+const PRODUCT_PAGE_SIZE = 20;
+const PRODUCT_CACHE_TTL = 5 * 60 * 1000;
 
 type FilterData = {
   // categories are fits (regular, oversized, jersey, polo, hoodie)
@@ -38,6 +40,7 @@ function ProductsBrowser() {
   const [sort, setSort] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
 
   useEffect(() => {
     setCategory(searchParams.get('category') || '');
@@ -61,6 +64,13 @@ function ProductsBrowser() {
         if (maxPrice) params.set('maxPrice', maxPrice);
         if (rating) params.set('rating', rating);
         if (sort) params.set('sort', sort);
+        const cacheKey = `products:${params.toString() || 'all'}`;
+        const cached = readProductsCache(cacheKey);
+        if (cached) {
+          setProducts(cached.products);
+          setFilters(cached.filters);
+          setLoading(false);
+        }
 
         const [productsResponse, filtersResponse] = await Promise.all([
           fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }),
@@ -69,8 +79,11 @@ function ProductsBrowser() {
 
         const productsData = await productsResponse.json();
         const filtersData = await filtersResponse.json();
-        setProducts(Array.isArray(productsData) ? productsData : productsData?.data || []);
-        setFilters(filtersData || { categories: [], themes: [] });
+        const nextProducts = Array.isArray(productsData) ? productsData : productsData?.data || [];
+        const nextFilters = filtersData || { categories: [], themes: [] };
+        setProducts(nextProducts);
+        setFilters(nextFilters);
+        writeProductsCache(cacheKey, nextProducts, nextFilters);
       } catch {
         setProducts([]);
       } finally {
@@ -81,6 +94,25 @@ function ProductsBrowser() {
     const timer = window.setTimeout(fetchData, 220);
     return () => window.clearTimeout(timer);
   }, [category, theme, query, minPrice, maxPrice, rating, sort]);
+
+  useEffect(() => {
+    setVisibleCount(PRODUCT_PAGE_SIZE);
+  }, [category, theme, query, minPrice, maxPrice, rating, sort]);
+
+  useEffect(() => {
+    if (loading || visibleCount >= products.length) return;
+
+    function onScroll() {
+      const distanceFromBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      if (distanceFromBottom < 700) {
+        setVisibleCount((count) => Math.min(count + PRODUCT_PAGE_SIZE, products.length));
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [loading, products.length, visibleCount]);
 
   const activeCount = useMemo(
     () => [category, theme, query, minPrice, maxPrice, rating].filter(Boolean).length,
@@ -98,6 +130,7 @@ function ProductsBrowser() {
       rating && `${rating}+ stars`,
     ].filter(Boolean) as string[];
   }, [category, filters, maxPrice, minPrice, query, rating, theme]);
+  const visibleProducts = products.slice(0, visibleCount);
 
   function clearFilters() {
     setCategory('');
@@ -201,7 +234,7 @@ function ProductsBrowser() {
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 md:px-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
-          <div className="sticky top-24 rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="scrollbar-clean sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto rounded-lg border p-4 shadow-sm" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
             {filterPanel}
           </div>
         </aside>
@@ -217,21 +250,36 @@ function ProductsBrowser() {
           {loading ? (
             <ProductLoadingGrid />
           ) : products.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={Math.round((product.price || 0) / 100)}
-                  originalPrice={Math.round((product.mrp || 0) / 100)}
-                  slug={product.slug}
-                  image={product.images?.[0]?.url}
-                  hoverImage={product.images?.[1]?.url}
-                  tag={product.theme?.name || product.category?.name || 'New'}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+                {visibleProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={Math.round((product.price || 0) / 100)}
+                    originalPrice={Math.round((product.mrp || 0) / 100)}
+                    slug={product.slug}
+                    image={product.images?.[0]?.url}
+                    hoverImage={product.images?.[1]?.url}
+                    images={product.images}
+                    tag={product.theme?.name || product.category?.name || 'New'}
+                  />
+                ))}
+              </div>
+              {visibleCount < products.length && (
+                <div className="flex justify-center py-6">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((count) => Math.min(count + PRODUCT_PAGE_SIZE, products.length))}
+                    className="rounded border px-5 py-3 text-sm font-black transition hover:-translate-y-0.5 hover:shadow-md"
+                    style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+                  >
+                    Load more products
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-lg border px-5 py-16 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <Shirt className="mx-auto mb-4" size={46} style={{ color: 'var(--text-tertiary)' }} />
@@ -473,7 +521,7 @@ function FilterGroup({ label, children }: { label: string; children: React.React
         {label}
         <ChevronDown className={open ? 'rotate-180 transition' : 'transition'} size={16} />
       </button>
-      {open && <div className="space-y-2">{children}</div>}
+      {open && <div className="scrollbar-clean max-h-52 space-y-2 overflow-y-auto pr-1">{children}</div>}
     </section>
   );
 }
@@ -489,13 +537,51 @@ function RadioRows({ value, onChange, options, emptyLabel }: { value: string; on
 
 function CheckRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-3 rounded px-2 py-1.5 text-left text-sm font-bold hover:bg-black/5">
+    <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm font-bold transition hover:bg-black/5">
       <span>{label}</span>
       <span className="flex h-4 w-4 items-center justify-center rounded border" style={{ borderColor: active ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: active ? 'var(--color-primary)' : 'transparent' }}>
         {active && <Check size={12} color="white" />}
       </span>
     </button>
   );
+}
+
+function readProductsCache(key: string): { products: any[]; filters: FilterData } | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached?.expiresAt || cached.expiresAt < Date.now()) {
+      window.sessionStorage.removeItem(key);
+      return null;
+    }
+    if (!Array.isArray(cached.products)) return null;
+    return {
+      products: cached.products,
+      filters: cached.filters || { categories: [], themes: [] },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeProductsCache(key: string, products: any[], filters: FilterData) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        products,
+        filters,
+        expiresAt: Date.now() + PRODUCT_CACHE_TTL,
+      })
+    );
+  } catch {
+    // Cache is a speed-up only.
+  }
 }
 
 const fieldStyle = {
