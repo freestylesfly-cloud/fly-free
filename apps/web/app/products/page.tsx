@@ -263,6 +263,7 @@ function ProductsBrowser() {
                     image={product.images?.[0]?.url}
                     hoverImage={product.images?.[1]?.url}
                     images={product.images}
+                    variants={product.variants}
                     tag={product.theme?.name || product.category?.name || 'New'}
                   />
                 ))}

@@ -14,6 +14,13 @@ interface Product {
   mrp?: number;
   slug: string;
   images?: Array<{ url: string }>;
+  variants?: Array<{
+    id?: string;
+    size?: string | null;
+    color?: string | null;
+    price?: number | null;
+    inventory?: { stock?: number | null } | null;
+  }>;
   theme?: { name: string };
   category?: { name: string };
   isFeatured?: boolean;
@@ -158,6 +165,7 @@ export default async function HomePage() {
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
                 images={product.images}
+                variants={product.variants}
                 tag={product.theme?.name}
               />
             </div>
@@ -211,6 +219,7 @@ export default async function HomePage() {
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
                 images={product.images}
+                variants={product.variants}
                 tag={product.theme?.name || product.category?.name}
               />
             </div>

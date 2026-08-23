@@ -822,6 +822,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   image={rec.images?.[0]?.url}
                   hoverImage={rec.images?.[1]?.url}
                   images={rec.images}
+                  variants={rec.variants}
                   tag={rec.theme?.name || rec.category?.name}
                 />
               ))}

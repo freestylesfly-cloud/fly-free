@@ -11,6 +11,13 @@ interface ThemeProduct {
   price?: number;
   compareAtPrice?: number;
   images?: { url: string; alt?: string }[];
+  variants?: Array<{
+    id?: string;
+    size?: string | null;
+    color?: string | null;
+    price?: number | null;
+    inventory?: { stock?: number | null } | null;
+  }>;
   category?: { name: string; slug: string };
 }
 
@@ -187,6 +194,7 @@ export function ThemeProductGrid({ products }: { products: ThemeProduct[] }) {
                 image={product.images?.[0]?.url}
                 hoverImage={product.images?.[1]?.url}
                 images={product.images}
+                variants={product.variants}
                 tag={product.category?.name}
               />
             ))}
