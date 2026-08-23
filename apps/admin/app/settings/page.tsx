@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 
@@ -21,6 +22,19 @@ type AppSettings = {
   newsletterText: string;
   newsletterSuccessMessage: string;
   whatsappMessage: string;
+  homeHeroTitle: string;
+  homeHeroSubtitle: string;
+  homeHeroKicker: string;
+  homeHeroCtaLabel: string;
+  homeHeroCtaHref: string;
+  homeHeroImageUrl: string;
+  homeAboutTitle: string;
+  homeAboutText: string;
+  homeAboutImageUrl: string;
+  homeCommunityTitle: string;
+  homeCommunityText: string;
+  homeCommunityCtaLabel: string;
+  homeCommunityCtaHref: string;
   /** Prefix for generated order numbers, e.g. FF -> FF-2026-000123 */
   orderPrefix: string;
   /** Rupees. Charged when the order total is below the free threshold. */
@@ -53,6 +67,19 @@ const emptySettings: AppSettings = {
   newsletterText: '',
   newsletterSuccessMessage: '',
   whatsappMessage: '',
+  homeHeroTitle: 'Wear Your Story',
+  homeHeroSubtitle: 'Theme-led tees, custom prints, and everyday streetwear made for your mood.',
+  homeHeroKicker: 'Fly Free',
+  homeHeroCtaLabel: 'Shop now',
+  homeHeroCtaHref: '/products',
+  homeHeroImageUrl: 'https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=2400&q=85',
+  homeAboutTitle: 'From Northeast Stories To Everyday Streetwear',
+  homeAboutText: 'Fly Free brings culture, fandom, comfort, and custom design into tees people can wear every day.',
+  homeAboutImageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=2400&q=85',
+  homeCommunityTitle: 'Our Community',
+  homeCommunityText: 'Bihu drop is live. Wear Northeast stories.',
+  homeCommunityCtaLabel: 'Know more',
+  homeCommunityCtaHref: '/about',
   orderPrefix: 'FF',
   deliveryFee: 60,
   freeDeliveryAbove: 1000,
@@ -60,12 +87,14 @@ const emptySettings: AppSettings = {
   firstOrderOfferCode: '',
   firstOrderOfferTitle: 'First order offer',
   firstOrderOfferDiscountPercent: 10,
-  socialLinks: {}
+  socialLinks: {
+    instagram: 'https://www.instagram.com/flyfree.ne/'
+  }
 };
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(emptySettings);
-  const [activeTab, setActiveTab] = useState<'general' | 'messages' | 'delivery' | 'social'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'home' | 'messages' | 'delivery' | 'social'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -81,7 +110,7 @@ export default function SettingsPage() {
       setError('');
       const result: any = await apiService.getSettings();
       const loaded = result.data || {};
-      setSettings({ ...emptySettings, ...loaded, socialLinks: loaded.socialLinks || {} });
+      setSettings({ ...emptySettings, ...loaded, socialLinks: { ...emptySettings.socialLinks, ...(loaded.socialLinks || {}) } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings from database');
     } finally {
@@ -115,6 +144,7 @@ export default function SettingsPage() {
 
           <div className="flex gap-2 border-b border-black/10">
             <button onClick={() => setActiveTab('general')} className={`px-4 py-3 font-bold ${activeTab === 'general' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>General</button>
+            <button onClick={() => setActiveTab('home')} className={`px-4 py-3 font-bold ${activeTab === 'home' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Home UI</button>
             <button onClick={() => setActiveTab('messages')} className={`px-4 py-3 font-bold ${activeTab === 'messages' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Storefront Messages</button>
             <button onClick={() => setActiveTab('delivery')} className={`px-4 py-3 font-bold ${activeTab === 'delivery' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Delivery &amp; Orders</button>
             <button onClick={() => setActiveTab('social')} className={`px-4 py-3 font-bold ${activeTab === 'social' ? 'border-b-2 border-coral text-coral' : 'text-black/60'}`}>Social Links</button>
@@ -135,6 +165,53 @@ export default function SettingsPage() {
                   App Description
                   <textarea value={settings.appDescription} onChange={(event) => update('appDescription', event.target.value)} rows={4} className="rounded border border-black/10 px-3 py-2" />
                 </label>
+              </div>
+            ) : activeTab === 'home' ? (
+              <div className="grid gap-6">
+                <p className="rounded border border-black/10 bg-black/[0.02] p-4 text-sm text-black/60">
+                  Custom hero and About images upload to the Supabase <span className="font-bold text-black">banners</span> bucket under <span className="font-bold text-black">home/</span>. The public URLs and text are saved in the database settings row. Theme hero slides still come from Admin &gt; Product Themes.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Hero Kicker" value={settings.homeHeroKicker} onChange={(value) => update('homeHeroKicker', value)} />
+                  <Field label="Hero CTA Label" value={settings.homeHeroCtaLabel} onChange={(value) => update('homeHeroCtaLabel', value)} />
+                  <Field label="Hero CTA Link" value={settings.homeHeroCtaHref} onChange={(value) => update('homeHeroCtaHref', value)} />
+                  <Field label="Know More Link" value={settings.homeCommunityCtaHref} onChange={(value) => update('homeCommunityCtaHref', value)} />
+                  <TextareaField label="Hero Title" value={settings.homeHeroTitle} onChange={(value) => update('homeHeroTitle', value)} rows={2} />
+                  <TextareaField label="Hero Subtitle" value={settings.homeHeroSubtitle} onChange={(value) => update('homeHeroSubtitle', value)} rows={3} />
+                </div>
+
+                <ImageUploadField
+                  label="Home Hero Image"
+                  value={settings.homeHeroImageUrl}
+                  onChange={(value) => update('homeHeroImageUrl', value)}
+                  bucket="banners"
+                  folder="home"
+                  aspect={16 / 9}
+                  targetWidth={2400}
+                  hint="Optional first hero slide. Upload wide lifestyle/product imagery; theme slides come from Product Themes."
+                />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextareaField label="About / Story Title" value={settings.homeAboutTitle} onChange={(value) => update('homeAboutTitle', value)} rows={2} />
+                  <TextareaField label="About / Story Text" value={settings.homeAboutText} onChange={(value) => update('homeAboutText', value)} rows={4} />
+                  <TextareaField label="Community Title" value={settings.homeCommunityTitle} onChange={(value) => update('homeCommunityTitle', value)} rows={2} />
+                  <TextareaField label="Community Text" value={settings.homeCommunityText} onChange={(value) => update('homeCommunityText', value)} rows={4} />
+                  <Field label="Know More Label" value={settings.homeCommunityCtaLabel} onChange={(value) => update('homeCommunityCtaLabel', value)} />
+                </div>
+
+                <ImageUploadField
+                  label="About / Know More Image"
+                  value={settings.homeAboutImageUrl}
+                  onChange={(value) => update('homeAboutImageUrl', value)}
+                  bucket="banners"
+                  folder="home"
+                  aspect={16 / 9}
+                  targetWidth={2400}
+                  hint="Full-cover story image shown before the footer with Know More text over it."
+                />
+                <p className="rounded border border-black/10 bg-black/[0.02] p-4 text-sm text-black/60">
+                  Community images and captions come from Admin &gt; Instagram. The homepage shows up to 6 image posts, sorted by display order. The Follow button uses Admin &gt; Settings &gt; Social Links &gt; Instagram.
+                </p>
               </div>
             ) : activeTab === 'messages' ? (
               <div className="grid gap-4">

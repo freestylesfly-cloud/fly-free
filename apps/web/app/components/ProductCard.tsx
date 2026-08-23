@@ -72,6 +72,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
     variants.find((variant) => variant.size === quickSize && (!quickColor || variant.color === quickColor));
   const selectedStock = Number(selectedVariant?.inventory?.stock ?? 0);
   const selectedPrice = Math.round(Number(selectedVariant?.price || price * 100) / 100);
+  const soldOut = variants.length > 0 && availableVariants.length === 0;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -107,9 +108,17 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
     if (nextSize) setQuickSize(nextSize);
   }, [quickAddOpen, quickColor, quickSize, sizeOptions.length, variants]);
 
+  useEffect(() => {
+    if (selectedStock > 0 && quantity > selectedStock) setQuantity(selectedStock);
+  }, [quantity, selectedStock]);
+
   const handleOpenQuickAdd = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    if (soldOut) {
+      toast.error('Sold out', { description: name });
+      return;
+    }
     setQuickAddOpen(true);
   };
 
@@ -211,8 +220,8 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
 
   return (
     <article
-      className="group relative h-full overflow-hidden border bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-      style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+      className="group relative flex h-full flex-col overflow-hidden rounded border bg-white shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_38px_rgba(0,0,0,0.13)]"
+      style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-secondary)' }}
     >
       <Link href={`/products/${slug}`} className="block">
         <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -226,10 +235,10 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
           ) : (
             <Shirt size={52} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
           )}
-          <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+          <div className="absolute left-2 top-2 flex max-w-[calc(100%-4rem)] flex-wrap gap-1">
             {tag && (
               <span
-                className="px-2 py-1 text-[10px] font-black uppercase tracking-wide shadow-sm"
+                className="px-2 py-1 text-[9px] font-black uppercase tracking-wide shadow-sm"
                 style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
               >
                 {tag}
@@ -237,7 +246,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
             )}
             {discountPercent > 0 && (
               <span
-                className="px-2 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm"
+                className="px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white shadow-sm"
                 style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {discountPercent}% off
@@ -246,10 +255,33 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
           </div>
         </div>
       </Link>
+      <div className="absolute right-2 top-2 z-10 flex flex-col gap-1.5 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={handleWishlist}
+          disabled={wishlistLoading}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm transition hover:scale-105 disabled:opacity-50"
+          style={{ color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        >
+          <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="hidden h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm transition hover:scale-105 sm:flex"
+          style={{ color: 'var(--text-primary)' }}
+          aria-label="Share product"
+          title={shareText}
+        >
+          <Share2 size={16} />
+        </button>
+      </div>
 
-      <div className="space-y-3 p-3 md:p-4">
+      <div className="flex min-h-[132px] flex-1 flex-col p-2.5 sm:min-h-[158px] sm:p-3">
         {imageList.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-clean" aria-label="Product image choices">
+          <div className="mb-2 hidden h-7 gap-1.5 overflow-x-auto scrollbar-clean sm:flex" aria-label="Product image choices">
             {imageList.slice(0, 5).map((url, index) => (
               <button
                 key={`${url}-${index}`}
@@ -260,7 +292,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
                   setSelectedImageIndex(index);
                 }}
                 onMouseEnter={() => setSelectedImageIndex(index)}
-                className="h-9 w-9 shrink-0 overflow-hidden rounded border transition hover:-translate-y-0.5"
+                className="h-7 w-7 shrink-0 overflow-hidden rounded-sm border transition hover:-translate-y-0.5"
                 style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
                 aria-label={`Show image ${index + 1}`}
               >
@@ -271,48 +303,30 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
         )}
 
         <Link href={`/products/${slug}`}>
-          <h3 className="min-h-10 text-sm font-black leading-snug line-clamp-2 md:text-base" style={{ color: 'var(--text-primary)' }}>{name}</h3>
+          <h3 className="min-h-9 text-[13px] font-black uppercase leading-tight line-clamp-2 sm:min-h-10 sm:text-sm" style={{ color: 'var(--text-primary)' }}>{name}</h3>
         </Link>
 
-        <div className="flex items-end justify-between gap-3">
+        <div className="mt-2 flex items-start justify-between gap-2">
           <div>
-            <p className="text-lg font-black" style={{ color: 'var(--text-primary)' }}>{formatCurrency(price)}</p>
-            {hasDiscount && <p className="text-xs line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(originalPrice!)}</p>}
+            <p className="text-base font-black sm:text-lg" style={{ color: 'var(--text-primary)' }}>{formatCurrency(price)}</p>
+            {hasDiscount && <p className="text-[11px] font-bold line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(originalPrice!)}</p>}
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleWishlist}
-              disabled={wishlistLoading}
-              className="flex h-9 w-9 items-center justify-center border transition hover:bg-black/5 disabled:opacity-50"
-              style={{ borderColor: 'var(--border-color)', color: isWishlisted ? 'var(--color-primary)' : 'var(--text-primary)' }}
-              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            >
-              <Heart size={16} fill={isWishlisted ? 'currentColor' : 'none'} />
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="hidden h-9 w-9 items-center justify-center border transition hover:bg-black/5 sm:flex"
-              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-              aria-label="Share product"
-              title={shareText}
-            >
-              <Share2 size={16} />
-            </button>
-          </div>
+          {sizeOptions.length > 0 && (
+            <p className="max-w-20 truncate border px-1.5 py-1 text-right text-[9px] font-black uppercase sm:max-w-24" style={{ borderColor: 'var(--border-light)', color: 'var(--text-tertiary)' }}>
+              {sizeOptions.slice(0, 3).join(' / ')}
+            </p>
+          )}
         </div>
 
         <button
           type="button"
           onClick={handleOpenQuickAdd}
-          disabled={isAdding}
-          className="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80"
-          style={{ backgroundColor: 'var(--color-primary)' }}
+          disabled={isAdding || soldOut}
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-sm px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80 sm:py-2.5 sm:text-xs"
+          style={{ backgroundColor: soldOut ? 'var(--text-tertiary)' : 'var(--color-primary)' }}
         >
           {isAdding ? <CheckCircle2 size={15} /> : <ShoppingCart size={15} />}
-          {isAdding ? 'Added' : 'Add to cart'}
+          {soldOut ? 'Sold out' : isAdding ? 'Added' : 'Add'}
         </button>
 
         {wishlistError && (

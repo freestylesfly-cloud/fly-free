@@ -64,8 +64,39 @@ const DEFAULT_SETTINGS = {
   newsletterText: '',
   newsletterSuccessMessage: '',
   whatsappMessage: '',
-  socialLinks: {} as Record<string, string>
+  homeHeroTitle: 'Wear Your Story',
+  homeHeroSubtitle: 'Theme-led tees, custom prints, and everyday streetwear made for your mood.',
+  homeHeroKicker: 'Fly Free',
+  homeHeroCtaLabel: 'Shop now',
+  homeHeroCtaHref: '/products',
+  homeHeroImageUrl: 'https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=2400&q=85',
+  homeAboutTitle: 'From Northeast Stories To Everyday Streetwear',
+  homeAboutText: 'Fly Free brings culture, fandom, comfort, and custom design into tees people can wear every day.',
+  homeAboutImageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=2400&q=85',
+  homeCommunityTitle: 'Our Community',
+  homeCommunityText: 'Bihu drop is live. Wear Northeast stories.',
+  homeCommunityCtaLabel: 'Know more',
+  homeCommunityCtaHref: '/about',
+  socialLinks: {
+    instagram: 'https://www.instagram.com/flyfree.ne/'
+  } as Record<string, string>
 };
+
+const HOME_UI_KEYS = [
+  'homeHeroTitle',
+  'homeHeroSubtitle',
+  'homeHeroKicker',
+  'homeHeroCtaLabel',
+  'homeHeroCtaHref',
+  'homeHeroImageUrl',
+  'homeAboutTitle',
+  'homeAboutText',
+  'homeAboutImageUrl',
+  'homeCommunityTitle',
+  'homeCommunityText',
+  'homeCommunityCtaLabel',
+  'homeCommunityCtaHref'
+] as const;
 
 async function seedAdmin() {
   const role = await prisma.role.upsert({
@@ -107,9 +138,19 @@ async function seedSettings() {
   if (existing) {
     // Fill in keys added since this row was written; never overwrite a value
     // an admin has already saved.
-    const merged = { ...DEFAULT_SETTINGS, ...(existing.value as Record<string, unknown>) };
+    const saved = existing.value as Record<string, any>;
+    const merged = {
+      ...DEFAULT_SETTINGS,
+      ...saved,
+      socialLinks: { ...DEFAULT_SETTINGS.socialLinks, ...(saved.socialLinks || {}) }
+    };
+    for (const key of HOME_UI_KEYS) {
+      if (!String(merged[key] ?? '').trim()) {
+        merged[key] = DEFAULT_SETTINGS[key];
+      }
+    }
     await prisma.appSetting.update({ where: { key: 'admin_settings' }, data: { value: merged } });
-    console.log('  settings:       existing row kept, missing keys filled in');
+    console.log('  settings:       existing row kept, missing/blank Home UI keys filled in');
     return;
   }
 

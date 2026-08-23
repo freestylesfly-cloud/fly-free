@@ -71,7 +71,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         {slides.map((slide) => (
           <div
             key={slide.id}
-            className="mo-slide relative w-full flex-shrink-0 overflow-hidden"
+            className="mo-slide relative w-full flex-shrink-0 overflow-hidden md:h-[calc(100svh-112px)] md:min-h-[620px]"
             style={{ aspectRatio: HERO_ASPECT }}
           >
             {slide.image ? (
@@ -80,14 +80,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
             )}
 
-            {/* Readability wash under the copy band only. */}
             <div
-              className="absolute inset-x-0 top-0 h-2/3"
-              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,.65), rgba(0,0,0,0))' }}
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.28) 46%, rgba(0,0,0,.04)), linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0) 56%)' }}
             />
 
             {(slide.title || slide.subtitle) && (
-              <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-2 px-4 pt-4 sm:gap-4 sm:px-10 sm:pt-10 lg:px-16 lg:pt-14">
+              <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-start gap-2 px-4 pb-7 sm:gap-4 sm:px-10 sm:pb-16 lg:px-16">
                 {slide.tag && (
                   <span
                     className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1 sm:text-xs"
@@ -98,23 +97,23 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 )}
                 {slide.title && (
                   <h1
-                    className="max-w-3xl font-black uppercase leading-[0.95] text-white"
-                    style={{ fontSize: 'clamp(20px, 5.5vw, 76px)', letterSpacing: '0' }}
+                    className="max-w-4xl font-black uppercase leading-[0.92] text-white"
+                    style={{ fontSize: 'clamp(24px, 7.5vw, 118px)', letterSpacing: '0' }}
                   >
                     {slide.title}
                   </h1>
                 )}
                 {/* Hidden on phones — the frame is short and the title carries it. */}
+                <span className="fly-line" aria-hidden="true" />
                 {slide.subtitle && (
-                  <p className="hidden max-w-lg text-base leading-relaxed text-white/85 sm:block lg:text-lg">
+                  <p className="hidden max-w-2xl text-base font-bold leading-relaxed text-white/90 sm:block sm:text-lg lg:text-xl">
                     {slide.subtitle}
                   </p>
                 )}
                 {slide.ctaLabel && slide.ctaHref && (
                   <Link
                     href={slide.ctaHref}
-                    className="mt-0.5 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 sm:mt-2 sm:px-7 sm:py-3.5 sm:text-sm"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
+                    className="mt-2 bg-white px-6 py-2.5 text-xs font-black uppercase tracking-wide text-black transition hover:-translate-y-0.5 hover:shadow-xl sm:px-9 sm:py-4 sm:text-sm"
                   >
                     {slide.ctaLabel}
                   </Link>

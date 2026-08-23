@@ -1193,7 +1193,13 @@ export class AdminService {
     // a wholesale write would silently drop settings owned by another screen
     // (business address, GST percent) that the storefront still reads.
     const current = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
-    const merged = { ...((current?.value as any) || {}), ...(data || {}) };
+    const existing = (current?.value as any) || {};
+    const incoming = data || {};
+    const merged = {
+      ...existing,
+      ...incoming,
+      socialLinks: { ...(existing.socialLinks || {}), ...(incoming.socialLinks || {}) }
+    };
 
     const setting = await this.prisma.appSetting.upsert({
       where: { key: "admin_settings" },
@@ -1210,7 +1216,7 @@ export class AdminService {
 
   private async getSettingsValue() {
     const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
-    return setting?.value as any || {
+    const defaults = {
       appName: "Fly Free",
       appDescription: "Custom and themed t-shirts for everyday expression.",
       appLogo: "",
@@ -1241,7 +1247,28 @@ export class AdminService {
       newsletterText: "Get first access to new theme drops, restocks, and subscriber-only offers.",
       newsletterSuccessMessage: "Thanks. You are on the drop list.",
       whatsappMessage: "Hi Fly Free, I would like more information about your products.",
-      socialLinks: {}
+      homeHeroTitle: "Wear Your Story",
+      homeHeroSubtitle: "Theme-led tees, custom prints, and everyday streetwear made for your mood.",
+      homeHeroKicker: "Fly Free",
+      homeHeroCtaLabel: "Shop now",
+      homeHeroCtaHref: "/products",
+      homeHeroImageUrl: "https://images.unsplash.com/photo-1523398002811-999ca8dec234?auto=format&fit=crop&w=2400&q=85",
+      homeAboutTitle: "From Northeast Stories To Everyday Streetwear",
+      homeAboutText: "Fly Free brings culture, fandom, comfort, and custom design into tees people can wear every day.",
+      homeAboutImageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=2400&q=85",
+      homeCommunityTitle: "Our Community",
+      homeCommunityText: "Bihu drop is live. Wear Northeast stories.",
+      homeCommunityCtaLabel: "Know more",
+      homeCommunityCtaHref: "/about",
+      socialLinks: {
+        instagram: "https://www.instagram.com/flyfree.ne/"
+      }
+    };
+    const existing = (setting?.value as any) || {};
+    return {
+      ...defaults,
+      ...existing,
+      socialLinks: { ...defaults.socialLinks, ...(existing.socialLinks || {}) }
     };
   }
 

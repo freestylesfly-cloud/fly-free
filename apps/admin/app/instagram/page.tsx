@@ -24,7 +24,7 @@ const emptyForm = {
   videoUrl: '',
   caption: '',
   instagramLink: '',
-  displayOrder: 1
+  displayOrder: '1'
 };
 
 /** "https://www.instagram.com/flyfree.ne/" -> "@flyfree.ne". */
@@ -69,10 +69,10 @@ export default function InstagramPage() {
 
     try {
       if (editingId) {
-        await apiService.updateInstagramPost(editingId, formData);
+        await apiService.updateInstagramPost(editingId, normalizeForm(formData));
         setMessage('Post updated successfully');
       } else {
-        await apiService.createInstagramPost(formData);
+        await apiService.createInstagramPost(normalizeForm(formData));
         setMessage('Post created successfully');
       }
 
@@ -104,7 +104,7 @@ export default function InstagramPage() {
       videoUrl: post.videoUrl || '',
       caption: post.caption,
       instagramLink: post.instagramLink,
-      displayOrder: post.displayOrder || 1
+      displayOrder: String(post.displayOrder || 1)
     });
     setEditingId(post.id);
   }
@@ -193,7 +193,7 @@ export default function InstagramPage() {
                   <input
                     type="number"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
                     min="1"
                     className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
                   />
@@ -283,4 +283,12 @@ export default function InstagramPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
+}
+
+function normalizeForm(formData: typeof emptyForm) {
+  const displayOrder = Number.parseInt(formData.displayOrder, 10);
+  return {
+    ...formData,
+    displayOrder: Number.isFinite(displayOrder) && displayOrder > 0 ? displayOrder : 1
+  };
 }
