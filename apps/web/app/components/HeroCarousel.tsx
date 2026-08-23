@@ -75,7 +75,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             style={{ aspectRatio: HERO_ASPECT }}
           >
             {slide.image ? (
-              <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover" />
+              <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover transition duration-[1600ms] ease-out hover:scale-[1.02]" />
             ) : (
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
             )}
@@ -99,7 +99,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 {slide.title && (
                   <h1
                     className="max-w-3xl font-black uppercase leading-[0.95] text-white"
-                    style={{ fontSize: 'clamp(20px, 5.5vw, 76px)', letterSpacing: '-0.02em' }}
+                    style={{ fontSize: 'clamp(20px, 5.5vw, 76px)', letterSpacing: '0' }}
                   >
                     {slide.title}
                   </h1>
@@ -151,7 +151,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 type="button"
                 onClick={() => goto(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className="h-2.5 w-2.5 transition sm:h-3 sm:w-3"
+                className="h-2.5 w-2.5 transition sm:h-3 sm:w-10"
                 style={{
                   border: '2px solid #fff',
                   backgroundColor: active === idx ? '#fff' : 'rgba(0,0,0,.3)'

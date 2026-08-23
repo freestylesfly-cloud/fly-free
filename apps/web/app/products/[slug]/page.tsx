@@ -114,6 +114,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
   const stock = selectedVariant?.inventory?.stock ?? 0;
   const canAdd = Boolean(selectedSize && selectedVariant && stock > 0);
+  const visibleColor = displayColor(selectedVariant?.color || selectedColor);
   const productPrice = selectedVariant?.price || product?.price || product?.basePrice || 0;
   const productMrp = product?.mrp || product?.basePrice || productPrice;
   const hamperPrice = selectedHamper?.price || 0;
@@ -232,6 +233,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }, [galleryImages]);
 
   useEffect(() => {
+    if (stock > 0 && quantity > stock) setQuantity(stock);
+  }, [quantity, stock]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
 
     galleryImages.slice(0, 6).forEach((image) => {
@@ -269,6 +274,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       size: selectedSize,
       image: activeImage?.url || '',
       productSlug: product.slug || slug,
+      maxStock: stock > 0 ? stock : undefined,
       hamperId: selectedHamperId || undefined,
       hamperName: selectedHamper?.name,
       offerCode: undefined
@@ -675,11 +681,11 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 <div className="flex items-center rounded-full border p-1" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
                   <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/5" aria-label="Decrease quantity"><Minus size={17} /></button>
                   <span className="min-w-10 text-center text-sm font-black">{quantity}</span>
-                  <button onClick={() => setQuantity(quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/5" aria-label="Increase quantity"><Plus size={17} /></button>
+                  <button onClick={() => setQuantity(stock > 0 ? Math.min(stock, quantity + 1) : quantity + 1)} disabled={stock > 0 && quantity >= stock} className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/5 disabled:opacity-40" aria-label="Increase quantity"><Plus size={17} /></button>
                 </div>
               </div>
               <p className="mt-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                {selectedSize ? `Size ${selectedSize}` : 'Choose size'} {selectedVariant?.color ? ` / ${selectedVariant.color}` : ''} {stock > 0 ? ` / ${stock} in stock` : ''}
+                {selectedSize ? `Size ${selectedSize}` : 'Choose size'} {visibleColor ? ` / ${visibleColor}` : ''} {stock > 0 ? ` / ${stock} in stock` : ''}
               </p>
             </div>
             <div className="grid gap-3 p-4">
@@ -709,7 +715,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <div className="flex min-h-12 items-center rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
             <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3" aria-label="Decrease quantity"><Minus size={17} /></button>
             <span className="min-w-8 text-center text-sm font-black">{quantity}</span>
-            <button onClick={() => setQuantity(quantity + 1)} className="p-3" aria-label="Increase quantity"><Plus size={17} /></button>
+            <button onClick={() => setQuantity(stock > 0 ? Math.min(stock, quantity + 1) : quantity + 1)} disabled={stock > 0 && quantity >= stock} className="p-3 disabled:opacity-40" aria-label="Increase quantity"><Plus size={17} /></button>
           </div>
           <button onClick={handleBuyNow} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded px-3 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
             Buy now
@@ -1167,6 +1173,11 @@ function normalizeHamperImages(hamper: any): ProductImage[] {
 
 function uniqueValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean).map((value) => String(value))));
+}
+
+function displayColor(color?: string | null) {
+  const value = String(color || '').trim();
+  return value && value.toLowerCase() !== 'default' ? value : '';
 }
 
 async function fetchSimilarProducts(product: any) {

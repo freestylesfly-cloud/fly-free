@@ -127,7 +127,7 @@ export default function CartPage() {
                     <div className="min-w-0">
                       <Link href={productHref} className="line-clamp-2 text-lg font-black transition hover:opacity-70">{item.productName}</Link>
                       {!item.productSlug && <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>Opening product link...</p>}
-                      <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>{item.color} / {item.size}</p>
+                      <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>{formatVariant(item)}</p>
                     </div>
                     <button
                       type="button"
@@ -161,8 +161,9 @@ export default function CartPage() {
                       <span className="min-w-12 text-center font-black">{item.quantity}</span>
                       <button
                         type="button"
-                        onClick={() => updateQuantity(item.productId, item.size, item.color, item.quantity + 1, item.variantId, item.hamperId, item.offerCode)}
-                        className="flex h-full w-11 items-center justify-center transition hover:bg-black/5"
+                        onClick={() => updateQuantity(item.productId, item.size, item.color, item.maxStock && item.maxStock > 0 ? Math.min(item.maxStock, item.quantity + 1) : item.quantity + 1, item.variantId, item.hamperId, item.offerCode)}
+                        disabled={Boolean(item.maxStock && item.maxStock > 0 && item.quantity >= item.maxStock)}
+                        className="flex h-full w-11 items-center justify-center transition hover:bg-black/5 disabled:opacity-40"
                         aria-label="Increase quantity"
                       >
                         <Plus size={16} />
@@ -259,6 +260,11 @@ function SummaryRow({ label, value, highlight }: { label: string; value: string;
       <span className={highlight ? 'font-black' : 'font-bold'} style={highlight ? { color: 'var(--color-primary)' } : { color: 'var(--text-primary)' }}>{value}</span>
     </div>
   );
+}
+
+function formatVariant(item: { size?: string; color?: string }) {
+  const color = String(item.color || '').trim();
+  return [item.size, color && color.toLowerCase() !== 'default' ? color : ''].filter(Boolean).join(' / ');
 }
 
 function CartSkeleton() {

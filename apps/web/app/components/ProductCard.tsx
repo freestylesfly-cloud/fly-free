@@ -92,6 +92,21 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
     setQuantity(1);
   }, [quickAddOpen, availableVariants, variants, sizeOptions, colorOptions]);
 
+  useEffect(() => {
+    if (!quickAddOpen || !quickColor || sizeOptions.length === 0) return;
+    const currentIsAvailable = variants.some(
+      (variant) =>
+        variant.size === quickSize &&
+        variant.color === quickColor &&
+        Number(variant.inventory?.stock ?? 0) > 0
+    );
+    if (currentIsAvailable) return;
+    const nextSize = variants.find(
+      (variant) => variant.color === quickColor && Number(variant.inventory?.stock ?? 0) > 0
+    )?.size;
+    if (nextSize) setQuickSize(nextSize);
+  }, [quickAddOpen, quickColor, quickSize, sizeOptions.length, variants]);
+
   const handleOpenQuickAdd = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -126,6 +141,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
       image: selectedImage || undefined,
       productSlug: slug,
       variantId: selectedVariant?.id || '',
+      maxStock: selectedStock > 0 ? selectedStock : undefined,
     });
     trackEvent('add_to_cart', {
       productId: id,
@@ -501,7 +517,7 @@ function QuickAddPanel({
             <div className="flex items-center rounded-full border bg-white p-1" style={{ borderColor: 'var(--border-color)' }}>
               <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5" aria-label="Decrease"><Minus size={16} /></button>
               <span className="min-w-10 text-center text-sm font-black">{quantity}</span>
-              <button type="button" onClick={() => setQuantity(quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5" aria-label="Increase"><Plus size={16} /></button>
+              <button type="button" onClick={() => setQuantity(stock > 0 ? Math.min(stock, quantity + 1) : quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/5 disabled:opacity-40" aria-label="Increase" disabled={stock > 0 && quantity >= stock}><Plus size={16} /></button>
             </div>
           </div>
         </div>

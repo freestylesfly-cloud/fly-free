@@ -646,7 +646,7 @@ export default function CheckoutPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-black leading-snug" style={{ color: 'var(--text-primary)' }}>{item.productName}</p>
                     <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      Size: {item.size || 'Selected'} {item.color ? `| Color: ${item.color}` : ''} | Qty: {item.quantity}
+                      {formatCheckoutVariant(item)} | Qty: {item.quantity}
                     </p>
                     {item.offerLabel && <p className="mt-1 text-xs font-bold" style={{ color: 'var(--color-secondary)' }}>{item.offerLabel}</p>}
                   </div>
@@ -773,4 +773,10 @@ export default function CheckoutPage() {
       )}
     </main>
   );
+}
+
+function formatCheckoutVariant(item: { size?: string; color?: string }) {
+  const color = String(item.color || '').trim();
+  const colorText = color && color.toLowerCase() !== 'default' ? ` | Color: ${color}` : '';
+  return `Size: ${item.size || 'Selected'}${colorText}`;
 }

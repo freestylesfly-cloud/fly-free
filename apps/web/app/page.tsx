@@ -195,11 +195,10 @@ export default async function HomePage() {
               )}
               <div
                 className="absolute inset-0"
-                style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,0) 55%)' }}
+                style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,0) 58%)' }}
               />
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
+              <div className="absolute inset-x-0 bottom-0 p-4">
                 <h3 className="text-xl font-black uppercase leading-tight text-white sm:text-2xl">{theme.name}</h3>
-                <span className="shrink-0 text-xs font-black uppercase tracking-wide text-white/85">Explore &rarr;</span>
               </div>
             </Link>
           ))}
@@ -374,3 +373,4 @@ function Stars({ rating }: { rating: number }) {
     </p>
   );
 }
+

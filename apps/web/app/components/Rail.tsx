@@ -64,7 +64,7 @@ export function Rail({
 
   return (
     <section className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-5 md:py-14">
+      <div className="px-4 py-10 sm:px-6 md:py-14">
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2
             className="text-xl font-black uppercase tracking-tight sm:text-3xl"
@@ -100,7 +100,7 @@ export function Rail({
           </div>
 
           {canScroll && (
-            <div className="mt-5 flex justify-center gap-3">
+            <div className="mt-5 hidden justify-center gap-3 sm:flex">
               <button type="button" className="mo-arrow" onClick={() => nudge(-1)} aria-label={`Scroll ${title} left`}>
                 &#8592;
               </button>

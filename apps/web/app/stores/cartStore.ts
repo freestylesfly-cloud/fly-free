@@ -12,6 +12,7 @@ export interface CartItem {
   color: string;
   image?: string;
   variantId?: string;
+  maxStock?: number;
   hamperId?: string;
   hamperName?: string;
   offerCode?: string;
@@ -70,11 +71,13 @@ export const useCartStore = create<CartStore>()(
         );
 
         if (existingIndex > -1) {
-          // Update quantity if item exists
-          items[existingIndex].quantity += item.quantity || 1;
+          const nextQuantity = items[existingIndex].quantity + (item.quantity || 1);
+          const maxStock = item.maxStock || items[existingIndex].maxStock || 0;
+          items[existingIndex].quantity = maxStock > 0 ? Math.min(nextQuantity, maxStock) : nextQuantity;
+          items[existingIndex].maxStock = maxStock || items[existingIndex].maxStock;
         } else {
-          // Add new item
-          items.push({ ...item, quantity: item.quantity || 1 });
+          const quantity = item.maxStock && item.maxStock > 0 ? Math.min(item.quantity || 1, item.maxStock) : item.quantity || 1;
+          items.push({ ...item, quantity });
         }
 
         set({ items: [...items] });
@@ -108,7 +111,7 @@ export const useCartStore = create<CartStore>()(
           item.variantId === variantId &&
           item.hamperId === hamperId &&
           item.offerCode === offerCode
-            ? { ...item, quantity }
+            ? { ...item, quantity: item.maxStock && item.maxStock > 0 ? Math.min(quantity, item.maxStock) : quantity }
             : item
         );
 
