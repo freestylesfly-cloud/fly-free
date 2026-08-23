@@ -4,7 +4,7 @@
  * cookie instead of browser-readable localStorage.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 const ADMIN_COOKIE = 'flyfree_admin_session';
 
 function readCookie(request: Request, name: string) {
@@ -73,8 +73,9 @@ async function proxy(request: Request, params: any, method: string) {
     return new Response(responseBody, { status: response.status, headers });
   } catch (error) {
     console.error('Proxy error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch from API' }), {
-      status: 500,
+    const message = error instanceof Error ? error.message : 'Unknown proxy error';
+    return new Response(JSON.stringify({ error: `Failed to fetch from API: ${message}`, upstream: fullUrl }), {
+      status: 502,
       headers: { 'Content-Type': 'application/json' },
     });
   }
