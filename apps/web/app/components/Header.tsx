@@ -477,14 +477,13 @@ export function Header() {
         style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
       >
         <nav
-          className="grid grid-cols-5 overflow-hidden rounded-[26px] border shadow-2xl"
+          className="grid h-[68px] grid-cols-5 overflow-hidden rounded-2xl border shadow-xl"
           style={{
-            borderColor: 'rgba(255, 255, 255, 0.62)',
-            background:
-              'linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.56))',
-            boxShadow: '0 -14px 34px rgba(26, 26, 26, 0.14), inset 0 1px 0 rgba(255,255,255,0.82)',
-            backdropFilter: 'blur(24px) saturate(1.7)',
-            WebkitBackdropFilter: 'blur(24px) saturate(1.7)',
+            borderColor: 'var(--border-color)',
+            backgroundColor: 'rgba(255,255,255,0.94)',
+            boxShadow: '0 -10px 26px rgba(26, 26, 26, 0.12)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
           }}
           aria-label="Mobile primary navigation"
         >
@@ -603,7 +602,7 @@ function MobileTab({
     const props = {
       size: 21,
       strokeWidth: active ? 2.7 : 2.1,
-      fill: active ? 'currentColor' : 'none',
+      fill: 'none',
     };
 
     switch (icon) {
@@ -629,31 +628,21 @@ function MobileTab({
         if (href === '#') event.preventDefault();
         onClick?.();
       }}
-      className="group relative flex min-h-[72px] flex-col items-center justify-center gap-1 text-[10px] font-black uppercase transition"
+      className="group relative flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black uppercase transition"
       style={{
         color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
+        backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 8%, white)' : 'transparent',
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.20)';
+        if (!active) e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = 'transparent';
+        e.currentTarget.style.backgroundColor = active ? 'color-mix(in srgb, var(--color-primary) 8%, white)' : 'transparent';
       }}
     >
       {active && (
         <span
-          className="absolute inset-x-1.5 inset-y-1.5 rounded-[22px] border"
-          style={{
-            borderColor: 'color-mix(in srgb, var(--color-primary) 42%, white)',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,247,247,0.82))',
-            boxShadow: '0 10px 24px rgba(255,74,78,0.16), inset 0 1px 0 rgba(255,255,255,0.90)',
-          }}
-          aria-hidden="true"
-        />
-      )}
-      {active && (
-        <span
-          className="absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full"
+          className="absolute left-1/2 top-0 h-1 w-9 -translate-x-1/2 rounded-b-full"
           style={{ backgroundColor: 'var(--color-primary)' }}
           aria-hidden="true"
         />
@@ -661,10 +650,10 @@ function MobileTab({
       <div
         className="relative flex h-8 w-8 items-center justify-center rounded-full border"
         style={{
-          borderColor: active ? 'var(--color-primary)' : 'rgba(15, 23, 42, 0.12)',
-          backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 12%, white)' : 'rgba(255,255,255,0.62)',
-          boxShadow: active ? '0 6px 14px rgba(255,74,78,0.18)' : 'none',
-          opacity: active ? 1 : 0.78,
+          borderColor: active ? 'color-mix(in srgb, var(--color-primary) 35%, transparent)' : 'transparent',
+          backgroundColor: active ? 'white' : 'transparent',
+          boxShadow: active ? '0 4px 12px rgba(26, 26, 26, 0.10)' : 'none',
+          opacity: active ? 1 : 0.82,
         }}
       >
         {getIcon()}

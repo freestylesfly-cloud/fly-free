@@ -70,8 +70,20 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 function absoluteUrl(path: string) {
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const url = new URL(path, SITE_URL);
+  url.pathname = url.pathname
+    .split('/')
+    .map((segment) => encodeURIComponent(safeDecode(segment)))
+    .join('/');
+  return url.toString();
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function uniqueByUrl(items: SitemapItem[]) {

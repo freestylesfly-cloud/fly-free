@@ -50,7 +50,7 @@ export default function CartPage() {
   }
 
   return (
-    <main className="min-h-screen pb-28 lg:pb-0" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <main className="min-h-screen pb-48 lg:pb-0" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <section className="border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-9">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -198,7 +198,10 @@ export default function CartPage() {
         </aside>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white p-3 lg:hidden" style={{ borderColor: 'var(--border-color)' }}>
+      <div
+        className="fixed inset-x-3 bottom-[88px] z-30 rounded-2xl border bg-white p-3 shadow-xl lg:hidden"
+        style={{ borderColor: 'var(--border-color)' }}
+      >
         <div className="mx-auto grid max-w-7xl grid-cols-[1fr_1.2fr] gap-3">
           <div>
             <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>Total</p>
