@@ -1,12 +1,15 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from './stores/authStore';
 import { useThemeStore } from '../src/store/themeStore';
+import { trackEvent } from './lib/analytics';
 
 export function Providers({ children }: { children: ReactNode }) {
   const { checkAuth } = useAuthStore();
   const { initTheme } = useThemeStore();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (
@@ -51,6 +54,11 @@ export function Providers({ children }: { children: ReactNode }) {
       window.removeEventListener('offline', handleOffline);
     };
   }, [checkAuth, initTheme]);
+
+  useEffect(() => {
+    const query = window.location.search;
+    trackEvent('page_view', { path: `${pathname}${query}` });
+  }, [pathname]);
 
   return <>{children}</>;
 }

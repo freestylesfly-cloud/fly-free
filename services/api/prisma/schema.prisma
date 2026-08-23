@@ -542,3 +542,29 @@ model ActivityLog {
   @@index([statusCode])
   @@index([userId])
 }
+
+model AnalyticsEvent {
+  id            String   @id @default(cuid())
+  name          String
+  sessionId     String?
+  userId        String?
+  productId     String?
+  productSlug   String?
+  orderId       String?
+  state         String?
+  pincodePrefix String?
+  device        String?
+  referrer      String?
+  path          String?
+  metadata      Json?
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([name])
+  @@index([createdAt])
+  @@index([productId])
+  @@index([userId])
+  @@index([state])
+  @@index([pincodePrefix])
+}

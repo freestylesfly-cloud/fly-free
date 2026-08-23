@@ -496,6 +496,10 @@ class ApiService {
     return this.request<any>('/api/admin/activity-logs/stats');
   }
 
+  async getEventAnalytics(days = 30) {
+    return this.request<any>(`/api/admin/analytics/events?days=${days}`);
+  }
+
   async getNotifications() {
     return this.request('/api/admin/notifications');
   }

@@ -21,11 +21,13 @@ function shouldRateLimit(pathname: string) {
     /^\/api\/auth\/reset-password$/,
     /^\/api\/auth\/user\/reset-password$/,
     /^\/api\/commerce\/checkout$/,
-    /^\/api\/commerce\/checkout\/verify$/
+    /^\/api\/commerce\/checkout\/verify$/,
+    /^\/api\/analytics\/events$/
   ].some((pattern) => pattern.test(pathname));
 }
 
 function rateLimitMax(pathname: string) {
+  if (pathname.includes("/analytics/events")) return 180;
   if (pathname.includes("/checkout")) return 20;
   if (pathname.includes("resend") || pathname.includes("forgot-password") || pathname.includes("reset-password")) return 5;
   return 10;

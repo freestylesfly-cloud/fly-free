@@ -30,6 +30,7 @@ import { getApiBaseUrl } from '../../lib/api';
 import { MEDIA } from '../../lib/design';
 import { SITE_URL } from '../../lib/site';
 import { ProductCard } from '../../components/ProductCard';
+import { trackEvent } from '../../lib/analytics';
 
 interface ProductDetailProps {
   params: Promise<{ slug: string }>;
@@ -210,6 +211,18 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }, [product?.id, token]);
 
   useEffect(() => {
+    if (!product?.id) return;
+    trackEvent('product_view', {
+      productId: product.id,
+      productSlug: product.slug || slug,
+      metadata: {
+        name: product.name,
+        price: Math.round((product.price || product.basePrice || 0) / 100)
+      }
+    });
+  }, [product?.id, product?.slug, product?.name, product?.price, product?.basePrice, slug]);
+
+  useEffect(() => {
     setSelectedImage(galleryImages[0] || null);
   }, [galleryImages]);
 
@@ -243,6 +256,18 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       hamperId: selectedHamperId || undefined,
       hamperName: selectedHamper?.name,
       offerCode: undefined
+    });
+    trackEvent('add_to_cart', {
+      productId: product.id,
+      productSlug: product.slug || slug,
+      metadata: {
+        source: 'product_detail',
+        size: selectedSize,
+        color: selectedVariant?.color || selectedColor || 'Default',
+        quantity,
+        hamperId: selectedHamperId || undefined,
+        price: Math.round(totalPrice / 100)
+      }
     });
     setNotice('Added to cart successfully!');
     setTimeout(() => setNotice(''), 3000);

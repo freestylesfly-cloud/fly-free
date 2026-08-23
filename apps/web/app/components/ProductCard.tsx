@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { formatCurrency } from '../lib/utils';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
+import { trackEvent } from '../lib/analytics';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
 
@@ -45,6 +46,11 @@ export function ProductCard({ id, name, price, image, hoverImage, tag, slug, ori
       size: 'M',
       color: 'Black',
       image: image || undefined,
+    });
+    trackEvent('add_to_cart', {
+      productId: id,
+      productSlug: slug,
+      metadata: { source: 'product_card', price, quantity: 1 }
     });
     window.setTimeout(() => setIsAdding(false), 700);
   };

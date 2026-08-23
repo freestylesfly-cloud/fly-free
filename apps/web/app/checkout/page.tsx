@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { MapPin, ShoppingBag, Plus, Loader2, Tag, Check, Truck, ShieldCheck, RotateCcw, Headphones, CreditCard, Wallet, Mail, PackageCheck } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
+import { trackEvent } from '../lib/analytics';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -173,6 +174,7 @@ export default function CheckoutPage() {
     setError('');
 
     try {
+      const pincode = String(address.postalCode || address.pincode || '');
       const payload = {
         items: cartItems.map(item => ({
           productId: item.productId,
@@ -189,6 +191,20 @@ export default function CheckoutPage() {
         },
         couponCode: appliedCoupon?.code || undefined
       };
+
+      const checkoutAnalytics = {
+        state: address.state,
+        pincodePrefix: pincode.slice(0, 3),
+        metadata: {
+          itemCount: cartItems.length,
+          quantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+          subtotal,
+          total,
+          couponCode: appliedCoupon?.code || undefined,
+          productIds: cartItems.map((item) => item.productId).join(',')
+        }
+      };
+      trackEvent('checkout_started', checkoutAnalytics);
 
       const orderRes = await fetch(`/api/commerce/checkout`, {
         method: 'POST',
@@ -253,6 +269,7 @@ export default function CheckoutPage() {
         );
       });
 
+      trackEvent('payment_opened', checkoutAnalytics);
       razorpay.open();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed');
@@ -298,6 +315,13 @@ export default function CheckoutPage() {
 
       if (verifyRes.ok) {
         const created = body?.data || body;
+        trackEvent('payment_success', {
+          orderId: created?.id,
+          metadata: {
+            total: created?.total,
+            orderNumber: created?.orderNumber
+          }
+        });
         clearCart();
         window.location.href = `/order-success?orderId=${created?.id ?? ''}`;
         return;
