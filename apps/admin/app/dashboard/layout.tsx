@@ -12,7 +12,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const user = useAuthStore((state) => state.user);
-  const token = useAuthStore((state) => state.token);
+  const hydrated = useAuthStore((state) => state.hydrated);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
   const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
@@ -20,12 +21,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (isMounted && !token) {
+    if (isMounted && !hydrated) {
+      checkAuth().catch(() => {});
+    }
+  }, [checkAuth, hydrated, isMounted]);
+
+  useEffect(() => {
+    if (isMounted && hydrated && !user) {
       router.push('/admin/login');
     }
-  }, [token, isMounted, router]);
+  }, [user, hydrated, isMounted, router]);
 
-  if (!isMounted || !token) {
+  if (!isMounted || !hydrated || !user) {
     return null;
   }
 

@@ -216,6 +216,83 @@ export class AuthService {
     };
   }
 
+  async loginWithSupabase(accessToken: string) {
+    if (!accessToken) {
+      throw new BadRequestException("Supabase access token is required");
+    }
+
+    const supabaseUrl = (
+      this.config.get<string>("SUPABASE_URL") ||
+      this.config.get<string>("NEXT_PUBLIC_SUPABASE_URL") ||
+      ""
+    ).trim().replace(/\/$/, "");
+    const supabaseAnonKey = (
+      this.config.get<string>("SUPABASE_ANON_KEY") ||
+      this.config.get<string>("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+      ""
+    ).trim();
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new BadRequestException("Supabase auth is not configured on the API server");
+    }
+
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+    const profile: any = await response.json().catch(() => null);
+
+    if (!response.ok || !profile?.email) {
+      throw new UnauthorizedException("Supabase session could not be verified");
+    }
+
+    const email = this.normalizeEmail(profile.email);
+    const metadata = profile.user_metadata || {};
+    const name = String(
+      metadata.full_name ||
+      metadata.name ||
+      [metadata.first_name, metadata.last_name].filter(Boolean).join(" ") ||
+      email.split("@")[0]
+    ).trim();
+    const image = String(metadata.avatar_url || metadata.picture || "").trim() || undefined;
+    const emailVerified = Boolean(profile.email_confirmed_at || profile.confirmed_at || profile.email);
+
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        name,
+        image,
+        emailVerified,
+        emailVerifiedAt: emailVerified ? new Date(profile.email_confirmed_at || profile.confirmed_at || Date.now()) : undefined
+      },
+      create: {
+        email,
+        name,
+        image,
+        emailVerified,
+        emailVerifiedAt: emailVerified ? new Date(profile.email_confirmed_at || profile.confirmed_at || Date.now()) : undefined
+      }
+    });
+
+    const token = this.generateToken({ userId: user.id, email: user.email });
+
+    return {
+      message: "Supabase login successful",
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        image: user.image,
+        emailVerified: user.emailVerified
+      }
+    };
+  }
+
   async logoutUser(token: string) {
     return { message: "Logged out successfully" };
   }

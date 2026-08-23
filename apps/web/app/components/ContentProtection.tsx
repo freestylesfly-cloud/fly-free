@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 
 export function ContentProtection() {
   const enabled =
-    process.env.NODE_ENV === 'production' ||
-    process.env.NEXT_PUBLIC_ENABLE_CONTENT_PROTECTION === 'true';
+    process.env.NODE_ENV === 'production' &&
+    process.env.NEXT_PUBLIC_ENABLE_CONTENT_PROTECTION !== 'false';
 
   useEffect(() => {
     if (!enabled) return;

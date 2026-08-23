@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { signOut as signOutSupabase } from '../lib/supabase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -20,6 +21,7 @@ interface AuthStore {
   loading: boolean;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  supabaseLogin: (accessToken: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -85,9 +87,48 @@ const useAuthStore = create<AuthStore>()(
         }
       },
 
+      supabaseLogin: async (accessToken: string) => {
+        set({ loading: true });
+        try {
+          const res = await fetch(`/api/auth/supabase/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken })
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Supabase sign-in failed');
+          }
+
+          const data = await res.json();
+          const profile = data.user ?? data;
+          const user: User = {
+            id: profile.id || data.userId,
+            email: profile.email,
+            name: profile.name,
+            phone: profile.phone,
+            image: profile.image,
+            emailVerified: profile.emailVerified ?? true
+          };
+          const token = data.token || data.access_token;
+
+          set({ user, token, loading: false, hydrated: true });
+
+          if (token) {
+            localStorage.setItem('flyfree_auth_token', token);
+            localStorage.setItem('flyfree_user_data', JSON.stringify(user));
+          }
+        } catch (error) {
+          set({ loading: false, hydrated: true });
+          throw error;
+        }
+      },
+
       logout: async () => {
         set({ loading: true });
         try {
+          await signOutSupabase().catch(() => {});
           const token = get().token;
           if (token) {
             await fetch(`/api/auth/user/logout`, {

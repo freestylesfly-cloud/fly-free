@@ -5,6 +5,32 @@ import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function shouldRateLimit(pathname: string) {
+  return [
+    /^\/api\/auth\/user\/login$/,
+    /^\/api\/auth\/admin\/login$/,
+    /^\/api\/auth\/user\/signup$/,
+    /^\/api\/auth\/user\/verify-email$/,
+    /^\/api\/auth\/user\/resend-email$/,
+    /^\/api\/auth\/user\/resend-otp$/,
+    /^\/api\/auth\/forgot-password$/,
+    /^\/api\/auth\/user\/forgot-password$/,
+    /^\/api\/auth\/reset-password$/,
+    /^\/api\/auth\/user\/reset-password$/,
+    /^\/api\/commerce\/checkout$/,
+    /^\/api\/commerce\/checkout\/verify$/
+  ].some((pattern) => pattern.test(pathname));
+}
+
+function rateLimitMax(pathname: string) {
+  if (pathname.includes("/checkout")) return 20;
+  if (pathname.includes("resend") || pathname.includes("forgot-password") || pathname.includes("reset-password")) return 5;
+  return 10;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
@@ -66,9 +92,39 @@ async function bootstrap() {
   });
   app.setGlobalPrefix("api");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addHook("onRequest", (request: any, reply: any, done: any) => {
+    const method = String(request.method || "").toUpperCase();
+    const pathname = String(request.url || "").split("?")[0];
+
+    if (method !== "POST" || !shouldRateLimit(pathname)) {
+      done();
+      return;
+    }
+
+    const forwardedFor = String(request.headers?.["x-forwarded-for"] || "");
+    const ip = forwardedFor.split(",")[0].trim() || request.ip || request.socket?.remoteAddress || "unknown";
+    const key = `${ip}:${pathname}`;
+    const now = Date.now();
+    const current = rateLimitBuckets.get(key);
+    const bucket = current && current.resetAt > now ? current : { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    bucket.count += 1;
+    rateLimitBuckets.set(key, bucket);
+
+    if (bucket.count > rateLimitMax(pathname)) {
+      reply
+        .code(429)
+        .header("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)))
+        .send({ statusCode: 429, message: "Too many attempts. Please try again shortly." });
+      return;
+    }
+
+    done();
+  });
 
   // Swagger Documentation (like Python's Swagger/OpenAPI)
-  const config = new DocumentBuilder()
+  if (process.env.NODE_ENV !== "production" || process.env.ENABLE_SWAGGER === "true") {
+    const config = new DocumentBuilder()
     .setTitle("Fly Free API")
     .setDescription("E-commerce API for t-shirt customization platform with admin dashboard")
     .setVersion("1.0.0")
@@ -95,13 +151,16 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("docs", app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, document);
+  }
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3001;
   await app.listen(port, "0.0.0.0");
   console.log(`\n✅ API Server running on: http://localhost:${port}`);
-  console.log(`📚 API Docs available at: http://localhost:${port}/docs\n`);
+  if (process.env.NODE_ENV !== "production" || process.env.ENABLE_SWAGGER === "true") {
+    console.log(`📚 API Docs available at: http://localhost:${port}/docs\n`);
+  }
 }
 
 void bootstrap();

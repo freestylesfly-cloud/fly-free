@@ -56,6 +56,28 @@ export async function signInWithEmail(email: string, password: string) {
   return { data, error };
 }
 
+export async function signInWithGoogle(nextPath = '/') {
+  if (!supabase) {
+    return { data: null, error: supabaseError };
+  }
+
+  const appUrl = window.location.origin.replace(/\/$/, '');
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'select_account',
+      },
+    },
+  });
+
+  return { data, error };
+}
+
 export async function signOut() {
   if (!supabase) {
     return { error: supabaseError };

@@ -40,14 +40,18 @@ export class EcommerceController {
 
   @ApiTags("🛒 Shopping Cart")
   @Put("cart/:cartItemId")
-  updateCart(@Param("cartItemId") cartItemId: string, @Body() body: { quantity: number }) {
-    return this.commerceService.updateCartItem(cartItemId, body.quantity);
+  updateCart(
+    @Param("cartItemId") cartItemId: string,
+    @Body() body: { quantity: number },
+    @Headers("authorization") token: string
+  ) {
+    return this.commerceService.updateCartItem(cartItemId, body.quantity, token);
   }
 
   @ApiTags("🛒 Shopping Cart")
   @Delete("cart/:cartItemId")
-  removeFromCart(@Param("cartItemId") cartItemId: string) {
-    return this.commerceService.removeFromCart(cartItemId);
+  removeFromCart(@Param("cartItemId") cartItemId: string, @Headers("authorization") token: string) {
+    return this.commerceService.removeFromCart(cartItemId, token);
   }
 
   @ApiTags("🛒 Shopping Cart")
@@ -75,14 +79,14 @@ export class EcommerceController {
 
   @ApiTags("⭐ Reviews")
   @Put("reviews/:reviewId")
-  updateReview(@Param("reviewId") reviewId: string, @Body() body: any) {
-    return this.commerceService.updateReview(reviewId, body);
+  updateReview(@Param("reviewId") reviewId: string, @Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.updateReview(reviewId, body, token);
   }
 
   @ApiTags("⭐ Reviews")
   @Delete("reviews/:reviewId")
-  deleteReview(@Param("reviewId") reviewId: string) {
-    return this.commerceService.deleteReview(reviewId);
+  deleteReview(@Param("reviewId") reviewId: string, @Headers("authorization") token: string) {
+    return this.commerceService.deleteReview(reviewId, token);
   }
 
   // ==================== ADDRESSES ====================

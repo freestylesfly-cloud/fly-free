@@ -4,6 +4,10 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   allowedDevOrigins: ["localhost", "127.0.0.1"],
+  devIndicators: false,
+  experimental: {
+    devtoolSegmentExplorer: false
+  },
   async rewrites() {
     return {
       beforeFiles: [

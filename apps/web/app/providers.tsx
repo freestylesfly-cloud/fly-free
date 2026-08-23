@@ -9,6 +9,16 @@ export function Providers({ children }: { children: ReactNode }) {
   const { initTheme } = useThemeStore();
 
   useEffect(() => {
+    if (
+      window.location.hash.includes('access_token=') &&
+      !window.location.pathname.startsWith('/auth/callback')
+    ) {
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.hash = window.location.hash.slice(1);
+      window.location.replace(callbackUrl.toString());
+      return;
+    }
+
     // Initialize UI theme and fetch admin theme
     initTheme();
 

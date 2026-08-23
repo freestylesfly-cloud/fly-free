@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import type React from 'react';
-import { ChevronDown, Heart, PackageSearch, Package, ShoppingBag, Menu, X, User, Search, LogOut } from 'lucide-react';
+import { ChevronDown, Heart, Home, Package, Search, ShoppingBag, Store, LogIn, Menu, X, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
@@ -471,38 +471,46 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Bar - Professional */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t md:hidden"
-        style={{
-          borderColor: 'var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-          boxShadow: '0 -2px 12px rgba(26, 26, 26, 0.08)',
-          borderTopWidth: '2px',
-        }}
+      {/* Mobile Bottom Navigation Bar */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 md:hidden"
+        style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
       >
-        <MobileTab href="/" label="Home" active={isActive('/')} icon="🏠" />
-        <MobileTab href="/products" label="Shop" active={isActive('/products')} icon="🛍️" />
-        <MobileTab
-          href="/cart"
-          label={`Cart${displayedCartCount > 0 ? ` ${displayedCartCount}` : ''}`}
-          cartCount={displayedCartCount}
-          active={isActive('/cart')}
-          icon="🛒"
-        />
-        <MobileTab
-          href={user ? '/profile/wishlist' : '/auth/login'}
-          label="Saved"
-          active={isActive('/profile/wishlist') || isActive('/wishlist')}
-          icon="❤️"
-        />
-        <MobileTab
-          href={user ? '/profile' : '/auth/login'}
-          label={user ? 'Profile' : 'Login'}
-          active={isActive(user ? '/profile' : '/auth')}
-          icon={user ? '👤' : '🔓'}
-        />
-      </nav>
+        <nav
+          className="grid grid-cols-5 overflow-hidden rounded-[26px] border shadow-2xl"
+          style={{
+            borderColor: 'rgba(255, 255, 255, 0.62)',
+            background:
+              'linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.56))',
+            boxShadow: '0 -14px 34px rgba(26, 26, 26, 0.14), inset 0 1px 0 rgba(255,255,255,0.82)',
+            backdropFilter: 'blur(24px) saturate(1.7)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.7)',
+          }}
+          aria-label="Mobile primary navigation"
+        >
+          <MobileTab href="/" label="Home" active={isActive('/')} icon="home" />
+          <MobileTab href="/products" label="Shop" active={isActive('/products')} icon="shop" />
+          <MobileTab
+            href="/cart"
+            label="Cart"
+            cartCount={displayedCartCount}
+            active={isActive('/cart')}
+            icon="cart"
+          />
+          <MobileTab
+            href={user ? '/profile/wishlist' : '/auth/login'}
+            label="Saved"
+            active={isActive('/profile/wishlist') || isActive('/wishlist')}
+            icon="heart"
+          />
+          <MobileTab
+            href={user ? '/profile' : '/auth/login'}
+            label={user ? 'Profile' : 'Login'}
+            active={isActive(user ? '/profile' : '/auth')}
+            icon={user ? 'user' : 'login'}
+          />
+        </nav>
+      </div>
 
       {/* Login Prompt Modal */}
       {loginPrompt && (
@@ -589,23 +597,28 @@ function MobileTab({
   onClick?: () => void;
   cartCount?: number;
   active?: boolean;
-  icon?: string;
+  icon: 'home' | 'shop' | 'cart' | 'heart' | 'user' | 'login';
 }) {
   const getIcon = () => {
-    if (icon) return <span className="text-xl">{icon}</span>;
+    const props = {
+      size: 21,
+      strokeWidth: active ? 2.7 : 2.1,
+      fill: active ? 'currentColor' : 'none',
+    };
 
-    switch (href) {
-      case '/':
-        return <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-      case '/products':
-        return <PackageSearch size={20} />;
-      case '/cart':
-        return <ShoppingBag size={20} />;
-      case '/wishlist':
-      case '/profile/wishlist':
-        return <Heart size={20} />;
+    switch (icon) {
+      case 'home':
+        return <Home {...props} />;
+      case 'shop':
+        return <Store {...props} />;
+      case 'cart':
+        return <ShoppingBag {...props} />;
+      case 'heart':
+        return <Heart {...props} />;
+      case 'login':
+        return <LogIn {...props} />;
       default:
-        return <User size={20} />;
+        return <User {...props} />;
     }
   };
 
@@ -616,33 +629,63 @@ function MobileTab({
         if (href === '#') event.preventDefault();
         onClick?.();
       }}
-      className="flex min-h-16 flex-col items-center justify-center gap-1.5 text-[11px] font-bold transition"
+      className="group relative flex min-h-[72px] flex-col items-center justify-center gap-1 text-[10px] font-black uppercase transition"
       style={{
         color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-        borderTop: active ? '3px solid var(--color-primary)' : '3px solid transparent',
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+        if (!active) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.20)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = 'transparent';
       }}
     >
-      <div className="relative">
+      {active && (
+        <span
+          className="absolute inset-x-1.5 inset-y-1.5 rounded-[22px] border"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--color-primary) 42%, white)',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,247,247,0.82))',
+            boxShadow: '0 10px 24px rgba(255,74,78,0.16), inset 0 1px 0 rgba(255,255,255,0.90)',
+          }}
+          aria-hidden="true"
+        />
+      )}
+      {active && (
+        <span
+          className="absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border"
+        style={{
+          borderColor: active ? 'var(--color-primary)' : 'rgba(15, 23, 42, 0.12)',
+          backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 12%, white)' : 'rgba(255,255,255,0.62)',
+          boxShadow: active ? '0 6px 14px rgba(255,74,78,0.18)' : 'none',
+          opacity: active ? 1 : 0.78,
+        }}
+      >
         {getIcon()}
         {href === '/cart' && cartCount && cartCount > 0 && (
           <span
-            className="absolute -top-2.5 -right-2.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-black text-white"
+            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white"
             style={{
               backgroundColor: 'var(--color-primary)',
-              fontSize: '10px',
+              boxShadow: '0 4px 10px rgba(255,74,78,0.36)',
             }}
           >
             {cartCount}
           </span>
         )}
       </div>
-      <span className="uppercase tracking-wide">{label}</span>
+      <span
+        className="relative max-w-full truncate px-1 leading-none tracking-normal"
+        style={{ color: active ? 'var(--color-primary)' : 'var(--text-secondary)' }}
+      >
+        {label}
+      </span>
     </Link>
   );
 }

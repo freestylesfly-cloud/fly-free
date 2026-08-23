@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, ShoppingBag, Plus, Edit2, Loader2, Tag, Check, AlertCircle } from 'lucide-react';
+import { MapPin, ShoppingBag, Plus, Loader2, Tag, Check, Truck, ShieldCheck, RotateCcw, Headphones, CreditCard, Wallet, Mail, PackageCheck } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 
@@ -45,6 +45,35 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'India'
   });
+
+  const selectedAddressData = addresses.find((addr) => addr.id === selectedAddress);
+
+  function formatMoney(value: number) {
+    return value.toLocaleString('en-IN');
+  }
+
+  function formatDeliveryDate(date: Date) {
+    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+  }
+
+  function getDeliveryWindow(address?: any) {
+    const state = String(address?.state || '').trim().toLowerCase();
+    const postalCode = String(address?.postalCode || address?.pincode || '').trim();
+    const firstPinDigit = postalCode.charAt(0);
+    const northeastStates = ['assam', 'arunachal pradesh', 'manipur', 'meghalaya', 'mizoram', 'nagaland', 'sikkim', 'tripura'];
+    const isNortheast = northeastStates.includes(state) || ['7', '8'].includes(firstPinDigit);
+    const minDays = isNortheast ? 3 : 4;
+    const maxDays = isNortheast ? 6 : 8;
+    const start = new Date();
+    const end = new Date();
+    start.setDate(start.getDate() + minDays);
+    end.setDate(end.getDate() + maxDays);
+    return `${formatDeliveryDate(start)}-${formatDeliveryDate(end)}`;
+  }
+
+  const deliveryEstimate = selectedAddressData
+    ? `Deliver by ${getDeliveryWindow(selectedAddressData)}`
+    : 'Select an address for delivery estimate';
 
   useEffect(() => {
     if (!user || !token) {
@@ -160,8 +189,6 @@ export default function CheckoutPage() {
         },
         couponCode: appliedCoupon?.code || undefined
       };
-
-      console.log('📤 Checkout payload:', payload);
 
       const orderRes = await fetch(`/api/commerce/checkout`, {
         method: 'POST',
@@ -348,7 +375,16 @@ export default function CheckoutPage() {
   return (
     <main className="min-h-screen py-8 px-4 pb-28 md:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-black mb-8" style={{ color: 'var(--text-primary)' }}>Checkout</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-black mb-4" style={{ color: 'var(--text-primary)' }}>Checkout</h1>
+          <div className="flex items-center gap-2 text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>
+            <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>Cart</span>
+            <span>--</span>
+            <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>Address</span>
+            <span>--</span>
+            <span className="rounded-full px-3 py-1 text-white" style={{ backgroundColor: 'var(--color-primary)' }}>Payment</span>
+          </div>
+        </div>
 
         <div className="grid md:grid-cols-[2fr_1fr] gap-8">
           {/* Left: Address & Summary */}
@@ -402,7 +438,7 @@ export default function CheckoutPage() {
                         <div>
                           <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{addr.fullName}</p>
                           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{addr.line1}, {addr.city} {addr.postalCode}</p>
-                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>📞 {addr.phone}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{addr.phone}</p>
                         </div>
                         {selectedAddress === addr.id && <Check size={20} className="text-primary" />}
                       </div>
@@ -415,16 +451,58 @@ export default function CheckoutPage() {
               )}
             </div>
 
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <Truck size={20} />
+                Delivery & Updates
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <p className="text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Estimated arrival</p>
+                  <p className="mt-1 text-base font-black" style={{ color: 'var(--text-primary)' }}>{deliveryEstimate}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Final tracking is shared after dispatch.</p>
+                </div>
+                <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <p className="text-xs font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Email updates</p>
+                  <p className="mt-1 text-base font-black break-all" style={{ color: 'var(--text-primary)' }}>{user?.email || 'Your account email'}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>Confirmation, shipping, and delivery updates are sent automatically.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
+              <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <CreditCard size={20} />
+                Payment Method
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'rgba(255, 107, 91, 0.08)' }}>
+                  <CreditCard size={20} className="mt-0.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
+                  <div>
+                    <p className="font-black" style={{ color: 'var(--text-primary)' }}>Pay online securely</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>UPI, cards, net banking, and wallets through Razorpay.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border p-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <Wallet size={20} className="mt-0.5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+                  <div>
+                    <p className="font-black" style={{ color: 'var(--text-primary)' }}>Cash on Delivery</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Not enabled yet. Add COD only when return risk and courier charges are clear.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Coupon Section */}
             <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
               <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Tag size={20} />
-                Promo Code
+                Have a coupon?
               </h2>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
-                  placeholder="Enter influencer/coupon code"
+                  placeholder="Enter coupon code"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   disabled={couponValid}
@@ -451,8 +529,11 @@ export default function CheckoutPage() {
               )}
               {appliedCoupon?.type === 'INFLUENCER' && (
                 <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-                  💡 10% discount applied only to eligible products from {appliedCoupon.influencer.name}
+                  Influencer discount applied only to eligible products from {appliedCoupon.influencer.name}.
                 </div>
+              )}
+              {!couponMessage && (
+                <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>Have an influencer code? Enter it here.</p>
               )}
             </div>
           </div>
@@ -461,11 +542,26 @@ export default function CheckoutPage() {
           <div className="rounded-xl p-6 h-fit sticky top-8" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
             <h2 className="text-lg font-black mb-4" style={{ color: 'var(--text-primary)' }}>Order Summary</h2>
 
-            <div className="space-y-3 mb-6 pb-6" style={{ borderBottomColor: 'var(--border-color)', borderBottomWidth: '1px' }}>
+            <div className="space-y-4 mb-6 pb-6" style={{ borderBottomColor: 'var(--border-color)', borderBottomWidth: '1px' }}>
               {cartItems.map((item) => (
-                <div key={item.productId} className="flex justify-between text-sm">
-                  <span style={{ color: 'var(--text-secondary)' }}>{item.productName} x {item.quantity}</span>
-                  <span className="font-bold" style={{ color: 'var(--text-primary)' }}>₹{item.price * item.quantity}</span>
+                <div key={`${item.productId}-${item.variantId || item.size}-${item.color}`} className="flex gap-3 text-sm">
+                  <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                    {item.image ? (
+                      <img src={item.image} alt={item.productName} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ShoppingBag size={22} style={{ color: 'var(--text-tertiary)' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black leading-snug" style={{ color: 'var(--text-primary)' }}>{item.productName}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Size: {item.size || 'Selected'} {item.color ? `| Color: ${item.color}` : ''} | Qty: {item.quantity}
+                    </p>
+                    {item.offerLabel && <p className="mt-1 text-xs font-bold" style={{ color: 'var(--color-secondary)' }}>{item.offerLabel}</p>}
+                  </div>
+                  <span className="shrink-0 font-bold" style={{ color: 'var(--text-primary)' }}>&#8377;{formatMoney(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -473,29 +569,36 @@ export default function CheckoutPage() {
             <div className="space-y-2 mb-6">
               <div className="flex justify-between text-sm">
                 <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
-                <span style={{ color: 'var(--text-primary)' }}>₹{subtotal}</span>
+                <span style={{ color: 'var(--text-primary)' }}>&#8377;{formatMoney(subtotal)}</span>
               </div>
               {baseDiscount > 0 && (
                 <div className="flex justify-between text-sm font-bold" style={{ color: 'var(--color-secondary)' }}>
                   <span>Discount ({appliedCoupon?.discountPercent}%)</span>
-                  <span>-₹{baseDiscount}</span>
+                  <span>-&#8377;{formatMoney(baseDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span style={{ color: 'var(--text-secondary)' }}>Delivery</span>
                 <span style={{ color: shipping === 0 ? 'var(--color-secondary)' : 'var(--text-primary)' }}>
-                  {shipping === 0 ? 'FREE' : `₹${shipping}`}
+                  {shipping === 0 ? 'FREE' : <>&#8377;{formatMoney(shipping)}</>}
                 </span>
               </div>
               {toFreeDelivery > 0 && (
                 <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                  Add ₹{toFreeDelivery} more to get free delivery.
+                  Add &#8377;{formatMoney(toFreeDelivery)} more to get free delivery.
                 </p>
               )}
               <div className="flex justify-between text-lg font-black pt-3" style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px' }}>
                 <span style={{ color: 'var(--text-primary)' }}>Total</span>
-                <span style={{ color: 'var(--color-primary)' }}>₹{total}</span>
+                <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(total)}</span>
               </div>
+            </div>
+
+            <div className="mb-5 grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex items-center gap-1"><ShieldCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Secure</div>
+              <div className="flex items-center gap-1"><Truck size={15} style={{ color: 'var(--color-secondary)' }} /> Free delivery</div>
+              <div className="flex items-center gap-1"><RotateCcw size={15} style={{ color: 'var(--color-secondary)' }} /> 30-day exchange</div>
+              <div className="flex items-center gap-1"><PackageCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Quality checked</div>
             </div>
 
             <button
@@ -507,6 +610,23 @@ export default function CheckoutPage() {
               {processing ? <Loader2 size={18} className="inline animate-spin mr-2" /> : ''}
               {processing ? 'Processing...' : 'Proceed to Payment'}
             </button>
+
+            {processing && (
+              <p className="mt-3 text-center text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Opening Razorpay. Please do not close this screen.
+              </p>
+            )}
+
+            <div className="mt-4 space-y-2 text-center text-sm">
+              <Link href="/contact" className="inline-flex items-center justify-center gap-2 font-bold hover:opacity-80" style={{ color: 'var(--color-primary)' }}>
+                <Headphones size={16} />
+                Need help? Contact us
+              </Link>
+              <p className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                <Mail size={14} />
+                Order updates will be sent by email.
+              </p>
+            </div>
           </div>
         </div>
       </div>

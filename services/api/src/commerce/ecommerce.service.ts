@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import * as jwt from "jsonwebtoken";
@@ -105,14 +105,22 @@ export class EcommerceService {
     });
   }
 
-  async updateCartItem(cartItemId: string, quantity: number) {
+  async updateCartItem(cartItemId: string, quantity: number, token: string) {
+    await this.assertOwnsCartItem(cartItemId, token);
+
+    const safeQuantity = Number(quantity);
+    if (!Number.isInteger(safeQuantity) || safeQuantity < 1) {
+      throw new BadRequestException("Quantity must be at least 1");
+    }
+
     return this.prisma.cartItem.update({
       where: { id: cartItemId },
-      data: { quantity }
+      data: { quantity: safeQuantity }
     });
   }
 
-  async removeFromCart(cartItemId: string) {
+  async removeFromCart(cartItemId: string, token: string) {
+    await this.assertOwnsCartItem(cartItemId, token);
     return this.prisma.cartItem.delete({ where: { id: cartItemId } });
   }
 
@@ -154,14 +162,17 @@ export class EcommerceService {
     });
   }
 
-  async updateReview(reviewId: string, data: any) {
+  async updateReview(reviewId: string, data: any, token: string) {
+    await this.assertOwnsReview(reviewId, token);
+
     return this.prisma.review.update({
       where: { id: reviewId },
       data: { title: data.title, body: data.body || data.comment, rating: data.rating }
     });
   }
 
-  async deleteReview(reviewId: string) {
+  async deleteReview(reviewId: string, token: string) {
+    await this.assertOwnsReview(reviewId, token);
     return this.prisma.review.delete({ where: { id: reviewId } });
   }
 
@@ -236,6 +247,15 @@ export class EcommerceService {
 
   async setDefaultAddress(addressId: string, token: string) {
     const userId = this.extractUserId(token);
+    const address = await this.prisma.address.findFirst({
+      where: { id: addressId, userId },
+      select: { id: true }
+    });
+
+    if (!address) {
+      throw new UnauthorizedException("Address not found or does not belong to you");
+    }
+
     await this.prisma.address.updateMany({
       where: { userId, isDefault: true },
       data: { isDefault: false }
@@ -385,6 +405,30 @@ export class EcommerceService {
   }
 
   // ==================== HELPER METHODS ====================
+  private async assertOwnsCartItem(cartItemId: string, token: string) {
+    const userId = this.extractUserId(token);
+    const item = await this.prisma.cartItem.findFirst({
+      where: { id: cartItemId, cart: { userId } },
+      select: { id: true }
+    });
+
+    if (!item) {
+      throw new NotFoundException("Cart item not found");
+    }
+  }
+
+  private async assertOwnsReview(reviewId: string, token: string) {
+    const userId = this.extractUserId(token);
+    const review = await this.prisma.review.findFirst({
+      where: { id: reviewId, userId },
+      select: { id: true }
+    });
+
+    if (!review) {
+      throw new NotFoundException("Review not found");
+    }
+  }
+
   private extractUserId(token?: string): string {
     if (!token) {
       throw new UnauthorizedException("Login required");

@@ -230,14 +230,14 @@ export class AuthController {
   }
 
   // ==================== SOCIAL LOGIN ====================
-  @Post("google/login")
-  async googleLogin(@Body() body: { idToken: string }) {
+  @Post("supabase/login")
+  async supabaseLogin(@Body() body: { accessToken: string }) {
     try {
-      return { message: "Google login not yet implemented", token: null };
+      return await this.authService.loginWithSupabase(body.accessToken);
     } catch (error: any) {
       throw new HttpException(
-        { error: error?.message || "Google login failed" },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        { error: error?.message || "Supabase login failed" },
+        error?.status || HttpStatus.UNAUTHORIZED
       );
     }
   }

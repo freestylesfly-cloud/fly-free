@@ -6,12 +6,12 @@
  * The server performs the write with the service-role key.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = typeof window !== 'undefined'
+  ? '/api/proxy'
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
 function authHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const token = window.localStorage.getItem('flyfree_admin_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return {};
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -30,7 +30,8 @@ function fileToDataUrl(file: File): Promise<string> {
 export async function uploadImage(_bucket: string, file: File, folder = ''): Promise<string> {
   const image = await fileToDataUrl(file);
 
-  const response = await fetch(`${API_BASE}/api/admin/upload-image`, {
+  const endpoint = typeof window !== 'undefined' ? '/admin/upload-image' : '/api/admin/upload-image';
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ image, folder }),
@@ -48,7 +49,8 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
 export async function deleteImage(_bucket: string, urlOrPath: string): Promise<void> {
   if (!urlOrPath || !urlOrPath.includes('/storage/v1/object/public/')) return;
 
-  await fetch(`${API_BASE}/api/admin/delete-image`, {
+  const endpoint = typeof window !== 'undefined' ? '/admin/delete-image' : '/api/admin/delete-image';
+  await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ url: urlOrPath }),

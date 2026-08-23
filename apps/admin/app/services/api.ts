@@ -3,7 +3,9 @@
  * All API calls should go through this service, not directly in components
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = typeof window !== 'undefined'
+  ? '/api/proxy'
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
 interface ApiResponse<T> {
   success: boolean;
@@ -55,16 +57,15 @@ class ApiService {
   };
 
   private authHeaders(): Record<string, string> {
-    if (typeof window === 'undefined') return {};
-    const token = window.localStorage.getItem('flyfree_admin_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return {};
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const normalizedEndpoint = typeof window !== 'undefined' ? endpoint.replace(/^\/api/, '') : endpoint;
+    const url = `${this.baseUrl}${normalizedEndpoint}`;
 
     try {
       const headers = new Headers(options.headers);
@@ -252,7 +253,8 @@ class ApiService {
    */
   async downloadInvoice(id: string): Promise<{ blob: Blob; filename: string }> {
     const endpoint = `/api/admin/orders/${id}/invoice`;
-    const response = await fetch(`${this.baseUrl}${endpoint}`, { headers: this.authHeaders() });
+    const normalizedEndpoint = typeof window !== 'undefined' ? endpoint.replace(/^\/api/, '') : endpoint;
+    const response = await fetch(`${this.baseUrl}${normalizedEndpoint}`, { headers: this.authHeaders() });
 
     if (!response.ok) {
       let details = '';

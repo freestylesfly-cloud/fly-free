@@ -5,8 +5,7 @@ const API_BASE = typeof window !== 'undefined'
   ? '/api/proxy'
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
-const API_PREFIX = typeof window !== 'undefined' ? '' : '/api';
-const TOKEN_KEY = 'flyfree_admin_token';
+const LEGACY_TOKEN_KEY = 'flyfree_admin_token';
 const USER_KEY = 'flyfree_admin_user';
 
 type AdminUser = {
@@ -32,30 +31,29 @@ function readStoredSession() {
     return { token: null, user: null };
   }
 
-  const token = window.localStorage.getItem(TOKEN_KEY);
+  window.localStorage.removeItem(LEGACY_TOKEN_KEY);
   const rawUser = window.localStorage.getItem(USER_KEY);
 
-  if (!token || !rawUser) {
+  if (!rawUser) {
     return { token: null, user: null };
   }
 
   try {
-    return { token, user: JSON.parse(rawUser) as AdminUser };
+    return { token: null, user: JSON.parse(rawUser) as AdminUser };
   } catch {
-    window.localStorage.removeItem(TOKEN_KEY);
     window.localStorage.removeItem(USER_KEY);
     return { token: null, user: null };
   }
 }
 
-function writeStoredSession(token: string, user: AdminUser) {
-  window.localStorage.setItem(TOKEN_KEY, token);
+function writeStoredSession(user: AdminUser) {
+  window.localStorage.removeItem(LEGACY_TOKEN_KEY);
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 function clearStoredSession() {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(LEGACY_TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
 }
 
@@ -104,7 +102,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       const result = await response.json().catch(() => ({}));
 
-      if (!response.ok || result.error || !result.token) {
+      if (!response.ok || result.error) {
         set({ loading: false, hydrated: true, user: null, token: null });
         throw new Error(result.error || `Login failed (${response.status})`);
       }
@@ -117,8 +115,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         permissions: result.permissions
       };
 
-      writeStoredSession(result.token, user);
-      set({ user, token: result.token, loading: false, hydrated: true });
+      writeStoredSession(user);
+      set({ user, token: null, loading: false, hydrated: true });
     } catch (error) {
       set({ loading: false, hydrated: true, user: null, token: null });
       throw new Error(getNetworkErrorMessage(error));
@@ -126,20 +124,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   logout: async () => {
-    const token = get().token;
     set({ loading: true });
 
     try {
-      if (token) {
-        const url = typeof window !== 'undefined'
-          ? `/api/proxy/auth/admin/logout`
-          : `${API_BASE}/api/auth/admin/logout`;
+      const url = typeof window !== 'undefined'
+        ? `/api/proxy/auth/admin/logout`
+        : `${API_BASE}/api/auth/admin/logout`;
 
-        await fetch(url, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+      await fetch(url, { method: 'POST' });
     } finally {
       clearStoredSession();
       set({ user: null, token: null, loading: false, hydrated: true });
@@ -149,21 +141,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   checkAuth: async () => {
     const stored = readStoredSession();
 
-    if (!stored.token || !stored.user) {
-      set({ user: null, token: null, loading: false, hydrated: true });
-      return;
-    }
-
-    set({ user: stored.user, token: stored.token, loading: true, hydrated: true });
+    set({ user: stored.user, token: null, loading: true, hydrated: true });
 
     try {
       const url = typeof window !== 'undefined'
         ? `/api/proxy/auth/admin/profile`
         : `${API_BASE}/api/auth/admin/profile`;
 
-      const response = await fetchWithTimeout(url, {
-        headers: { Authorization: `Bearer ${stored.token}` }
-      });
+      const response = await fetchWithTimeout(url);
 
       if (!response.ok) {
         throw new Error(`Profile check failed (${response.status})`);
@@ -171,15 +156,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       const profile = await response.json();
       const user: AdminUser = {
-        id: profile?.id || stored.user.id,
-        email: profile?.email || stored.user.email,
-        name: profile?.name || stored.user.name,
-        role: profile?.role?.name || stored.user.role,
-        permissions: profile?.role?.permissions || stored.user.permissions
+        id: profile?.id || stored.user?.id || '',
+        email: profile?.email || stored.user?.email || '',
+        name: profile?.name || stored.user?.name || '',
+        role: profile?.role?.name || stored.user?.role,
+        permissions: profile?.role?.permissions || stored.user?.permissions
       };
 
-      writeStoredSession(stored.token, user);
-      set({ user, token: stored.token, loading: false, hydrated: true });
+      writeStoredSession(user);
+      set({ user, token: null, loading: false, hydrated: true });
     } catch {
       clearStoredSession();
       set({ user: null, token: null, loading: false, hydrated: true });
