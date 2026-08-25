@@ -158,14 +158,6 @@ If a parcel returns to us undelivered after repeated attempts, we contact you to
     content: `Reach us for orders, returns, custom designs, bulk enquiries, and influencer partnerships.
 
 We reply to support requests within one working day. Include your order number so we can help faster.`
-  },
-  {
-    slug: "size-chart",
-    title: "Size Chart",
-    route: "shown on every product page",
-    content: `All measurements are in inches and taken flat, so double the chest measurement for the full circumference.
-
-Unisex sizing across every fit. If you are between sizes, take the larger one for oversized fits and the smaller one for regular fits.`
   }
 ];
 

@@ -491,20 +491,18 @@ model Return {
 }
 
 model SizeGuide {
-  id        String   @id @default(cuid())
-  size      String   @unique // S, M, L, XL, XXL
-  chest     String // 44", 46", 48", 51"
-  shoulder  String // 20.5", 21.5", 22.5", 23.5"
-  length    String // 28", 29", 30", 30.5"
-  sleeve    String // 8.5", 9", 9.5", 10"
-  priority  Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([size])
-  @@index([active])
-}
+    id            String   @id @default(cuid())
+    fitType       String   @unique @default("regular") // regular, oversized, polo
+    chartImageUrl String?
+    note          String?
+    priority      Int      @default(0)
+    active        Boolean  @default(true)
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+  
+    @@index([fitType])
+    @@index([active])
+  }
 
 model InstagramPost {
   id            String   @id @default(cuid())

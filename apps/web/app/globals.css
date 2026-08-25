@@ -783,6 +783,12 @@ a {
   }
 }
 
+@keyframes flyfree-loader {
+  0% { transform: translateX(-120%); }
+  50% { transform: translateX(60%); }
+  100% { transform: translateX(220%); }
+}
+
 @keyframes slideInRotate {
   from { opacity: 0; transform: translateY(40px) rotate(var(--rotate-angle)); }
   to { opacity: 1; transform: translateY(0) rotate(var(--rotate-angle)); }

@@ -1897,18 +1897,25 @@ export class AdminService {
   // ==================== SIZE GUIDES ====================
   async listSizeGuides() {
     return await this.prisma.sizeGuide.findMany({
-      orderBy: { priority: "asc" }
+      orderBy: [{ priority: "asc" }, { fitType: "asc" }]
     });
   }
 
   async createSizeGuide(data: any) {
-    return await this.prisma.sizeGuide.create({
-      data: {
-        size: data.size,
-        chest: data.chest,
-        shoulder: data.shoulder,
-        length: data.length,
-        sleeve: data.sleeve,
+    const fitType = this.normalizeFitType(data.fitType);
+
+    return await this.prisma.sizeGuide.upsert({
+      where: { fitType },
+      update: {
+        chartImageUrl: data.chartImageUrl || null,
+        note: data.note || null,
+        priority: data.priority || 0,
+        active: data.active !== false
+      },
+      create: {
+        fitType,
+        chartImageUrl: data.chartImageUrl || null,
+        note: data.note || null,
         priority: data.priority || 0,
         active: data.active !== false
       }
@@ -1919,11 +1926,9 @@ export class AdminService {
     return await this.prisma.sizeGuide.update({
       where: { id },
       data: {
-        size: data.size,
-        chest: data.chest,
-        shoulder: data.shoulder,
-        length: data.length,
-        sleeve: data.sleeve,
+        fitType: data.fitType === undefined ? undefined : this.normalizeFitType(data.fitType),
+        chartImageUrl: data.chartImageUrl,
+        note: data.note,
         priority: data.priority,
         active: data.active
       }
@@ -1934,6 +1939,13 @@ export class AdminService {
     return await this.prisma.sizeGuide.delete({
       where: { id }
     });
+  }
+
+  private normalizeFitType(value: any) {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized.includes("polo")) return "polo";
+    if (normalized.includes("oversized") || normalized.includes("over-size")) return "oversized";
+    return "regular";
   }
 
   // ==================== HAMPERS ====================

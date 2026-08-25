@@ -1,49 +1,77 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Image as ImageIcon, Save } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ImageUploadField } from './ImageUploadField';
 
 interface SizeGuide {
   id: string;
-  size: string;
-  chest: string;
-  shoulder: string;
-  length: string;
-  sleeve: string;
+  fitType?: string;
+  chartImageUrl?: string;
+  note?: string;
   priority: number;
   active: boolean;
 }
 
+type FitKey = 'regular' | 'oversized' | 'polo';
+
+type FitForm = {
+  id?: string;
+  chartImageUrl: string;
+  note: string;
+  priority: string;
+  active: boolean;
+};
+
+const FITS: Array<{ key: FitKey; label: string; description: string }> = [
+  { key: 'regular', label: 'Regular', description: 'Classic t-shirt and standard fit charts.' },
+  { key: 'oversized', label: 'Oversized', description: 'Relaxed streetwear fit charts.' },
+  { key: 'polo', label: 'Polo', description: 'Polo collar product fit charts.' },
+];
+
+const DEFAULT_NOTE = 'Focus on the body measurements. The t-shirt drawing is only a guide for where to measure.';
+
+function emptyFitForm(): FitForm {
+  return {
+    chartImageUrl: '',
+    note: DEFAULT_NOTE,
+    priority: '0',
+    active: true,
+  };
+}
+
 export function SizeGuideManager() {
   const [sizes, setSizes] = useState<SizeGuide[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    size: '',
-    chest: '',
-    shoulder: '',
-    length: '',
-    sleeve: '',
-    priority: 0,
-    active: true,
+  const [forms, setForms] = useState<Record<FitKey, FitForm>>({
+    regular: emptyFitForm(),
+    oversized: emptyFitForm(),
+    polo: emptyFitForm(),
   });
+  const [loading, setLoading] = useState(true);
+  const [savingFit, setSavingFit] = useState<FitKey | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadSizes();
   }, []);
 
-  // Goes through apiService so the admin bearer token is attached — these
-  // routes sit behind AdminGuard and a bare fetch just gets a silent 401.
+  const stats = useMemo(() => {
+    return FITS.map((fit) => ({
+      ...fit,
+      count: sizes.filter((size) => normalizeFit(size.fitType) === fit.key).length,
+      hasImage: Boolean(forms[fit.key]?.chartImageUrl),
+    }));
+  }, [forms, sizes]);
+
   const loadSizes = async () => {
     try {
       setLoading(true);
       setError('');
       const data = await apiService.getSizeGuides();
-      setSizes(Array.isArray(data) ? data : (data as any)?.data ?? []);
+      const loaded = Array.isArray(data) ? data : (data as any)?.data ?? [];
+      setSizes(loaded);
+      setForms(buildFitForms(loaded));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load size guides');
       setSizes([]);
@@ -52,66 +80,60 @@ export function SizeGuideManager() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveFit = async (fit: FitKey) => {
+    const form = forms[fit];
+
     try {
-      setSaving(true);
+      setSavingFit(fit);
       setError('');
-      if (editingId) {
-        await apiService.updateSizeGuide(editingId, formData);
+
+      const payload = {
+        fitType: fit,
+        chartImageUrl: form.chartImageUrl || null,
+        note: form.note || null,
+        priority: Number.parseInt(form.priority, 10) || 0,
+        active: form.active,
+      };
+
+      if (form.id) {
+        await apiService.updateSizeGuide(form.id, payload);
       } else {
-        await apiService.createSizeGuide(formData);
+        await apiService.createSizeGuide(payload);
       }
-      setFormData({ size: '', chest: '', shoulder: '', length: '', sleeve: '', priority: 0, active: true });
-      setEditingId(null);
-      setShowForm(false);
+
       await loadSizes();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save size guide');
+      setError(err instanceof Error ? err.message : `Failed to save ${fit} chart`);
     } finally {
-      setSaving(false);
+      setSavingFit(null);
     }
   };
 
-  const handleEdit = (size: SizeGuide) => {
-    setFormData({
-      size: size.size,
-      chest: size.chest,
-      shoulder: size.shoulder,
-      length: size.length,
-      sleeve: size.sleeve,
-      priority: size.priority,
-      active: size.active,
-    });
-    setEditingId(size.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this size guide?')) return;
-    try {
-      setError('');
-      await apiService.deleteSizeGuide(id);
-      await loadSizes();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete size guide');
-    }
+  const updateForm = (fit: FitKey, patch: Partial<FitForm>) => {
+    setForms((current) => ({
+      ...current,
+      [fit]: { ...current[fit], ...patch },
+    }));
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Size Guides</h2>
-        <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditingId(null);
-            setFormData({ size: '', chest: '', shoulder: '', length: '', sleeve: '', priority: 0, active: true });
-          }}
-          className="inline-flex items-center gap-2 rounded-lg bg-black text-white px-4 py-2 font-bold hover:bg-black/90"
-        >
-          <Plus size={18} /> Add Size
-        </button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-black/45">Size Guides</p>
+          <h2 className="text-2xl font-black">Fit chart images</h2>
+          <p className="mt-1 text-sm font-semibold text-black/55">
+            Upload one chart image for each fit type. Customers only see these chart images.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 rounded-xl border border-black/10 bg-white p-2">
+          {stats.map((fit) => (
+            <div key={fit.key} className="min-w-20 px-3 py-2 text-center">
+              <p className="text-xs font-black uppercase text-black/45">{fit.label}</p>
+              <p className="mt-1 text-sm font-black">{fit.hasImage ? 'Ready' : 'No image'}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -121,138 +143,107 @@ export function SizeGuideManager() {
         </div>
       )}
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="rounded-lg border border-black/10 bg-white p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Size (S, M, L, XL)"
-              value={formData.size}
-              onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-              required
-            />
-            <input
-              type="text"
-              placeholder='Chest (44 inch, 46 inch)'
-              value={formData.chest}
-              onChange={(e) => setFormData({ ...formData, chest: e.target.value })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-              required
-            />
-            <input
-              type="text"
-              placeholder='Shoulder (20.5 inch, 21.5 inch)'
-              value={formData.shoulder}
-              onChange={(e) => setFormData({ ...formData, shoulder: e.target.value })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-              required
-            />
-            <input
-              type="text"
-              placeholder='Length (28 inch, 29 inch)'
-              value={formData.length}
-              onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-              required
-            />
-            <input
-              type="text"
-              placeholder='Sleeve (8.5 inch, 9 inch)'
-              value={formData.sleeve}
-              onChange={(e) => setFormData({ ...formData, sleeve: e.target.value })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-              required
-            />
-            <input
-              type="number"
-              placeholder="Priority"
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-              className="rounded-lg border border-black/10 px-3 py-2"
-            />
-          </div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.active}
-              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-            />
-            <span>Active</span>
-          </label>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-black text-white px-4 py-2 font-bold hover:bg-black/90 disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="rounded-lg border border-black/10 px-4 py-2 font-bold hover:bg-black/5"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
       {loading ? (
         <p className="text-black/60">Loading...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-black/10">
-          <table className="w-full">
-            <thead className="bg-black/5 border-b border-black/10">
-              <tr>
-                <th className="px-4 py-3 text-left font-bold">Size</th>
-                <th className="px-4 py-3 text-left font-bold">Chest</th>
-                <th className="px-4 py-3 text-left font-bold">Shoulder</th>
-                <th className="px-4 py-3 text-left font-bold">Length</th>
-                <th className="px-4 py-3 text-left font-bold">Sleeve</th>
-                <th className="px-4 py-3 text-left font-bold">Priority</th>
-                <th className="px-4 py-3 text-left font-bold">Status</th>
-                <th className="px-4 py-3 text-center font-bold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sizes.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-black/60">
-                    No size guides yet. Use &ldquo;Add Size&rdquo; to create one.
-                  </td>
-                </tr>
-              )}
-              {sizes.map((size) => (
-                <tr key={size.id} className="border-b border-black/5 hover:bg-black/2">
-                  <td className="px-4 py-3 font-bold">{size.size}</td>
-                  <td className="px-4 py-3">{size.chest}</td>
-                  <td className="px-4 py-3">{size.shoulder}</td>
-                  <td className="px-4 py-3">{size.length}</td>
-                  <td className="px-4 py-3">{size.sleeve}</td>
-                  <td className="px-4 py-3">{size.priority}</td>
-                  <td className="px-4 py-3">{size.active ? '✓ Active' : '✗ Inactive'}</td>
-                  <td className="px-4 py-3 flex justify-center gap-2">
-                    <button
-                      onClick={() => handleEdit(size)}
-                      className="p-2 hover:bg-black/10 rounded-lg transition"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(size.id)}
-                      className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-5 lg:grid-cols-3">
+          {FITS.map((fit) => {
+            const form = forms[fit.key];
+            const isSaving = savingFit === fit.key;
+
+            return (
+              <section key={fit.key} className="rounded-xl border border-black/10 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-black">{fit.label}</h3>
+                    <p className="mt-1 text-sm font-semibold text-black/55">{fit.description}</p>
+                  </div>
+                  <div className="rounded-full bg-black p-2 text-white">
+                    {form.chartImageUrl ? <CheckCircle2 size={18} /> : <ImageIcon size={18} />}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <ImageUploadField
+                    label={`${fit.label} chart image`}
+                    value={form.chartImageUrl}
+                    onChange={(value) => updateForm(fit.key, { chartImageUrl: value })}
+                    bucket="product-images"
+                    folder="size-guides"
+                    aspect={3 / 2}
+                    targetWidth={1800}
+                    hint="Upload the full chart image customers should see for this fit."
+                  />
+
+                  <label className="grid gap-2 text-sm font-bold">
+                    Customer note
+                    <textarea
+                      value={form.note}
+                      onChange={(event) => updateForm(fit.key, { note: event.target.value })}
+                      rows={3}
+                      className="rounded-lg border border-black/10 px-3 py-2"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                    <input
+                      type="number"
+                      placeholder="Priority"
+                      value={form.priority}
+                      onChange={(event) => updateForm(fit.key, { priority: event.target.value })}
+                      className="rounded-lg border border-black/10 px-3 py-2"
+                    />
+                    <label className="flex items-center gap-2 text-sm font-bold">
+                      <input
+                        type="checkbox"
+                        checked={form.active}
+                        onChange={(event) => updateForm(fit.key, { active: event.target.checked })}
+                      />
+                      Active
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => saveFit(fit.key)}
+                    disabled={isSaving}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 font-black text-white hover:bg-black/90 disabled:opacity-50"
+                  >
+                    <Save size={18} />
+                    {isSaving ? 'Saving...' : `Save ${fit.label} chart`}
+                  </button>
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function buildFitForms(sizes: SizeGuide[]): Record<FitKey, FitForm> {
+  return FITS.reduce((result, fit) => {
+    const fitRows = sizes.filter((size) => normalizeFit(size.fitType) === fit.key);
+    const representative = fitRows.find((size) => size.chartImageUrl) || fitRows[0];
+
+    result[fit.key] = representative
+      ? {
+          id: representative.id,
+          chartImageUrl: representative.chartImageUrl || '',
+          note: representative.note || DEFAULT_NOTE,
+          priority: String(representative.priority ?? 0),
+          active: representative.active !== false,
+        }
+      : emptyFitForm();
+
+    return result;
+  }, {} as Record<FitKey, FitForm>);
+}
+
+function normalizeFit(value?: string | null): FitKey {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('polo')) return 'polo';
+  if (normalized.includes('oversized') || normalized.includes('over-size')) return 'oversized';
+  return 'regular';
 }

@@ -146,7 +146,7 @@ export class CmsService {
   getSizeGuides() {
     return this.prisma.sizeGuide.findMany({
       where: { active: true },
-      orderBy: { priority: "asc" }
+      orderBy: [{ priority: "asc" }, { fitType: "asc" }]
     });
   }
 

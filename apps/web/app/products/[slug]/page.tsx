@@ -70,7 +70,6 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [hampers, setHampers] = useState<any[]>([]);
-  const [sizeChart, setSizeChart] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -358,13 +357,6 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
   async function openSizeChart() {
     setShowSizeChart(true);
-    if (sizeChart) return;
-
-    const sizeChartResponse = await fetch(`${API_URL}/cms/pages/size-chart`, { cache: 'force-cache' }).catch(() => null);
-    if (!sizeChartResponse?.ok) return;
-
-    const sizeChartData = await sizeChartResponse.json().catch(() => null);
-    setSizeChart(sizeChartData?.content || '');
   }
 
   function shiftImage(direction: -1 | 1) {
@@ -837,7 +829,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       )}
 
       {/* Modals */}
-      <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} content={sizeChart} />
+      <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} defaultFit={sizeGuideFit(product)} />
 
       {showZoom && activeImage?.url && (
         <Modal
@@ -1285,4 +1277,11 @@ function productJsonLd(product: any, image: string | undefined, url: string, tot
       reviewCount,
     } : undefined,
   };
+}
+
+function sizeGuideFit(product: any) {
+  const value = `${product?.category?.slug || ''} ${product?.category?.name || ''} ${product?.fitType || ''}`.toLowerCase();
+  if (value.includes('polo')) return 'polo';
+  if (value.includes('oversized') || value.includes('over-size')) return 'oversized';
+  return 'regular';
 }
