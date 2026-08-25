@@ -15,9 +15,9 @@
 export const BRAND = {
   colors: {
     /** Buttons, links, active states. */
-    primary: '#FF4A4E',
+    primary: '#2563EB',
     /** Supporting brand colour. */
-    secondary: '#00A8E8',
+    secondary: '#10B981',
     /** Highlights, badges, stars. */
     accent: '#FFB703',
     /** Deep tone for contrast blocks. */

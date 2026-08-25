@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import type React from 'react';
-import { ChevronDown, Heart, Home, Package, Search, ShoppingBag, Store, LogIn, Menu, X, User, LogOut } from 'lucide-react';
+import { ChevronDown, Heart, Home, Info, Package, Palette, Search, Shirt, ShoppingBag, Store, LogIn, Menu, X, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getApiBaseUrl } from '../lib/api';
@@ -90,7 +90,7 @@ export function Header() {
 
   return (
     <>
-      {/* Announcement marquee — brand red strip, pauses on hover so a link is
+      {/* Announcement marquee — brand strip, pauses on hover so a link is
           actually clickable. */}
       {announcements.length > 0 && (
         <div
@@ -218,9 +218,10 @@ export function Header() {
             {/* Search */}
             <Link
               href="/products"
-              className="p-2.5 border-2 transition hover:opacity-70"
-              style={{ borderColor: 'var(--border-color)' }}
+              className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
               title="Search products"
+              aria-label="Search products"
             >
               <Search size={18} />
             </Link>
@@ -228,8 +229,8 @@ export function Header() {
             {/* Wishlist */}
             <Link
               href={user ? '/profile/wishlist' : '/auth/login'}
-              className="p-2.5 border-2 transition hover:opacity-70"
-              style={{ borderColor: 'var(--border-color)' }}
+              className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
               aria-label="Open wishlist"
             >
               <Heart size={18} />
@@ -240,10 +241,10 @@ export function Header() {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="p-2.5 border-2 transition hover:shadow-md"
+                  className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
                   style={{
                     borderColor: isProfileOpen ? 'var(--color-primary)' : 'var(--border-color)',
-                    backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent'
+                    backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'var(--bg-secondary)'
                   }}
                   aria-label="Open profile menu"
                 >
@@ -301,7 +302,7 @@ export function Header() {
                         onClick={handleLogout}
                         className="w-full px-4 py-3 text-sm font-semibold text-left flex items-center gap-3 transition"
                         style={{ color: 'var(--text-primary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, red 15%, transparent)'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         <LogOut size={16} />
@@ -325,14 +326,14 @@ export function Header() {
             {/* Cart */}
             <Link
               href="/cart"
-              className="relative p-2.5 transition text-white"
-              style={{ backgroundColor: 'var(--color-primary)' }}
+              className="relative grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}
               aria-label="Open cart"
             >
               <ShoppingBag size={18} />
               <span
-                className="absolute -top-2 -right-2 h-5 w-5 rounded-full flex items-center justify-center text-xs font-black text-white bg-red-500"
-                style={{ display: displayedCartCount > 0 ? 'flex' : 'none' }}
+                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-black text-white"
+                style={{ backgroundColor: 'var(--color-primary)', display: displayedCartCount > 0 ? 'flex' : 'none' }}
               >
                 {displayedCartCount > 0 && displayedCartCount}
               </span>
@@ -376,12 +377,12 @@ export function Header() {
                 <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
                   Navigation
                 </p>
-                <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} icon="🏠" />
-                <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon="🛍️" />
+                <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} icon={<Home size={16} />} />
+                <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon={<Store size={16} />} />
 
                 <MobileDrawerGroup
                   label="Themes"
-                  icon="🎨"
+                  icon={<Palette size={16} />}
                   isOpen={openMobileGroup === 'themes'}
                   onToggle={() => setOpenMobileGroup(openMobileGroup === 'themes' ? null : 'themes')}
                   items={themes.map((theme) => ({
@@ -394,7 +395,7 @@ export function Header() {
 
                 <MobileDrawerGroup
                   label="Fit"
-                  icon="👕"
+                  icon={<Shirt size={16} />}
                   isOpen={openMobileGroup === 'fits'}
                   onToggle={() => setOpenMobileGroup(openMobileGroup === 'fits' ? null : 'fits')}
                   items={fits.map((fit) => ({
@@ -405,7 +406,7 @@ export function Header() {
                   onNavigate={() => setIsOpen(false)}
                 />
 
-                <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon="ℹ️" />
+                <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon={<Info size={16} />} />
               </div>
 
               {/* Account Section */}
@@ -443,7 +444,7 @@ export function Header() {
                     label="Login / Register"
                     active={isActive('/auth')}
                     onClick={() => setIsOpen(false)}
-                    icon="🔐"
+                    icon={<LogIn size={16} />}
                   />
                 )}
               </div>
@@ -455,9 +456,9 @@ export function Header() {
                     onClick={handleLogout}
                     className="w-full px-5 py-3 font-semibold uppercase tracking-wide text-sm flex items-center gap-3 transition"
                     style={{
-                      color: '#dc2626',
+                      color: 'var(--text-primary)',
                       borderBottom: `1px solid var(--border-light)`,
-                      backgroundColor: hoveredMenuItem === 'logout' ? 'rgba(220, 38, 38, 0.1)' : 'transparent',
+                      backgroundColor: hoveredMenuItem === 'logout' ? 'var(--bg-tertiary)' : 'transparent',
                     }}
                     onMouseEnter={() => setHoveredMenuItem('logout')}
                     onMouseLeave={() => setHoveredMenuItem(null)}
@@ -662,7 +663,7 @@ function MobileTab({
             className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white"
             style={{
               backgroundColor: 'var(--color-primary)',
-              boxShadow: '0 4px 10px rgba(255,74,78,0.36)',
+              boxShadow: '0 4px 10px rgba(37,99,235,0.28)',
             }}
           >
             {cartCount}

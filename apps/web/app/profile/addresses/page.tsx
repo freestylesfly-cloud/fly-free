@@ -127,27 +127,27 @@ export default function AddressesPage() {
     <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[#1f1f1f] md:text-3xl">Delivery Addresses</h1>
-          <p className="mt-2 text-sm text-[#666]">Save addresses to make checkout faster.</p>
+          <h1 className="text-2xl font-black md:text-3xl" style={{ color: 'var(--text-primary)' }}>Delivery Addresses</h1>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Save addresses to make checkout faster.</p>
         </div>
         {!showForm && (
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded-md bg-[#f04423] px-5 py-3 text-sm font-black text-white transition hover:bg-[#d93618]">
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-black text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
             <Plus size={16} /> Add Address
           </button>
         )}
       </div>
 
-      {error && <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
+      {error && <div className="mb-5 rounded-md border p-4 text-sm font-bold" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--text-primary)' }}>{error}</div>}
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-7 w-7 animate-spin text-[#f04423]" />
+          <Loader2 className="h-7 w-7 animate-spin" style={{ color: 'var(--color-primary)' }} />
         </div>
       ) : (
         <>
           {showForm && (
-            <div className="mb-6 rounded-lg border border-black/10 bg-[#fafafa] p-5">
-              <h2 className="mb-4 text-lg font-black text-[#1f1f1f]">{editingId ? 'Edit Address' : 'Add Address'}</h2>
+            <div className="mb-6 rounded-lg border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <h2 className="mb-4 text-lg font-black" style={{ color: 'var(--text-primary)' }}>{editingId ? 'Edit Address' : 'Add Address'}</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input placeholder="Full Name *" value={form.fullName} onChange={(value) => setForm({ ...form, fullName: value })} />
                 <Input placeholder="Phone *" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
@@ -163,10 +163,10 @@ export default function AddressesPage() {
               </div>
 
               <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                <button onClick={handleSaveAddress} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-md bg-[#1f1f1f] px-5 py-3 text-sm font-black text-white transition hover:bg-[#f04423] disabled:opacity-50">
+                <button onClick={handleSaveAddress} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: 'var(--color-primary)' }}>
                   {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Address
                 </button>
-                <button onClick={closeForm} className="inline-flex items-center justify-center gap-2 rounded-md border border-black/15 px-5 py-3 text-sm font-black text-[#1f1f1f] transition hover:bg-white">
+                <button onClick={closeForm} className="inline-flex items-center justify-center gap-2 rounded-md border px-5 py-3 text-sm font-black transition hover:bg-white" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
                   <X size={16} /> Cancel
                 </button>
               </div>
@@ -174,33 +174,33 @@ export default function AddressesPage() {
           )}
 
           {addresses.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-black/15 bg-[#fafafa] px-6 py-14 text-center">
-              <MapPin className="mx-auto mb-4 h-10 w-10 text-[#999]" />
-              <h2 className="text-lg font-black text-[#1f1f1f]">No addresses saved</h2>
-              <p className="mx-auto mt-2 max-w-sm text-sm text-[#666]">Add a delivery address before checkout.</p>
+            <div className="rounded-lg border border-dashed px-6 py-14 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+              <MapPin className="mx-auto mb-4 h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />
+              <h2 className="text-lg font-black" style={{ color: 'var(--text-primary)' }}>No addresses saved</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm" style={{ color: 'var(--text-secondary)' }}>Add a delivery address before checkout.</p>
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {addresses.map((address) => (
-                <article key={address.id} className="relative rounded-lg border border-black/10 bg-[#fafafa] p-5">
+                <article key={address.id} className="relative rounded-lg border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                   {address.isDefault && (
                     <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">
                       <Check size={12} /> Default
                     </span>
                   )}
-                  <h3 className="pr-24 text-base font-black text-[#1f1f1f]">{address.fullName}</h3>
-                  <div className="mt-3 space-y-1 text-sm leading-6 text-[#666]">
+                  <h3 className="pr-24 text-base font-black" style={{ color: 'var(--text-primary)' }}>{address.fullName}</h3>
+                  <div className="mt-3 space-y-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
                     <p>{address.line1}</p>
                     {address.line2 && <p>{address.line2}</p>}
                     <p>{address.city}, {address.state} {address.postalCode}</p>
                     <p>{address.phone}</p>
                   </div>
 
-                  <div className="mt-5 flex gap-2 border-t border-black/10 pt-4">
-                    <button onClick={() => editAddress(address)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-black text-[#1f1f1f] transition hover:bg-[#f7f4ef]">
+                  <div className="mt-5 flex gap-2 border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                    <button onClick={() => editAddress(address)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border bg-white px-3 py-2 text-xs font-black transition hover:bg-[#f7f4ef]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
                       <Edit2 size={14} /> Edit
                     </button>
-                    <button onClick={() => handleDeleteAddress(address.id)} disabled={deleting === address.id} className="inline-flex w-11 items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:opacity-50" aria-label="Delete address">
+                    <button onClick={() => handleDeleteAddress(address.id)} disabled={deleting === address.id} className="inline-flex w-11 items-center justify-center rounded-md border bg-white transition hover:bg-black/5 disabled:opacity-50" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }} aria-label="Delete address">
                       {deleting === address.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>
                   </div>
@@ -221,7 +221,8 @@ function Input({ placeholder, value, onChange }: { placeholder: string; value: s
       placeholder={placeholder}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-md border border-black/15 bg-white px-4 py-3 text-sm font-bold text-[#1f1f1f] outline-none transition placeholder:text-[#999] focus:border-[#f04423]"
+      className="w-full rounded-md border bg-white px-4 py-3 text-sm font-bold outline-none transition placeholder:text-[#999] focus:border-[var(--color-primary)]"
+      style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
     />
   );
 }

@@ -45,45 +45,46 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
 
   if (!hydrated || !user) {
     return (
-      <main className="min-h-screen bg-[#f7f4ef] px-4 py-16 pb-28 lg:pb-0">
-        <div className="mx-auto flex min-h-[360px] max-w-md flex-col items-center justify-center rounded-lg border border-black/10 bg-white text-center shadow-sm">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-black text-white">
+      <main className="min-h-screen px-4 py-16 pb-28 lg:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="mx-auto flex min-h-[360px] max-w-md flex-col items-center justify-center rounded-lg border bg-white text-center shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
             <ShieldCheck size={22} />
           </div>
-          <h1 className="text-2xl font-black text-[#1f1f1f]">Checking your account</h1>
-          <p className="mt-2 text-sm text-[#666]">Opening the secure profile area.</p>
+          <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Checking your account</h1>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Opening the secure profile area.</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f4ef] pb-28 lg:pb-0">
-      <section className="border-b border-black/10 bg-white px-4 py-8">
+    <main className="min-h-screen pb-28 lg:pb-0" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <section className="border-b bg-white px-4 py-8" style={{ borderColor: 'var(--border-color)' }}>
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#f04423]">Fly Free Account</p>
-            <h1 className="text-3xl font-black text-[#1f1f1f] md:text-4xl">My Profile</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#666]">
+            <p className="mb-2 text-xs font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary)' }}>Fly Free Account</p>
+            <h1 className="text-3xl font-black md:text-4xl" style={{ color: 'var(--text-primary)' }}>My Profile</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
               Manage personal details, saved items, orders, delivery addresses, and sign-in security.
             </p>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-black/10 bg-[#fafafa] px-4 py-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#1f1f1f] text-lg font-black text-white">
+          <div className="flex items-center gap-3 rounded-lg border px-4 py-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
               {user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black text-[#1f1f1f]">{user.name || 'Fly Free Customer'}</p>
-              <p className="truncate text-xs text-[#777]">{user.email}</p>
+              <p className="truncate text-sm font-black" style={{ color: 'var(--text-primary)' }}>{user.name || 'Fly Free Customer'}</p>
+              <p className="truncate text-xs" style={{ color: 'var(--text-tertiary)' }}>{user.email}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="sticky top-0 z-40 border-b border-black/10 bg-white px-4 py-3 md:hidden">
+      <div className="sticky top-0 z-40 border-b bg-white px-4 py-3 md:hidden" style={{ borderColor: 'var(--border-color)' }}>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="flex items-center gap-2 text-sm font-black text-[#1f1f1f]"
+          className="flex items-center gap-2 text-sm font-black"
+          style={{ color: 'var(--text-primary)' }}
         >
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           Account Menu
@@ -95,17 +96,18 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
           <aside
             className={`${
               mobileMenuOpen ? 'block' : 'hidden'
-            } h-fit overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm md:sticky md:top-8 md:block`}
+            } h-fit overflow-hidden rounded-lg border bg-white shadow-sm md:sticky md:top-8 md:block`}
+            style={{ borderColor: 'var(--border-color)' }}
           >
-            <div className="border-b border-black/10 bg-[#1f1f1f] p-5 text-white">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl font-black text-[#1f1f1f]">
+            <div className="border-b p-5 text-white" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(135deg, var(--color-primary), var(--color-tertiary))' }}>
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl font-black" style={{ color: 'var(--color-primary)' }}>
                 {user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
               </div>
               <h2 className="truncate text-base font-black">{user.name || 'Customer'}</h2>
               <p className="mt-1 truncate text-xs text-white/70">{user.email}</p>
             </div>
 
-            <nav className="space-y-1 border-b border-black/10 p-2">
+            <nav className="space-y-1 border-b p-2" style={{ borderColor: 'var(--border-color)' }}>
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -116,11 +118,12 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                       router.push(item.href);
                       setMobileMenuOpen(false);
                     }}
-                    className={`flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-black transition ${
-                      active
-                        ? 'bg-[#f04423] text-white shadow-sm'
-                        : 'text-[#555] hover:bg-[#f7f4ef] hover:text-[#1f1f1f]'
-                    }`}
+                    className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-black transition hover:bg-black/5"
+                    style={{
+                      backgroundColor: active ? 'var(--color-primary)' : 'transparent',
+                      color: active ? 'white' : 'var(--text-secondary)',
+                      boxShadow: active ? '0 4px 12px rgba(37,99,235,0.18)' : 'none'
+                    }}
                   >
                     <Icon size={18} />
                     <span>{item.label}</span>
@@ -132,7 +135,8 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
             <div className="p-2">
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-black text-[#9f1d1d] transition hover:bg-[#fff1f1]"
+                className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-sm font-black transition hover:bg-black/5"
+                style={{ color: 'var(--text-secondary)' }}
               >
                 <LogOut size={18} />
                 <span>Logout</span>
@@ -140,7 +144,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
             </div>
           </aside>
 
-          <section className="min-w-0 rounded-lg border border-black/10 bg-white p-4 shadow-sm md:p-8">
+          <section className="min-w-0 rounded-lg border bg-white p-4 shadow-sm md:p-8" style={{ borderColor: 'var(--border-color)' }}>
             {children}
           </section>
         </div>

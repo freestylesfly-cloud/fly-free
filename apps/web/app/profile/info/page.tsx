@@ -58,9 +58,9 @@ export default function ProfileInfoPage() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border-2 p-4 flex gap-3" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
-          <X size={18} className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }} />
-          <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
+        <div className="mb-6 rounded-lg border-2 p-4 flex gap-3" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)' }}>
+          <X size={18} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
+          <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{error}</p>
         </div>
       )}
       {success && (

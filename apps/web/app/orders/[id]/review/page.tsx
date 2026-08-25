@@ -317,7 +317,7 @@ export default function OrderReviewPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="mb-6 rounded-lg border p-4" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--text-primary)' }}>
             {error}
           </div>
         )}

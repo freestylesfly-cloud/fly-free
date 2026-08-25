@@ -274,7 +274,7 @@ export function ImageUpload({
         }
 
         .image-remove:hover {
-          background: rgba(255, 107, 91, 0.9);
+          background: var(--color-primary);
         }
 
         .slider-control {
@@ -414,7 +414,7 @@ export function ImageUpload({
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 107, 91, 0.1)', color: 'var(--accent-primary)' }}>
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)' }}>
               {error}
             </div>
           )}

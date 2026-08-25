@@ -49,11 +49,11 @@ export default function PasswordPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-[#1f1f1f] md:text-3xl">Password</h1>
-        <p className="mt-2 text-sm text-[#666]">Update your sign-in password and keep the account secure.</p>
+        <h1 className="text-2xl font-black md:text-3xl" style={{ color: 'var(--text-primary)' }}>Password</h1>
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Update your sign-in password and keep the account secure.</p>
       </div>
 
-      {error && <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
+      {error && <div className="mb-6 rounded-md border p-4 text-sm font-bold" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--text-primary)' }}>{error}</div>}
       {success && (
         <div className="mb-6 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
           <CheckCircle2 size={18} /> {success}
@@ -87,18 +87,18 @@ export default function PasswordPage() {
             onToggle={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
           />
 
-          <button onClick={handleChange} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#f04423] px-6 py-4 text-sm font-black text-white transition hover:bg-[#d93618] disabled:opacity-50 sm:w-auto">
+          <button onClick={handleChange} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-md px-6 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50 sm:w-auto" style={{ backgroundColor: 'var(--color-primary)' }}>
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             {loading ? 'Updating...' : 'Update Password'}
           </button>
         </div>
 
-        <aside className="h-fit rounded-lg border border-black/10 bg-[#fafafa] p-5">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#1f1f1f] text-white">
+        <aside className="h-fit rounded-lg border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
             <ShieldCheck size={20} />
           </div>
-          <h2 className="text-base font-black text-[#1f1f1f]">Security Tips</h2>
-          <p className="mt-2 text-sm leading-6 text-[#666]">Use a unique password with uppercase letters, lowercase letters, numbers, and symbols. Avoid reusing passwords from other stores.</p>
+          <h2 className="text-base font-black" style={{ color: 'var(--text-primary)' }}>Security Tips</h2>
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>Use a unique password with uppercase letters, lowercase letters, numbers, and symbols. Avoid reusing passwords from other stores.</p>
         </aside>
       </div>
     </div>
@@ -107,17 +107,18 @@ export default function PasswordPage() {
 
 function PasswordInput({ label, value, visible, placeholder, onChange, onToggle }: { label: string; value: string; visible: boolean; placeholder: string; onChange: (value: string) => void; onToggle: () => void }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-[#fafafa] p-5">
-      <label className="mb-2 block text-xs font-black uppercase text-[#777]">{label}</label>
+    <div className="rounded-lg border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+      <label className="mb-2 block text-xs font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>{label}</label>
       <div className="relative">
         <input
           type={visible ? 'text' : 'password'}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-md border border-black/15 bg-white px-4 py-3 pr-12 text-sm font-bold text-[#1f1f1f] outline-none transition placeholder:text-[#999] focus:border-[#f04423]"
+          className="w-full rounded-md border bg-white px-4 py-3 pr-12 text-sm font-bold outline-none transition placeholder:text-[#999] focus:border-[var(--color-primary)]"
+          style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
           placeholder={placeholder}
         />
-        <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-[#666] transition hover:bg-[#f7f4ef] hover:text-[#1f1f1f]" aria-label={visible ? 'Hide password' : 'Show password'}>
+        <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 transition hover:bg-black/5" style={{ color: 'var(--text-secondary)' }} aria-label={visible ? 'Hide password' : 'Show password'}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>

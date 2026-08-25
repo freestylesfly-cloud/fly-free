@@ -468,7 +468,7 @@ export default function CheckoutPage() {
                 Delivery Address
               </h2>
 
-              {error && <div className="mb-4 rounded-lg bg-red-100 p-3 text-sm font-semibold text-red-700">✕ {error}</div>}
+              {error && <div className="mb-4 rounded-lg border p-3 text-sm font-semibold" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--text-primary)' }}>! {error}</div>}
 
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
@@ -548,7 +548,7 @@ export default function CheckoutPage() {
                 Payment Method
               </h2>
               <div className="space-y-3">
-                <div className="flex items-start gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'rgba(255, 107, 91, 0.08)' }}>
+                <div className="flex items-start gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)' }}>
                   <CreditCard size={20} className="mt-0.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
                   <div>
                     <p className="font-black" style={{ color: 'var(--text-primary)' }}>Pay online securely</p>
@@ -601,7 +601,7 @@ export default function CheckoutPage() {
                   {couponLoading ? <Loader2 size={16} className="inline animate-spin" /> : 'Apply'}
                 </button>
                 {couponValid && (
-                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); setCouponMessage('Coupon removed.'); toast('Coupon removed', { description: 'Your total has been updated.' }); }} className="px-4 py-2 border rounded-lg text-sm hover:opacity-80 transition" style={{ borderColor: '#dc2626', color: '#dc2626' }}>
+                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); setCouponMessage('Coupon removed.'); toast('Coupon removed', { description: 'Your total has been updated.' }); }} className="px-4 py-2 border rounded-lg text-sm font-bold hover:opacity-80 transition" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
                     Remove
                   </button>
                 )}

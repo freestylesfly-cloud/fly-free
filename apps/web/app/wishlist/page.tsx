@@ -90,7 +90,7 @@ export default function WishlistPage() {
     return (
       <main className="min-h-screen px-5 py-16 pb-28 lg:pb-0">
         <section className="mx-auto max-w-md rounded border p-6 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <Heart className="mx-auto text-coral" size={36} />
+          <Heart className="mx-auto" size={36} style={{ color: 'var(--color-primary)' }} />
           <h1 className="mt-4 text-2xl font-black">Login to save favorites</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>You can browse freely, but wishlist is saved with your account.</p>
           <Link href="/auth/login" className="mt-5 inline-flex rounded px-5 py-3 font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>Login / Register</Link>
@@ -104,7 +104,7 @@ export default function WishlistPage() {
       <section className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-black uppercase text-coral">Saved styles</p>
+            <p className="text-sm font-black uppercase" style={{ color: 'var(--color-primary)' }}>Saved styles</p>
             <h1 className="text-3xl font-black">My Wishlist</h1>
           </div>
           <Link href="/products" className="inline-flex items-center gap-2 rounded border px-4 py-2 font-bold" style={{ borderColor: 'var(--border-color)' }}>
@@ -112,7 +112,7 @@ export default function WishlistPage() {
           </Link>
         </div>
 
-        {error && <div className="mb-4 rounded border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</div>}
+        {error && <div className="mb-4 rounded border p-4 font-bold" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--text-primary)' }}>{error}</div>}
 
         {items.length === 0 ? (
           <div className="rounded border p-8 text-center" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
@@ -158,13 +158,13 @@ export default function WishlistPage() {
 
                   <div className="space-y-3 p-4">
                     <div>
-                      <p className="text-xs font-black uppercase text-coral">
+                      <p className="text-xs font-black uppercase" style={{ color: 'var(--color-primary)' }}>
                         {product.theme?.name || product.category?.name || 'Fly Free'}
                       </p>
                       {unavailable ? (
                         <p className="font-black" style={{ color: 'var(--text-muted)' }}>{product.name}</p>
                       ) : (
-                        <Link href={`/products/${product.slug}`} className="font-black hover:text-coral">{product.name}</Link>
+                        <Link href={`/products/${product.slug}`} className="font-black transition hover:opacity-75">{product.name}</Link>
                       )}
                     </div>
 
@@ -178,7 +178,7 @@ export default function WishlistPage() {
                       <p className="font-black" style={unavailable ? { color: 'var(--text-muted)' } : undefined}>
                         Rs {Math.round(product.price / 100)}
                       </p>
-                      <button onClick={() => removeItem(product.id)} className="rounded border border-red-200 p-2 text-red-600" aria-label="Remove from wishlist">
+                      <button onClick={() => removeItem(product.id)} className="rounded border p-2 transition hover:bg-black/5" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }} aria-label="Remove from wishlist">
                         <Trash2 size={16} />
                       </button>
                     </div>

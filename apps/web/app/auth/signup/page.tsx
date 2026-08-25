@@ -97,7 +97,7 @@ function SignupContent() {
     <AuthDrawerShell title="Create your account" subtitle="One account for orders, addresses, and saved items.">
       <form onSubmit={handleSubmit} className="space-y-6">
         {isInvited && !error && (
-          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'rgba(255, 107, 91, 0.08)' }}>
+          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)' }}>
             <CheckCircle size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
             <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
               You have been invited to Fly Free. Set a password to finish creating your account.
@@ -106,9 +106,9 @@ function SignupContent() {
         )}
 
         {error && (
-          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
-            <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />
-            <p className="text-sm font-bold" style={{ color: '#dc2626' }}>{error}</p>
+          <div className="flex gap-3 rounded-lg border-2 p-4" style={{ borderColor: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)' }}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--color-accent)' }} />
+            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{error}</p>
           </div>
         )}
 

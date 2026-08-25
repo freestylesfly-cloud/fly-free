@@ -132,8 +132,8 @@ export default function CartPage() {
                     <button
                       type="button"
                       onClick={() => removeItem(item.productId, item.size, item.color, item.variantId, item.hamperId, item.offerCode)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded border text-red-600 transition hover:bg-red-50"
-                      style={{ borderColor: 'var(--border-color)' }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded border transition hover:bg-black/5"
+                      style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                       title="Remove from cart"
                       aria-label="Remove from cart"
                     >

@@ -125,7 +125,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-8 md:py-10">
         <div
           className="grid gap-6 p-5 md:grid-cols-[0.8fr_1.2fr] md:p-7"
-          style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-secondary)' }}
+          style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-tertiary))', color: 'var(--bg-secondary)' }}
         >
           <div className="flex flex-col justify-between gap-4">
             <Link href="/" className="inline-flex items-center gap-3">
@@ -157,13 +157,13 @@ export function Footer() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@email.com"
                 className="min-w-0 px-4 py-3 text-base outline-none"
-                style={{ border: '1px solid rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.08)', color: 'white' }}
+                style={{ border: '1px solid rgba(255,255,255,0.26)', backgroundColor: 'rgba(255,255,255,0.12)', color: 'white' }}
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-3 text-sm font-bold uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-3 text-sm font-bold uppercase tracking-wide transition hover:opacity-90 disabled:opacity-60"
+                style={{ backgroundColor: 'white', color: 'var(--color-primary)' }}
               >
                 <Send size={16} />
                 {loading ? 'Joining...' : 'Subscribe'}
@@ -235,7 +235,7 @@ export function Footer() {
             className="font-black uppercase leading-none whitespace-nowrap"
             style={{
               fontSize: 'clamp(72px, 16vw, 220px)',
-              color: 'var(--text-primary)',
+              color: 'color-mix(in srgb, var(--color-primary) 18%, var(--text-primary))',
               fontWeight: 900,
               letterSpacing: '0',
               padding: '0 0 10px',

@@ -73,20 +73,20 @@ export default function WishlistPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-[#1f1f1f] md:text-3xl">Saved Items</h1>
-        <p className="mt-2 text-sm text-[#666]">Products you liked are kept here for quick checkout later.</p>
+        <h1 className="text-2xl font-black md:text-3xl" style={{ color: 'var(--text-primary)' }}>Saved Items</h1>
+        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Products you liked are kept here for quick checkout later.</p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-7 w-7 animate-spin text-[#f04423]" />
+          <Loader2 className="h-7 w-7 animate-spin" style={{ color: 'var(--color-primary)' }} />
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-black/15 bg-[#fafafa] px-6 py-14 text-center">
           <Heart className="mx-auto mb-4 h-10 w-10 text-[#999]" />
           <h2 className="text-lg font-black text-[#1f1f1f]">No saved items</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-[#666]">Tap the heart on a product to keep it in your profile.</p>
-          <Link href="/products" className="mt-5 inline-flex rounded-md bg-[#f04423] px-5 py-3 text-sm font-black text-white transition hover:bg-[#d93618]">
+          <Link href="/products" className="mt-5 inline-flex rounded-md px-5 py-3 text-sm font-black text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
             Browse Products
           </Link>
         </div>
@@ -98,7 +98,7 @@ export default function WishlistPage() {
             const unavailable = item.product.isVisible === false;
 
             return (
-              <article key={item.id} className="overflow-hidden rounded-lg border border-black/10 bg-[#fafafa] transition hover:border-[#f04423]/40 hover:bg-white">
+              <article key={item.id} className="overflow-hidden rounded-lg border transition hover:shadow-sm" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                 {unavailable ? (
                   <div className="relative block aspect-square bg-[#f0eee9]">
                     {item.product.images?.[0]?.url ? (
@@ -126,7 +126,7 @@ export default function WishlistPage() {
                   {unavailable ? (
                     <p className="line-clamp-2 text-sm font-black text-[#888]">{item.product.name}</p>
                   ) : (
-                    <Link href={`/products/${item.product.slug}`} className="line-clamp-2 text-sm font-black text-[#1f1f1f] hover:text-[#f04423]">
+                    <Link href={`/products/${item.product.slug}`} className="line-clamp-2 text-sm font-black" style={{ color: 'var(--text-primary)' }}>
                       {item.product.name}
                     </Link>
                   )}
@@ -141,14 +141,15 @@ export default function WishlistPage() {
                         Unavailable
                       </span>
                     ) : (
-                      <Link href={`/products/${item.product.slug}`} className="flex-1 rounded-md bg-[#1f1f1f] px-3 py-2 text-center text-xs font-black text-white transition hover:bg-[#f04423]">
+                      <Link href={`/products/${item.product.slug}`} className="flex-1 rounded-md px-3 py-2 text-center text-xs font-black text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--color-primary)' }}>
                         View Product
                       </Link>
                     )}
                     <button
                       onClick={() => removeFromWishlist(item.productId)}
                       disabled={removing === item.productId}
-                      className="inline-flex w-10 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      className="inline-flex w-10 items-center justify-center rounded-md border transition hover:bg-black/5 disabled:opacity-50"
+                      style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                       aria-label="Remove saved item"
                     >
                       {removing === item.productId ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
