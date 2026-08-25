@@ -220,7 +220,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
 
   return (
     <article
-      className="group relative flex h-full flex-col overflow-hidden rounded border bg-white shadow-[0_6px_18px_rgba(0,0,0,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_38px_rgba(0,0,0,0.13)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition duration-300 hover:shadow-[0_16px_38px_rgba(15,23,42,0.13)]"
       style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-secondary)' }}
     >
       <Link href={`/products/${slug}`} className="block">
@@ -292,7 +292,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
                   setSelectedImageIndex(index);
                 }}
                 onMouseEnter={() => setSelectedImageIndex(index)}
-                className="h-7 w-7 shrink-0 overflow-hidden rounded-sm border transition hover:-translate-y-0.5"
+                className="h-7 w-7 shrink-0 overflow-hidden rounded-sm border transition hover:shadow-sm"
                 style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
                 aria-label={`Show image ${index + 1}`}
               >
@@ -322,7 +322,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
           type="button"
           onClick={handleOpenQuickAdd}
           disabled={isAdding || soldOut}
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-sm px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80 sm:py-2.5 sm:text-xs"
+          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80 sm:py-2.5 sm:text-xs"
           style={{ backgroundColor: soldOut ? 'var(--text-tertiary)' : 'var(--color-primary)' }}
         >
           {isAdding ? <CheckCircle2 size={15} /> : <ShoppingCart size={15} />}
@@ -492,7 +492,7 @@ function QuickAddPanel({
           {imageList.length > 1 && (
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-clean">
               {imageList.slice(0, 6).map((url, index) => (
-                <button key={`${url}-${index}`} type="button" onClick={() => setSelectedImageIndex(index)} className="h-16 w-14 shrink-0 overflow-hidden rounded-xl border p-0.5 transition hover:-translate-y-0.5" style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)' }} aria-label={`View image ${index + 1}`}>
+                <button key={`${url}-${index}`} type="button" onClick={() => setSelectedImageIndex(index)} className="h-16 w-14 shrink-0 overflow-hidden rounded-xl border p-0.5 transition hover:shadow-sm" style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)' }} aria-label={`View image ${index + 1}`}>
                   <img src={url} alt="" className="h-full w-full rounded-lg object-cover" />
                 </button>
               ))}
@@ -502,7 +502,7 @@ function QuickAddPanel({
           {colorOptions.length > 0 && (
             <OptionGroup title="Color" value={selectedColor || 'Select'}>
               {colorOptions.map((color) => (
-                <button key={color} type="button" onClick={() => setSelectedColor(color)} className="rounded-full border px-4 py-2 text-sm font-black transition hover:-translate-y-0.5" style={{ borderColor: selectedColor === color ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: selectedColor === color ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'white' }}>
+                  <button key={color} type="button" onClick={() => setSelectedColor(color)} className="rounded-full border px-4 py-2 text-sm font-black transition hover:shadow-sm" style={{ borderColor: selectedColor === color ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: selectedColor === color ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'white' }}>
                   {color}
                 </button>
               ))}
@@ -518,7 +518,7 @@ function QuickAddPanel({
                 const variant = variants?.find((item) => item.size === size && (!selectedColor || item.color === selectedColor));
                 const available = Number(variant?.inventory?.stock ?? 0) > 0;
                 return (
-                  <button key={size} type="button" onClick={() => available && setSelectedSize(size)} disabled={!available} className="min-w-12 rounded-xl border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-35" style={{ borderColor: selectedSize === size ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: selectedSize === size ? 'var(--color-primary)' : 'white', color: selectedSize === size ? 'white' : 'var(--text-primary)' }}>
+                  <button key={size} type="button" onClick={() => available && setSelectedSize(size)} disabled={!available} className="min-w-12 rounded-xl border px-4 py-3 text-sm font-black transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-35" style={{ borderColor: selectedSize === size ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: selectedSize === size ? 'var(--color-primary)' : 'white', color: selectedSize === size ? 'white' : 'var(--text-primary)' }}>
                     {size}
                   </button>
                 );
@@ -540,7 +540,7 @@ function QuickAddPanel({
           <Link href={`/products/${slug}`} className="flex min-h-12 items-center justify-center rounded-full border text-sm font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
             More details
           </Link>
-          <button type="button" onClick={onAdd} disabled={!canAdd || isAdding} className="flex min-h-12 items-center justify-center gap-2 rounded-full text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
+          <button type="button" onClick={onAdd} disabled={!canAdd || isAdding} className="flex min-h-12 items-center justify-center gap-2 rounded-full text-sm font-black text-white shadow-lg transition hover:shadow-xl disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
             {isAdding ? <CheckCircle2 size={17} /> : <Plus size={17} />} Add to cart
           </button>
         </div>

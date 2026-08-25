@@ -71,11 +71,11 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         {slides.map((slide) => (
           <div
             key={slide.id}
-            className="mo-slide relative w-full flex-shrink-0 overflow-hidden md:h-[calc(100svh-112px)] md:min-h-[620px]"
+            className="mo-slide relative w-full flex-shrink-0 overflow-hidden"
             style={{ aspectRatio: HERO_ASPECT }}
           >
             {slide.image ? (
-              <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover transition duration-[1600ms] ease-out hover:scale-[1.02]" />
+              <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover" />
             ) : (
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
             )}
@@ -86,7 +86,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             />
 
             {(slide.title || slide.subtitle) && (
-              <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-start gap-2 px-4 pb-7 sm:gap-4 sm:px-10 sm:pb-16 lg:px-16">
+              <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-start gap-2 px-4 pb-7 sm:gap-4 sm:px-10 sm:pb-12 lg:px-16">
                 {slide.tag && (
                   <span
                     className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white sm:px-3 sm:py-1 sm:text-xs"
@@ -113,7 +113,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 {slide.ctaLabel && slide.ctaHref && (
                   <Link
                     href={slide.ctaHref}
-                    className="mt-2 bg-white px-6 py-2.5 text-xs font-black uppercase tracking-wide text-black transition hover:-translate-y-0.5 hover:shadow-xl sm:px-9 sm:py-4 sm:text-sm"
+                    className="mt-2 rounded-lg bg-white px-6 py-2.5 text-xs font-black uppercase tracking-wide text-black transition hover:shadow-xl sm:px-9 sm:py-4 sm:text-sm"
                   >
                     {slide.ctaLabel}
                   </Link>

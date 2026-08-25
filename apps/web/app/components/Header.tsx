@@ -218,7 +218,7 @@ export function Header() {
             {/* Search */}
             <Link
               href="/products"
-              className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
               title="Search products"
               aria-label="Search products"
@@ -229,7 +229,7 @@ export function Header() {
             {/* Wishlist */}
             <Link
               href={user ? '/profile/wishlist' : '/auth/login'}
-              className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
               aria-label="Open wishlist"
             >
@@ -241,7 +241,7 @@ export function Header() {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+                  className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
                   style={{
                     borderColor: isProfileOpen ? 'var(--color-primary)' : 'var(--border-color)',
                     backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'var(--bg-secondary)'
@@ -252,7 +252,7 @@ export function Header() {
                 </button>
                 {isProfileOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 border-2 shadow-xl overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border-2 shadow-xl z-50"
                     style={{
                       borderColor: 'var(--border-color)',
                       backgroundColor: 'var(--bg-secondary)'
@@ -326,7 +326,7 @@ export function Header() {
             {/* Cart */}
             <Link
               href="/cart"
-              className="relative grid h-11 w-11 place-items-center border-2 transition hover:-translate-y-0.5 hover:shadow-sm"
+              className="relative grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
               style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}
               aria-label="Open cart"
             >

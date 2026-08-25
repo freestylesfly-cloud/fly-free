@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { ContentProtection } from "./components/ContentProtection";
+import { StyleAssistant } from "./components/StyleAssistant";
 import { Toaster } from "sonner";
 import { BRAND, designTokensCss } from "./lib/design";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./lib/site";
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <ContentProtection />
           <Header />
           <main className="flex-1 pb-28 md:pb-0">{children}</main>
+          <StyleAssistant />
           <Footer />
           <Toaster richColors position="top-right" closeButton duration={2800} />
           <Analytics />

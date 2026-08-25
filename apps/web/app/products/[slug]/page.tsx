@@ -60,6 +60,7 @@ type Variant = {
 
 const API_URL = getApiBaseUrl();
 const DEFAULT_PRODUCT_WHATSAPP_MESSAGE = 'Check out {productName} at Fly Free! {url}';
+const RECENT_PRODUCTS_KEY = 'flyfree_recent_products';
 
 export default function ProductDetailPage({ params }: ProductDetailProps) {
   const { slug } = use(params);
@@ -225,6 +226,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         price: Math.round((product.price || product.basePrice || 0) / 100)
       }
     });
+    rememberViewedProduct(product);
   }, [product?.id, product?.slug, product?.name, product?.price, product?.basePrice, slug]);
 
   useEffect(() => {
@@ -1244,6 +1246,31 @@ function writeCachedProducts(key: string, products: any[]) {
     );
   } catch {
     // Ignore storage quota/private-mode failures; recommendations are optional.
+  }
+}
+
+function rememberViewedProduct(product: any) {
+  if (typeof window === 'undefined' || !product?.id || !product?.slug) return;
+
+  try {
+    const raw = window.localStorage.getItem(RECENT_PRODUCTS_KEY);
+    const current = raw ? JSON.parse(raw) : [];
+    const next = [
+      {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        image: product.images?.[0]?.url || '',
+        theme: product.theme?.name || '',
+        category: product.category?.name || ''
+      },
+      ...(Array.isArray(current) ? current : []).filter((item: any) => item?.id !== product.id)
+    ].slice(0, 8);
+
+    window.localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify(next));
+  } catch {
+    // Browsing memory is optional; private-mode storage failures should not
+    // affect the product page.
   }
 }
 

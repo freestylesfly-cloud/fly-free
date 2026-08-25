@@ -100,6 +100,8 @@ model Theme {
   story          String?
   imageUrl       String?
   bannerImageUrl String?
+  featureImageUrl String?
+  homepageFeatured Boolean       @default(false)
   primaryColor   String          @default("#111827")
   secondaryColor String          @default("#ff6b5b")
   accentColor    String          @default("#4ecdc4")

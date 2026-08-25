@@ -1,5 +1,5 @@
 /**
- * Image storage helpers.
+ * Media storage helpers.
  *
  * Uploads go through the API rather than straight to Supabase: the storage
  * buckets have no INSERT policy, so the browser's anon key is rejected by RLS.
@@ -39,11 +39,15 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.message || body?.error || 'Image upload failed');
+    throw new Error(body?.message || body?.error || 'Media upload failed');
   }
 
   const data = await response.json();
   return data.url as string;
+}
+
+export async function uploadMedia(bucket: string, file: File, folder = ''): Promise<string> {
+  return uploadImage(bucket, file, folder);
 }
 
 export async function deleteImage(_bucket: string, urlOrPath: string): Promise<void> {

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { Edit3, ImageIcon, Search, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Edit3, ImageIcon, Search, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -17,6 +17,8 @@ type ProductTheme = {
   story?: string;
   imageUrl?: string;
   bannerImageUrl?: string;
+  featureImageUrl?: string;
+  homepageFeatured?: boolean;
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
@@ -33,6 +35,8 @@ type ThemeForm = {
   story: string;
   imageUrl: string;
   bannerImageUrl: string;
+  featureImageUrl: string;
+  homepageFeatured: boolean;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -47,6 +51,8 @@ const emptyForm: ThemeForm = {
   story: '',
   imageUrl: '',
   bannerImageUrl: '',
+  featureImageUrl: '',
+  homepageFeatured: false,
   primaryColor: '#111827',
   secondaryColor: '#FF4A4E',
   accentColor: '#FFB703',
@@ -138,6 +144,8 @@ export default function ProductThemesPage() {
       story: theme.story || '',
       imageUrl: theme.imageUrl || '',
       bannerImageUrl: theme.bannerImageUrl || '',
+      featureImageUrl: theme.featureImageUrl || '',
+      homepageFeatured: theme.homepageFeatured === true,
       primaryColor: theme.primaryColor || '#111827',
       secondaryColor: theme.secondaryColor || '#FF4A4E',
       accentColor: theme.accentColor || '#FFB703',
@@ -153,7 +161,8 @@ export default function ProductThemesPage() {
           {/* Left: List */}
           <section className="space-y-4">
             <div className="rounded border border-black/10 bg-white p-4">
-              <div className="relative max-w-md">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative max-w-md flex-1">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-black/35" />
                 <input
                   value={search}
@@ -161,6 +170,10 @@ export default function ProductThemesPage() {
                   placeholder="Search themes..."
                   className="w-full rounded border border-black/10 py-2 pl-10 pr-3"
                 />
+              </div>
+              <p className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">
+                Active shows in store. Homepage feature controls large sections.
+              </p>
               </div>
             </div>
 
@@ -188,7 +201,17 @@ export default function ProductThemesPage() {
                           )}
                         </div>
                         <div>
-                          <h2 className="font-black text-ink">{theme.name}</h2>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-black text-ink">{theme.name}</h2>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${theme.active ? 'bg-green-50 text-green-700' : 'bg-black/5 text-black/45'}`}>
+                              {theme.active && <CheckCircle2 size={12} />} {theme.active ? 'Active' : 'Hidden'}
+                            </span>
+                            {theme.homepageFeatured && (
+                              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase text-blue-700">
+                                Homepage feature
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm font-bold text-black/45">
                             /{theme.slug} · {theme._count?.products || 0} products · Priority {theme.priority}
                           </p>
@@ -254,6 +277,17 @@ export default function ProductThemesPage() {
                 targetWidth={800}
                 alt={`${form.name || 'Theme'} card`}
               />
+              <ImageUploadField
+                label="Homepage feature image"
+                hint="Optional background for the large homepage theme section. If empty, the banner image is used."
+                value={form.featureImageUrl}
+                onChange={(value) => setForm({ ...form, featureImageUrl: value })}
+                bucket="product-images"
+                folder={`themes/${form.slug || slugify(form.name) || 'general'}/feature`}
+                aspect={16 / 9}
+                targetWidth={2400}
+                alt={`${form.name || 'Theme'} homepage feature`}
+              />
 
               <div className="grid grid-cols-3 gap-2">
                 <ColorField label="Primary" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} />
@@ -271,6 +305,21 @@ export default function ProductThemesPage() {
                   className="h-4 w-4"
                 />
                 Active (visible on the storefront)
+              </label>
+
+              <label className="flex items-start gap-3 rounded border border-black/10 bg-blue-50/60 p-3 text-sm font-bold">
+                <input
+                  type="checkbox"
+                  checked={form.homepageFeatured}
+                  onChange={(event) => setForm({ ...form, homepageFeatured: event.target.checked })}
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  <span className="block">Show as large homepage feature</span>
+                  <span className="mt-1 block text-xs font-normal text-black/55">
+                    Active + this checked + lowest priority decides the large sections.
+                  </span>
+                </span>
               </label>
 
               <button

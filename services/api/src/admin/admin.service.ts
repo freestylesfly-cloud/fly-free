@@ -1044,6 +1044,8 @@ export class AdminService {
     story: true,
     imageUrl: true,
     bannerImageUrl: true,
+    featureImageUrl: true,
+    homepageFeatured: true,
     primaryColor: true,
     secondaryColor: true,
     accentColor: true,
@@ -1067,6 +1069,8 @@ export class AdminService {
         story: data.story || "",
         imageUrl: data.imageUrl || "",
         bannerImageUrl: data.bannerImageUrl || "",
+        featureImageUrl: data.featureImageUrl || "",
+        homepageFeatured: data.homepageFeatured === true,
         primaryColor: data.primaryColor || "#111827",
         secondaryColor: data.secondaryColor || "#FF4A4E",
         accentColor: data.accentColor || "#FFB703",
@@ -1089,6 +1093,7 @@ export class AdminService {
       "story",
       "imageUrl",
       "bannerImageUrl",
+      "featureImageUrl",
       "primaryColor",
       "secondaryColor",
       "accentColor"
@@ -1097,6 +1102,7 @@ export class AdminService {
     }
     if (data.priority !== undefined) patch.priority = Number(data.priority);
     if (data.active !== undefined) patch.active = data.active;
+    if (data.homepageFeatured !== undefined) patch.homepageFeatured = data.homepageFeatured;
 
     return this.prisma.theme.update({
       where: { id },
@@ -1149,6 +1155,8 @@ export class AdminService {
     set("story", data.story);
     set("imageUrl", data.imageUrl);
     set("bannerImageUrl", data.bannerImageUrl);
+    set("featureImageUrl", data.featureImageUrl);
+    set("homepageFeatured", data.homepageFeatured);
     set("primaryColor", data.primaryColor);
     set("secondaryColor", data.secondaryColor);
     set("accentColor", data.accentColor);
@@ -1297,23 +1305,26 @@ export class AdminService {
   }
 
   /**
-   * Store an image and return its public URL. Browser-side uploads are blocked
-   * by storage RLS, so the server does it with the service-role key.
+   * Store storefront media and return its public URL. Browser-side uploads are
+   * blocked by storage RLS, so the server does it with the service-role key.
    */
   async uploadImage(image: string, folder = "misc") {
-    const match = /^data:([a-z/+-]+);base64,(.+)$/i.exec(image || "");
+    const match = /^data:([a-z0-9/+-]+);base64,(.+)$/i.exec(image || "");
     if (!match) {
-      throw new BadRequestException("Image must be a base64 data URL");
+      throw new BadRequestException("File must be a base64 data URL");
     }
 
     const [, mimeType, base64] = match;
-    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mimeType.toLowerCase())) {
-      throw new BadRequestException(`Unsupported image type: ${mimeType}`);
+    const normalizedMimeType = mimeType.toLowerCase();
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"];
+    if (!allowedTypes.includes(normalizedMimeType)) {
+      throw new BadRequestException(`Unsupported media type: ${mimeType}`);
     }
 
     const buffer = Buffer.from(base64, "base64");
-    if (buffer.byteLength > 12 * 1024 * 1024) {
-      throw new BadRequestException("Image must be under 12MB");
+    const maxBytes = normalizedMimeType.startsWith("video/") ? 80 * 1024 * 1024 : 12 * 1024 * 1024;
+    if (buffer.byteLength > maxBytes) {
+      throw new BadRequestException(normalizedMimeType.startsWith("video/") ? "Video must be under 80MB" : "Image must be under 12MB");
     }
 
     const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -1325,24 +1336,24 @@ export class AdminService {
         !url && "SUPABASE_URL",
         !serviceKey && "SUPABASE_SERVICE_ROLE_KEY"
       ].filter(Boolean);
-      this.logger.error(`Image upload blocked: missing ${missing.join(" and ")} on the API server`);
+      this.logger.error(`Media upload blocked: missing ${missing.join(" and ")} on the API server`);
       throw new BadRequestException(
-        `Image storage is not configured: ${missing.join(" and ")} missing on the API server. Set it where the API is deployed, not on the frontend host.`
+        `Media storage is not configured: ${missing.join(" and ")} missing on the API server. Set it where the API is deployed, not on the frontend host.`
       );
     }
 
     const storage = createClient(url, serviceKey);
-    const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
+    const extension = normalizedMimeType.split("/")[1].replace("jpeg", "jpg");
     const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, "").replace(/^\/+|\/+$/g, "") || "misc";
     const objectPath = `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
 
     const { data, error } = await storage.storage
       .from(STORAGE_BUCKET)
-      .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
+      .upload(objectPath, buffer, { contentType: normalizedMimeType, upsert: false });
 
     if (error) {
-      this.logger.error(`Admin image upload failed: ${error.message}`);
-      throw new BadRequestException(`Failed to upload image: ${error.message}`);
+      this.logger.error(`Admin media upload failed: ${error.message}`);
+      throw new BadRequestException(`Failed to upload media: ${error.message}`);
     }
 
     const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);

@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check, Play, Upload, Link as LinkIcon, FileVideo, ImageIcon } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
+import { uploadMedia } from '../lib/supabase';
 
 interface InstagramPost {
   id: string;
@@ -53,6 +54,8 @@ export default function InstagramPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoError, setVideoError] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
 
   // Only ever fills a blank field, so it cannot stomp on what is being typed
@@ -115,6 +118,29 @@ export default function InstagramPage() {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  async function handleVideoFile(file?: File) {
+    setVideoError('');
+    if (!file) return;
+    if (!['video/mp4', 'video/webm'].includes(file.type)) {
+      setVideoError('Use MP4 or WebM video.');
+      return;
+    }
+    if (file.size > 80 * 1024 * 1024) {
+      setVideoError('Video must be under 80MB.');
+      return;
+    }
+
+    try {
+      setVideoUploading(true);
+      const url = await uploadMedia('product-images', file, 'instagram/videos');
+      setFormData((current) => ({ ...current, videoUrl: url }));
+    } catch (error) {
+      setVideoError(error instanceof Error ? error.message : 'Video upload failed');
+    } finally {
+      setVideoUploading(false);
+    }
+  }
+
   return (
     <ProtectedRoute>
       <DashboardLayout title="Instagram Feed Manager" subtitle="Manage posts displayed on homepage">
@@ -131,12 +157,15 @@ export default function InstagramPage() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Form */}
-            <section className="rounded border border-black/10 bg-white p-5 lg:col-span-1">
-              <h2 className="mb-4 text-lg font-black">{editingId ? 'Edit Post' : 'Add New Post'}</h2>
+            <section className="rounded border border-black/10 bg-white p-5 shadow-sm lg:col-span-1">
+              <div className="mb-4">
+                <h2 className="text-lg font-black">{editingId ? 'Edit Post' : 'Add New Post'}</h2>
+                <p className="mt-1 text-xs font-bold text-black/50">Upload a cover image, optional video, caption, and the Instagram link.</p>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <ImageUploadField
-                  label="Image"
+                  label="Cover image"
                   value={formData.imageUrl}
                   onChange={(url) => setFormData((current) => ({ ...current, imageUrl: url }))}
                   bucket="product-images"
@@ -144,20 +173,16 @@ export default function InstagramPage() {
                   aspect={3 / 4}
                   targetWidth={900}
                   alt={formData.caption}
-                  hint="Upload from your device or paste a URL. Use the real post crop."
+                  hint="Used as image post media and as the poster for videos."
                 />
 
-                <div>
-                  <label className="text-xs font-bold uppercase">Video URL (optional)</label>
-                  <input
-                    type="url"
-                    value={formData.videoUrl}
-                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="mt-1 w-full rounded border border-black/10 px-3 py-2 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-black/60">MP4, WebM</p>
-                </div>
+                <VideoUploadField
+                  value={formData.videoUrl}
+                  onChange={(url) => setFormData((current) => ({ ...current, videoUrl: url }))}
+                  onPickFile={handleVideoFile}
+                  uploading={videoUploading}
+                  error={videoError}
+                />
 
                 <div>
                   <label className="text-xs font-bold uppercase">Caption</label>
@@ -203,7 +228,7 @@ export default function InstagramPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 rounded bg-ink px-4 py-2 font-bold text-white disabled:opacity-50"
+                    className="flex-1 rounded bg-ink px-4 py-2 font-bold text-white transition hover:-translate-y-0.5 disabled:opacity-50"
                   >
                     <Plus size={16} className="inline mr-2" />
                     {editingId ? 'Update Post' : 'Add Post'}
@@ -226,52 +251,74 @@ export default function InstagramPage() {
             </section>
 
             {/* Posts List */}
-            <section className="rounded border border-black/10 bg-white p-5 lg:col-span-2">
-              <h2 className="mb-4 text-lg font-black">
-                Posts ({posts?.length || 0})
-              </h2>
+            <section className="rounded border border-black/10 bg-white p-5 shadow-sm lg:col-span-2">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black">Posts ({posts?.length || 0})</h2>
+                  <p className="mt-1 text-xs font-bold text-black/50">Sorted by display order. Videos show with controls on the community page.</p>
+                </div>
+                <div className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">
+                  MP4/WebM under 80MB
+                </div>
+              </div>
 
               {loading ? (
                 <p className="text-black/60">Loading...</p>
               ) : !posts || posts.length === 0 ? (
                 <p className="text-black/60">No posts yet. Add your first Instagram post above.</p>
               ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="grid max-h-[680px] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
                   {posts.map((post) => (
-                    <div key={post.id} className="flex gap-3 rounded border border-black/10 p-3 hover:bg-black/5">
-                      {post.imageUrl && (
-                        <img
-                          src={post.imageUrl}
-                          alt={post.caption}
-                          className="h-16 w-16 rounded object-cover"
-                        />
-                      )}
-
-                      <div className="flex-1">
-                        <p className="line-clamp-2 font-bold text-sm">{post.caption}</p>
-                        <p className="mt-1 text-xs text-black/60">Order: {post.displayOrder}</p>
-                        <p className="mt-1 text-xs text-black/60 font-mono break-all">{post.instagramLink}</p>
+                    <div key={post.id} className="overflow-hidden rounded border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                      <div className="relative aspect-[4/5] overflow-hidden bg-black/5">
+                        {post.videoUrl ? (
+                          <>
+                            <video src={post.videoUrl} poster={post.imageUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" controls />
+                            <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
+                              <Play size={34} fill="currentColor" />
+                            </span>
+                          </>
+                        ) : post.imageUrl ? (
+                          <img
+                            src={post.imageUrl}
+                            alt={post.caption}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-full w-full place-items-center text-xs font-black uppercase text-black/40">Post</span>
+                        )}
+                        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[10px] font-black uppercase text-black">
+                          {post.videoUrl ? <FileVideo size={12} /> : <ImageIcon size={12} />}
+                          {post.videoUrl ? 'Video' : 'Image'}
+                        </span>
                       </div>
 
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => handleCopy(post.instagramLink, post.id)}
-                          className="flex items-center gap-1 rounded border border-black/10 px-2 py-1 text-xs font-bold hover:bg-black/5"
-                        >
-                          {copied === post.id ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                        <button
-                          onClick={() => handleEdit(post)}
-                          className="flex items-center gap-1 rounded border border-black/10 px-2 py-1 text-xs font-bold text-ink hover:bg-black/5"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(post.id)}
-                          className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div className="p-3">
+                        <p className="line-clamp-3 text-sm font-black leading-snug">{post.caption}</p>
+                        <p className="mt-2 text-xs font-bold text-black/60">Display order: {post.displayOrder}</p>
+                        <p className="mt-1 text-xs text-black/60 font-mono break-all">{post.instagramLink}</p>
+
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => handleCopy(post.instagramLink, post.id)}
+                            className="inline-flex flex-1 items-center justify-center gap-1 rounded border border-black/10 px-2 py-2 text-xs font-bold hover:bg-black/5"
+                          >
+                            {copied === post.id ? <Check size={14} /> : <Copy size={14} />} Copy
+                          </button>
+                          <button
+                            onClick={() => handleEdit(post)}
+                            className="inline-flex flex-1 items-center justify-center gap-1 rounded border border-black/10 px-2 py-2 text-xs font-bold text-ink hover:bg-black/5"
+                          >
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(post.id)}
+                            className="inline-flex items-center justify-center rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100"
+                            aria-label="Delete post"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -282,6 +329,68 @@ export default function InstagramPage() {
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+function VideoUploadField({
+  value,
+  onChange,
+  onPickFile,
+  uploading,
+  error
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  onPickFile: (file?: File) => void;
+  uploading: boolean;
+  error: string;
+}) {
+  return (
+    <div className="space-y-2 rounded border border-black/10 bg-black/[0.02] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <label className="text-sm font-black">Video</label>
+          <p className="mt-1 text-xs font-bold text-black/50">MP4/WebM, 9:16 or 4:5 works best, under 80MB.</p>
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded bg-blue-600 px-3 py-2 text-xs font-black text-white transition hover:-translate-y-0.5">
+          <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload'}
+          <input
+            hidden
+            type="file"
+            accept="video/mp4,video/webm"
+            disabled={uploading}
+            onChange={(event) => {
+              onPickFile(event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+        </label>
+      </div>
+
+      {value && (
+        <div className="relative overflow-hidden rounded border border-black/10 bg-black">
+          <video src={value} className="aspect-[9/16] max-h-[360px] w-full object-cover" controls playsInline preload="metadata" />
+        </div>
+      )}
+
+      <div className="relative">
+        <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-black/35" />
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Paste video URL or upload from device"
+          className="w-full rounded border border-black/10 py-2 pl-9 pr-3 text-sm"
+        />
+      </div>
+
+      {value && (
+        <button type="button" onClick={() => onChange('')} className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-xs font-bold hover:bg-white">
+          <Trash2 size={14} /> Remove video
+        </button>
+      )}
+      {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+    </div>
   );
 }
 

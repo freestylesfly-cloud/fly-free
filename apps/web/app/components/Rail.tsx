@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 /**
  * Every horizontal row on the homepage — products, themes, hampers, reviews,
@@ -65,7 +66,7 @@ export function Rail({
   return (
     <section className="border-b" style={{ borderColor: 'var(--border-color)' }}>
       <div className="px-4 py-10 sm:px-6 md:py-14">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-4 flex items-center justify-between gap-4">
           <h2
             className="text-xl font-black uppercase tracking-tight sm:text-3xl"
             style={{ color: 'var(--text-primary)' }}
@@ -78,34 +79,34 @@ export function Rail({
                 href={viewAllHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 text-xs font-black uppercase tracking-wide sm:text-sm"
-                style={{ color: 'var(--color-primary)' }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-wide transition hover:bg-white sm:text-sm"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--color-primary)' }}
               >
-                {viewAllLabel} &rarr;
+                {viewAllLabel} <ArrowRight size={14} />
               </a>
             ) : (
               <Link
                 href={viewAllHref}
-                className="shrink-0 text-xs font-black uppercase tracking-wide sm:text-sm"
-                style={{ color: 'var(--color-primary)' }}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-wide transition hover:bg-white sm:text-sm"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--color-primary)' }}
               >
-                {viewAllLabel} &rarr;
+                {viewAllLabel} <ArrowRight size={14} />
               </Link>
             ))}
         </div>
 
         <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-          <div ref={trackRef} className="mo-slider flex gap-3 overflow-x-auto pb-1 sm:gap-5">
+          <div ref={trackRef} className="mo-slider flex gap-3 overflow-x-auto px-0.5 py-2 sm:gap-5">
             {children}
           </div>
 
           {canScroll && (
             <div className="mt-5 hidden justify-center gap-3 sm:flex">
               <button type="button" className="mo-arrow" onClick={() => nudge(-1)} aria-label={`Scroll ${title} left`}>
-                &#8592;
+                <ArrowLeft size={18} />
               </button>
               <button type="button" className="mo-arrow" onClick={() => nudge(1)} aria-label={`Scroll ${title} right`}>
-                &#8594;
+                <ArrowRight size={18} />
               </button>
             </div>
           )}
