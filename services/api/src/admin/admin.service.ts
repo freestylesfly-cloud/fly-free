@@ -1436,24 +1436,15 @@ export class AdminService {
   // ==================== PAGES ====================
   async listPages() {
     const pages = await this.prisma.page.findMany({ orderBy: { updatedAt: "desc" } });
-    const bySlug = new Map(pages.map((page) => [page.slug, page]));
 
     return {
-      data: pages,
-      // Lets the admin show which storefront pages exist and which are still
-      // falling back to hard-coded copy, without hardcoding slugs in the UI.
-      standard: STANDARD_PAGES.map((page) => ({
-        slug: page.slug,
-        title: page.title,
-        route: page.route,
-        exists: bySlug.has(page.slug),
-        isPublished: bySlug.get(page.slug)?.isPublished ?? false
-      }))
+      data: pages
     };
   }
 
   /**
-   * Creates any storefront page that does not exist yet, with starter content.
+   * Creates any storefront page that does not exist yet.
+   * Content starts blank on purpose: there is no customer-facing fallback copy.
    * Existing pages are left untouched, so this is safe to re-run.
    */
   async createMissingPages() {
@@ -1469,7 +1460,7 @@ export class AdminService {
         data: missing.map((page) => ({
           slug: page.slug,
           title: page.title,
-          content: page.content,
+          content: "",
           metaTitle: page.title,
           isPublished: true
         }))
@@ -1512,6 +1503,42 @@ export class AdminService {
 
   async deletePage(id: string) {
     return this.prisma.page.delete({ where: { id } });
+  }
+
+  // ==================== FAQS ====================
+  async listFaqItems() {
+    return this.prisma.faqItem.findMany({
+      orderBy: [{ priority: "asc" }, { category: "asc" }, { createdAt: "asc" }]
+    });
+  }
+
+  async createFaqItem(data: any) {
+    return this.prisma.faqItem.create({
+      data: {
+        category: data.category || "Support",
+        question: data.question,
+        answer: data.answer || "",
+        priority: data.priority === undefined ? 0 : Number(data.priority),
+        active: data.active !== false
+      }
+    });
+  }
+
+  async updateFaqItem(id: string, data: any) {
+    return this.prisma.faqItem.update({
+      where: { id },
+      data: {
+        category: data.category,
+        question: data.question,
+        answer: data.answer,
+        priority: data.priority === undefined ? undefined : Number(data.priority),
+        active: data.active
+      }
+    });
+  }
+
+  async deleteFaqItem(id: string) {
+    return this.prisma.faqItem.delete({ where: { id } });
   }
 
   // ==================== INFLUENCERS ====================
@@ -1903,16 +1930,22 @@ export class AdminService {
 
   async createSizeGuide(data: any) {
     const fitType = this.normalizeFitType(data.fitType);
+    const existing = await this.prisma.sizeGuide.findFirst({ where: { fitType } });
 
-    return await this.prisma.sizeGuide.upsert({
-      where: { fitType },
-      update: {
-        chartImageUrl: data.chartImageUrl || null,
-        note: data.note || null,
-        priority: data.priority || 0,
-        active: data.active !== false
-      },
-      create: {
+    if (existing) {
+      return await this.prisma.sizeGuide.update({
+        where: { id: existing.id },
+        data: {
+          chartImageUrl: data.chartImageUrl || null,
+          note: data.note || null,
+          priority: data.priority || 0,
+          active: data.active !== false
+        }
+      });
+    }
+
+    return await this.prisma.sizeGuide.create({
+      data: {
         fitType,
         chartImageUrl: data.chartImageUrl || null,
         note: data.note || null,

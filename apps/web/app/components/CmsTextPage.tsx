@@ -8,8 +8,6 @@ interface CmsPage {
 
 interface CmsTextPageProps {
   slug: string;
-  fallbackTitle: string;
-  fallbackContent: string;
 }
 
 async function getCmsPage(slug: string): Promise<CmsPage | null> {
@@ -38,10 +36,10 @@ async function getCmsPage(slug: string): Promise<CmsPage | null> {
  *   `1. item`     → numbered step
  *   blank line    → new paragraph
  */
-export async function CmsTextPage({ slug, fallbackTitle, fallbackContent }: CmsTextPageProps) {
+export async function CmsTextPage({ slug }: CmsTextPageProps) {
   const page = await getCmsPage(slug);
-  const title = page?.title || fallbackTitle;
-  const content = page?.content || fallbackContent;
+  const title = page?.title || "Page unavailable";
+  const content = page?.content || "";
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
@@ -60,7 +58,13 @@ export async function CmsTextPage({ slug, fallbackTitle, fallbackContent }: CmsT
       </section>
 
       <section className="mx-auto max-w-3xl px-5 py-10 md:py-14">
-        <div className="space-y-4 leading-7">{renderBlocks(content)}</div>
+        {content ? (
+          <div className="space-y-4 leading-7">{renderBlocks(content)}</div>
+        ) : (
+          <p className="font-semibold" style={{ color: "var(--text-secondary)" }}>
+            This page is not published yet.
+          </p>
+        )}
       </section>
     </main>
   );

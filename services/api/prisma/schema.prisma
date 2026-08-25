@@ -438,6 +438,21 @@ model Page {
   updatedAt   DateTime @updatedAt
 }
 
+model FaqItem {
+  id        String   @id @default(cuid())
+  category  String   @default("Support")
+  question  String
+  answer    String
+  priority  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([category])
+  @@index([priority])
+}
+
 model Influencer {
   id                   String     @id @default(cuid())
   name                 String

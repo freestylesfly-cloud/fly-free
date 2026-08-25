@@ -443,6 +443,30 @@ class ApiService {
     });
   }
 
+  async getFaqItems() {
+    return this.request('/api/admin/faqs');
+  }
+
+  async createFaqItem(data: any) {
+    return this.request('/api/admin/faqs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFaqItem(id: string, data: any) {
+    return this.request(`/api/admin/faqs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFaqItem(id: string) {
+    return this.request(`/api/admin/faqs/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // ============ INFLUENCERS ============
   async getInfluencers() {
     return this.request('/api/admin/influencers');

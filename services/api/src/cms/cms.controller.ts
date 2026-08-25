@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CmsService } from "./cms.service";
 
@@ -35,6 +35,16 @@ export class CmsController {
   @Get("size-guides")
   getSizeGuides() {
     return this.cmsService.getSizeGuides();
+  }
+
+  @Get("faqs")
+  getFaqItems() {
+    return this.cmsService.getFaqItems();
+  }
+
+  @Post("help-request")
+  createHelpRequest(@Body() body: any) {
+    return this.cmsService.createHelpRequest(body);
   }
 
   @Get("announcements")

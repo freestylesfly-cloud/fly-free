@@ -150,6 +150,43 @@ export class CmsService {
     });
   }
 
+  getFaqItems() {
+    return this.prisma.faqItem.findMany({
+      where: { active: true },
+      orderBy: [{ priority: "asc" }, { category: "asc" }, { createdAt: "asc" }]
+    });
+  }
+
+  async createHelpRequest(data: any) {
+    const name = String(data?.name || "").trim();
+    const phone = String(data?.phone || "").trim();
+    const email = String(data?.email || "").trim();
+    const comment = String(data?.comment || "").trim();
+
+    if (!name || !phone || !email || !comment) {
+      return { success: false, message: "Name, phone, email, and comment are required." };
+    }
+
+    await this.prisma.notification.create({
+      data: {
+        channel: "ADMIN",
+        type: "HELP_REQUEST",
+        entityType: "HelpRequest",
+        title: `Help request from ${name}`,
+        body: [
+          `Name: ${name}`,
+          `Phone: ${phone}`,
+          `Email: ${email}`,
+          "",
+          comment
+        ].join("\n"),
+        status: "PENDING"
+      }
+    });
+
+    return { success: true, message: "Thanks. We received your request and will contact you soon." };
+  }
+
   // Delivery is the only charge on top of the item total. Values in rupees.
   async getDeliverySettings() {
     const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
@@ -217,28 +254,11 @@ export class CmsService {
 
   /** Drafts stay private — only published pages reach the storefront. */
   async getPage(slug: string) {
-    const page = await this.safeQuery(
+    return this.safeQuery(
       `page ${slug}`,
       () => this.prisma.page.findFirst({ where: { slug, isPublished: true } }),
       null
     );
-
-    if (page) return page;
-
-    const standardPage = STANDARD_PAGES.find((item) => item.slug === slug);
-    if (!standardPage) return null;
-
-    return {
-      id: null,
-      slug: standardPage.slug,
-      title: standardPage.title,
-      content: standardPage.content,
-      metaTitle: standardPage.title,
-      metaDesc: null,
-      isPublished: true,
-      createdAt: null,
-      updatedAt: null
-    };
   }
 
   private async safeQuery<T>(label: string, query: () => Promise<T>, fallback: T): Promise<T> {

@@ -273,6 +273,27 @@ export class AdminController {
     return this.adminService.deletePage(id);
   }
 
+  // ==================== FAQS ====================
+  @Get("faqs")
+  listFaqItems() {
+    return this.adminService.listFaqItems();
+  }
+
+  @Post("faqs")
+  createFaqItem(@Body() data: any) {
+    return this.adminService.createFaqItem(data);
+  }
+
+  @Put("faqs/:id")
+  updateFaqItem(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateFaqItem(id, data);
+  }
+
+  @Delete("faqs/:id")
+  deleteFaqItem(@Param("id") id: string) {
+    return this.adminService.deleteFaqItem(id);
+  }
+
   // ==================== INFLUENCERS ====================
   @Get("influencers")
   listInfluencers() {

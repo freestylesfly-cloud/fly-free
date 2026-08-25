@@ -37,6 +37,7 @@ const menuItems = [
     items: [
       { label: 'Announcements', href: '/announcements', icon: Bell },
       { label: 'Pages', href: '/pages', icon: FileText },
+      { label: 'Help & FAQs', href: '/faqs', icon: MessageSquare },
       { label: 'Activity Logs', href: '/activity-logs', icon: ScrollText },
       { label: 'Settings', href: '/settings', icon: Sliders },
     ],
