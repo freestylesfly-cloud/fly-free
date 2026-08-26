@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { BadgeCheck, MessageCircle, Play, Quote, Star, TicketPercent, Users } from 'lucide-react';
+import { Play, TicketPercent, Users } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
+import { HomeReviewsCarousel } from './components/HomeReviewsCarousel';
 import { Rail } from './components/Rail';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
@@ -219,27 +220,24 @@ export default async function HomePage() {
               key={theme.id}
               data-rail-item
               href={`/themes/${theme.slug}`}
-              className="mo-slide group relative w-[78vw] flex-shrink-0 overflow-hidden rounded-lg border shadow-sm transition hover:shadow-xl sm:w-[340px]"
-              style={{
-                aspectRatio: MEDIA.themeCard.css,
-                backgroundColor: theme.primaryColor || 'var(--color-primary)',
-                borderColor: 'var(--border-color)'
-              }}
+              className="mo-slide group w-[86vw] flex-shrink-0 transition sm:w-[420px] lg:w-[460px]"
             >
-              {(theme.imageUrl || theme.bannerImageUrl) && (
-                <img
-                  src={theme.imageUrl || theme.bannerImageUrl}
-                  alt={theme.name}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-              )}
               <div
-                className="absolute inset-0"
-                style={{ background: 'linear-gradient(0deg, rgba(0,0,0,.62), rgba(0,0,0,0) 58%)' }}
-              />
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <h3 className="text-xl font-black uppercase leading-tight text-white sm:text-2xl">{theme.name}</h3>
-                {theme.description && <p className="mt-1 line-clamp-2 text-xs font-bold text-white/75">{theme.description}</p>}
+                className="relative overflow-hidden rounded-lg shadow-sm transition group-hover:shadow-xl"
+                style={{ aspectRatio: MEDIA.themeCard.css, backgroundColor: 'var(--bg-tertiary)' }}
+              >
+                {(theme.imageUrl || theme.bannerImageUrl) && (
+                  <img
+                    src={theme.imageUrl || theme.bannerImageUrl}
+                    alt={theme.name}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                )}
+              </div>
+              <div className="flex justify-center pt-3">
+                <h3 className="max-w-full text-center text-sm font-black uppercase leading-tight sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                  {theme.name}
+                </h3>
               </div>
             </Link>
           ))}
@@ -344,38 +342,44 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
     <>
       {featuredThemes.map((theme) => {
         const products = (theme.products || []).filter((product) => product.images?.[0]?.url).slice(0, 4);
+        const mediaUrl = theme.featureImageUrl || theme.bannerImageUrl || theme.imageUrl;
         return (
-          <section key={theme.id} className="fly-reveal border-b px-4 py-8 sm:px-6 sm:py-12 lg:px-10 lg:py-14" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-            <div className="relative overflow-hidden rounded-xl shadow-[0_24px_70px_rgba(15,23,42,0.18)]" style={{ backgroundColor: theme.primaryColor || 'var(--text-primary)' }}>
+          <section
+            key={theme.id}
+            className="fly-reveal relative min-h-screen overflow-hidden border-b"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: theme.primaryColor || 'var(--text-primary)' }}
+          >
             <img
-              src={theme.featureImageUrl || theme.bannerImageUrl || theme.imageUrl}
+              src={mediaUrl}
               alt={theme.name}
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/78 via-black/30 to-black/5" />
-            <div className="relative z-10 flex min-h-[560px] flex-col justify-end px-5 pb-7 pt-20 text-white sm:min-h-[620px] sm:px-10 lg:min-h-[680px] lg:px-16">
-              <h2 className="max-w-5xl text-5xl font-black uppercase leading-[0.92] sm:text-7xl lg:text-8xl">{theme.name}</h2>
-              <span className="fly-line mt-3" aria-hidden="true" />
-              {theme.description && <p className="mt-4 max-w-2xl text-base font-bold leading-relaxed text-white/88 sm:text-xl">{theme.description}</p>}
-              <Link href={`/themes/${theme.slug}`} className="mt-7 inline-flex w-fit rounded-lg bg-white px-8 py-4 text-sm font-black uppercase tracking-wide text-black transition hover:shadow-xl">
-                Shop theme
-              </Link>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-black/10 sm:bg-gradient-to-r sm:from-black/82 sm:via-black/32 sm:to-black/5" />
+            <div className="relative z-10 flex min-h-screen flex-col justify-end px-4 pb-6 pt-24 text-white sm:px-8 sm:pb-8 lg:px-12 lg:pb-10">
+              <div className="max-w-5xl">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-white/72">Featured universe</p>
+                <h2 className="mt-3 text-5xl font-black uppercase leading-[0.92] sm:text-7xl lg:text-8xl">{theme.name}</h2>
+                <span className="fly-line mt-3" aria-hidden="true" />
+                {theme.description && <p className="mt-4 max-w-2xl text-base font-bold leading-relaxed text-white/88 sm:text-xl">{theme.description}</p>}
+                <Link href={`/themes/${theme.slug}`} className="mt-6 inline-flex w-fit rounded bg-white px-7 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:shadow-xl sm:px-8 sm:py-4">
+                  View {theme.name}
+                </Link>
+              </div>
               {products.length > 0 && (
-                <div className="mt-7 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-4 sm:overflow-visible sm:pb-0">
+                <div className="mt-7 grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
                   {products.map((product) => (
-                    <Link key={product.id} href={`/products/${product.slug}`} className="group w-[42vw] shrink-0 overflow-hidden rounded-lg bg-white/95 text-black shadow-lg transition hover:shadow-xl sm:w-auto">
+                    <Link key={product.id} href={`/products/${product.slug}`} className="group overflow-hidden bg-white/95 text-black shadow-lg transition hover:shadow-xl">
                       <div className="aspect-[4/5] overflow-hidden bg-white">
                         <img src={product.images?.[0]?.url} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                       </div>
-                      <div className="p-3">
-                        <p className="line-clamp-2 text-xs font-black uppercase leading-tight">{product.name}</p>
+                      <div className="p-2.5 sm:p-3">
+                        <p className="line-clamp-2 text-[11px] font-black uppercase leading-tight sm:text-xs">{product.name}</p>
                         <p className="mt-1 text-xs font-bold text-black/60">Rs {rupees(product.price)}</p>
                       </div>
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
             </div>
           </section>
         );
@@ -531,105 +535,7 @@ function CreatorsSection({ influencers }: { influencers: Influencer[] }) {
 }
 
 function HomeReviewsSection({ reviews }: { reviews: Review[] }) {
-  if (reviews.length === 0) return null;
-
-  const visibleReviews = reviews.slice(0, 8);
-  const average = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length;
-
-  return (
-    <section className="border-b" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, #ffffff 0%, var(--bg-primary) 100%)' }}>
-      <div className="px-4 py-10 sm:px-6 md:py-14">
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>Customer reviews</p>
-            <h2 className="mt-2 text-xl font-black uppercase tracking-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
-              Ratings & reviews
-            </h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-[220px] rounded-lg border bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)]" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-                Overall rating
-              </p>
-              <div className="mt-2 flex items-end gap-3">
-                <p className="text-4xl font-black leading-none" style={{ color: 'var(--text-primary)' }}>{average.toFixed(1)}</p>
-                <RatingStars rating={average} />
-              </div>
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                <BadgeCheck size={14} style={{ color: 'var(--color-secondary)' }} />
-                {reviews.length} verified buyer{reviews.length === 1 ? '' : 's'}
-              </p>
-            </div>
-            <Link
-              href="/reviews"
-              className="hidden shrink-0 text-xs font-black uppercase tracking-wide sm:inline-flex"
-              style={{ color: 'var(--color-primary)' }}
-            >
-              View all -&gt;
-            </Link>
-          </div>
-        </div>
-
-        <div className="mo-slider mt-6 flex gap-3 overflow-x-auto pb-3 sm:gap-5">
-          {visibleReviews.map((review) => (
-            <Link
-              key={review.id}
-              data-rail-item
-              href={review.product?.slug ? `/products/${review.product.slug}#reviews` : '/reviews'}
-              className="mo-slide group flex min-h-[280px] w-[82vw] flex-shrink-0 flex-col rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-[0_16px_36px_rgba(15,23,42,0.12)] sm:w-[330px] sm:p-5"
-              style={{ borderColor: 'var(--border-color)' }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <RatingStars rating={review.rating || 5} />
-                  <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-                    <BadgeCheck size={12} style={{ color: 'var(--color-secondary)' }} /> Verified buyer
-                  </p>
-                </div>
-                {review.mediaUrls?.[0] && (
-                  <img src={review.mediaUrls[0]} alt="" className="h-14 w-14 shrink-0 rounded-sm object-cover" />
-                )}
-              </div>
-              <h3 className="mt-5 line-clamp-2 text-base font-black uppercase leading-tight" style={{ color: 'var(--text-primary)' }}>
-                {review.title || review.product?.name || 'Customer review'}
-              </h3>
-              {review.body && (
-                <div className="mt-3 flex gap-3">
-                  <Quote size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
-                  <p className="line-clamp-4 text-sm font-bold leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                    {review.body}
-                  </p>
-                </div>
-              )}
-              <div className="mt-auto flex items-end justify-between gap-3 border-t pt-4" style={{ borderColor: 'var(--border-light)' }}>
-                <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>
-                  {review.user?.name || 'Verified customer'}
-                </p>
-                {review.product?.name && (
-                  <p className="mt-1 line-clamp-1 text-xs font-black uppercase" style={{ color: 'var(--color-primary)' }}>
-                    {review.product.name}
-                  </p>
-                )}
-                </div>
-                <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-black uppercase opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100" style={{ color: 'var(--color-primary)' }}>
-                  <MessageCircle size={13} /> Open
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <Link
-          href="/reviews"
-          className="mt-6 inline-flex text-xs font-black uppercase tracking-wide sm:hidden"
-          style={{ color: 'var(--color-primary)' }}
-        >
-          View all -&gt;
-        </Link>
-      </div>
-    </section>
-  );
+  return <HomeReviewsCarousel reviews={reviews} />;
 }
 
 function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
@@ -659,33 +565,6 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
         </Link>
       </div>
     </section>
-  );
-}
-
-/** Plain glyphs rather than icon components — the row is data, not decoration. */
-function Stars({ rating }: { rating: number }) {
-  const filled = Math.max(0, Math.min(5, Math.round(rating)));
-  return (
-    <p className="text-sm font-black tracking-wide" style={{ color: 'var(--color-accent)' }}>
-      {'★'.repeat(filled)}
-      <span style={{ color: 'var(--text-tertiary)' }}>{'★'.repeat(5 - filled)}</span>
-    </p>
-  );
-}
-
-function RatingStars({ rating }: { rating: number }) {
-  const filled = Math.max(0, Math.min(5, Math.round(rating)));
-  return (
-    <div className="flex gap-1 text-sm font-black" aria-label={`${filled} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Star
-          key={index}
-          size={15}
-          fill={index < filled ? 'currentColor' : 'none'}
-          style={{ color: index < filled ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
-        />
-      ))}
-    </div>
   );
 }
 

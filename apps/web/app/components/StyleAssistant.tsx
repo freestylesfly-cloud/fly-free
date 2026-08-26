@@ -86,11 +86,11 @@ export function StyleAssistant() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[0_18px_40px_rgba(37,99,235,0.34)] transition hover:shadow-[0_22px_54px_rgba(37,99,235,0.42)] md:bottom-6 md:right-6"
+        className="fixed bottom-[calc(144px+env(safe-area-inset-bottom))] right-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-[0_12px_28px_rgba(37,99,235,0.28)] transition hover:shadow-[0_18px_42px_rgba(37,99,235,0.36)] md:bottom-6 md:right-6 md:h-14 md:w-14"
         style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-tertiary))' }}
         aria-label="Open style assistant"
       >
-        <MessageCircle size={24} />
+        <MessageCircle size={22} />
       </button>
 
       {open && (

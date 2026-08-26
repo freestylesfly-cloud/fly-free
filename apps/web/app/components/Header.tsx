@@ -474,17 +474,19 @@ export function Header() {
 
       {/* Mobile Bottom Navigation Bar */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 md:hidden"
-        style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
+        className="fixed inset-x-0 bottom-0 z-50 border-t bg-white md:hidden"
+        style={{
+          borderColor: 'var(--border-color)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          boxShadow: '0 -8px 24px rgba(26, 26, 26, 0.08)',
+        }}
       >
         <nav
-          className="grid h-[68px] grid-cols-5 overflow-hidden rounded-2xl border shadow-xl"
+          className="grid h-[64px] grid-cols-5 gap-1 px-2 py-2"
           style={{
-            borderColor: 'var(--border-color)',
-            backgroundColor: 'rgba(255,255,255,0.94)',
-            boxShadow: '0 -10px 26px rgba(26, 26, 26, 0.12)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
+            backgroundColor: 'rgba(255,255,255,0.96)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
           }}
           aria-label="Mobile primary navigation"
         >
@@ -629,31 +631,21 @@ function MobileTab({
         if (href === '#') event.preventDefault();
         onClick?.();
       }}
-      className="group relative flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black uppercase transition"
+      className="group relative flex min-h-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-black uppercase transition"
       style={{
-        color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-        backgroundColor: active ? 'color-mix(in srgb, var(--color-primary) 8%, white)' : 'transparent',
+        color: active ? 'white' : 'var(--text-secondary)',
+        backgroundColor: active ? 'var(--color-primary)' : 'var(--bg-tertiary)',
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+        if (!active) e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--text-primary) 8%, white)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = active ? 'color-mix(in srgb, var(--color-primary) 8%, white)' : 'transparent';
+        e.currentTarget.style.backgroundColor = active ? 'var(--color-primary)' : 'var(--bg-tertiary)';
       }}
     >
-      {active && (
-        <span
-          className="absolute left-1/2 top-0 h-1 w-9 -translate-x-1/2 rounded-b-full"
-          style={{ backgroundColor: 'var(--color-primary)' }}
-          aria-hidden="true"
-        />
-      )}
       <div
-        className="relative flex h-8 w-8 items-center justify-center rounded-full border"
+        className="relative flex h-6 w-8 items-center justify-center"
         style={{
-          borderColor: active ? 'color-mix(in srgb, var(--color-primary) 35%, transparent)' : 'transparent',
-          backgroundColor: active ? 'white' : 'transparent',
-          boxShadow: active ? '0 4px 12px rgba(26, 26, 26, 0.10)' : 'none',
           opacity: active ? 1 : 0.82,
         }}
       >
@@ -662,8 +654,9 @@ function MobileTab({
           <span
             className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white"
             style={{
-              backgroundColor: 'var(--color-primary)',
-              boxShadow: '0 4px 10px rgba(37,99,235,0.28)',
+              backgroundColor: active ? 'white' : 'var(--color-primary)',
+              color: active ? 'var(--color-primary)' : 'white',
+              boxShadow: '0 4px 10px rgba(26,26,26,0.18)',
             }}
           >
             {cartCount}
@@ -672,7 +665,7 @@ function MobileTab({
       </div>
       <span
         className="relative max-w-full truncate px-1 leading-none tracking-normal"
-        style={{ color: active ? 'var(--color-primary)' : 'var(--text-secondary)' }}
+        style={{ color: active ? 'white' : 'var(--text-secondary)' }}
       >
         {label}
       </span>

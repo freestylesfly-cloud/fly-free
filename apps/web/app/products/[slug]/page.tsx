@@ -385,7 +385,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-48 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <main className="min-h-screen px-4 py-6 pb-36 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, activeImage?.url, productUrl, totalPrice, averageRating, reviewCount, stock)) }}
@@ -702,19 +702,19 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       </section>
 
       <div
-        className="fixed inset-x-3 bottom-[calc(88px+env(safe-area-inset-bottom))] z-30 rounded-2xl border p-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] lg:hidden"
-        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+        className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(26,26,26,0.08)] lg:hidden"
+        style={{ borderColor: 'var(--border-color)' }}
       >
-        <div className="mx-auto grid max-w-7xl grid-cols-[auto_1fr_1fr] gap-2">
-          <div className="flex min-h-12 items-center rounded border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3" aria-label="Decrease quantity"><Minus size={17} /></button>
+        <div className="mx-auto grid max-w-7xl grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+          <div className="flex h-12 items-center rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex h-12 w-10 items-center justify-center" aria-label="Decrease quantity"><Minus size={17} /></button>
             <span className="min-w-8 text-center text-sm font-black">{quantity}</span>
-            <button onClick={() => setQuantity(stock > 0 ? Math.min(stock, quantity + 1) : quantity + 1)} disabled={stock > 0 && quantity >= stock} className="p-3 disabled:opacity-40" aria-label="Increase quantity"><Plus size={17} /></button>
+            <button onClick={() => setQuantity(stock > 0 ? Math.min(stock, quantity + 1) : quantity + 1)} disabled={stock > 0 && quantity >= stock} className="flex h-12 w-10 items-center justify-center disabled:opacity-40" aria-label="Increase quantity"><Plus size={17} /></button>
           </div>
-          <button onClick={handleBuyNow} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded px-3 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
+          <button onClick={handleBuyNow} disabled={!canAdd} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
             Buy now
           </button>
-          <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded border px-3 text-sm font-black disabled:opacity-50" style={{ borderColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)', color: canAdd ? 'var(--color-primary)' : 'var(--text-secondary)' }}>
+          <button onClick={handleAddToCart} disabled={!canAdd} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-black disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--bg-tertiary)' : 'var(--border-color)', color: canAdd ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
             <ShoppingCart size={17} /> Add
           </button>
         </div>
