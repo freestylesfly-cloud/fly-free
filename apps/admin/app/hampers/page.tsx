@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { Edit3, Plus, Search, Trash2, X, ChevronDown, Image as ImageIcon, Package } from 'lucide-react';
+import { Edit3, Plus, Search, Trash2, X, Image as ImageIcon, Package } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -199,10 +199,10 @@ export default function HampersPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout title="Hampers" subtitle="Create and manage optional add-ons for products">
-        <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] xl:gap-6">
           <section className="space-y-4">
-            <div className="rounded border border-black/10 bg-white p-4">
-              <div className="relative max-w-md">
+            <div className="rounded border border-black/10 bg-white p-3 sm:p-4">
+              <div className="relative w-full max-w-md">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-black/35" />
                 <input
                   value={search}
@@ -268,18 +268,18 @@ export default function HampersPage() {
                         </div>
                       </button>
 
-                      <div className="flex gap-2">
+                      <div className="flex w-full gap-2 sm:w-auto">
                         <button
                           type="button"
                           onClick={() => editHamper(hamper)}
-                          className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-sm font-bold"
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded border border-black/10 px-3 py-2 text-sm font-bold sm:flex-none"
                         >
                           <Edit3 size={15} /> Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => deleteHamper(hamper.id)}
-                          className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-bold text-red-600"
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded border border-red-200 px-3 py-2 text-sm font-bold text-red-600 sm:flex-none"
                         >
                           <Trash2 size={15} /> Delete
                         </button>
@@ -292,8 +292,18 @@ export default function HampersPage() {
           </section>
 
           <section className="space-y-4">
-            <div className="rounded border border-black/10 bg-white p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            {!showForm && (
+              <button
+                type="button"
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 rounded bg-ink px-4 py-2.5 text-sm font-black text-white"
+              >
+                <Plus size={16} /> Create hamper
+              </button>
+            )}
+            {showForm && (
+            <div className="rounded border border-black/10 bg-white p-4 sm:p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 className="font-black text-lg">{editingId ? 'Edit Hamper' : 'Create Hamper'}</h2>
                   <p className="text-sm text-black/55">Manage the add-on product experience for the storefront.</p>
@@ -321,7 +331,7 @@ export default function HampersPage() {
                         <select
                           value={form.productId}
                           onChange={(e) => setForm({ ...form, productId: e.target.value })}
-                          className="rounded border border-black/10 px-3 py-2.5"
+                          className="w-full min-w-0 rounded border border-black/10 bg-white px-3 py-2.5 text-sm"
                         >
                           <option value="">Select a product...</option>
                           {products.map((p) => (
@@ -337,7 +347,7 @@ export default function HampersPage() {
                         <select
                           value={form.themeId}
                           onChange={(e) => setForm({ ...form, themeId: e.target.value })}
-                          className="rounded border border-black/10 px-3 py-2.5"
+                          className="w-full min-w-0 rounded border border-black/10 bg-white px-3 py-2.5 text-sm"
                         >
                           <option value="">Select a theme...</option>
                           {themes.map((theme) => (
@@ -384,7 +394,7 @@ export default function HampersPage() {
                       aspect={4 / 5}
                       targetWidth={1200}
                       alt={form.name || 'Hamper cover image'}
-                      hint="Same 4:5 frame as a product photo — hamper images sit in the product gallery, so they must match."
+                      hint="Use a clear 4:5 image so it matches the product gallery."
                     />
 
                     <label className="grid gap-2 text-sm font-bold">
@@ -397,7 +407,7 @@ export default function HampersPage() {
                       />
                     </label>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <label className="grid gap-2 text-sm font-bold">
                         Price (₹)
                         <input
@@ -440,7 +450,7 @@ export default function HampersPage() {
                       />
                     </label>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <label className="grid gap-2 text-sm font-bold">
                         Priority order
                         <input
@@ -462,7 +472,7 @@ export default function HampersPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                     <button
                       type="submit"
                       disabled={saving}
@@ -484,6 +494,7 @@ export default function HampersPage() {
                   </div>
                 </form>
             </div>
+            )}
           </section>
         </div>
       </DashboardLayout>

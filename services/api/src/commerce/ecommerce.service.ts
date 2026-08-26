@@ -460,11 +460,13 @@ export class EcommerceService {
   }
 
   private async getFirstOrderOfferForToken(token?: string) {
-    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
-    const value = setting?.value as any;
-    const enabled = value?.firstOrderOfferEnabled === true;
-    const code = String(value?.firstOrderOfferCode || "").trim().toUpperCase();
-    const title = String(value?.firstOrderOfferTitle || "First order offer").trim();
+    const offer = await this.prisma.coupon.findFirst({
+      where: { isFirstOrder: true, isActive: true },
+      orderBy: { code: "asc" }
+    });
+    const enabled = Boolean(offer);
+    const code = offer?.code || "";
+    const title = offer?.description || "First order offer";
 
     if (!enabled || !code || !token) {
       return { enabled, eligible: false, code, title };

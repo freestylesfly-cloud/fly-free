@@ -1195,6 +1195,41 @@ export class AdminService {
   }
 
   // ==================== SETTINGS ====================
+  async listCoupons() {
+    return { data: await this.prisma.coupon.findMany({ orderBy: [{ isFirstOrder: "desc" }, { code: "asc" }] }) };
+  }
+
+  async createCoupon(data: any) {
+    const code = String(data.code || "").trim().toUpperCase();
+    if (!code) throw new BadRequestException("Coupon code is required");
+    return this.prisma.coupon.create({ data: this.normalizeCouponData({ ...data, code, isFirstOrder: false }) });
+  }
+
+  async updateCoupon(id: string, data: any) {
+    const code = String(data.code || "").trim().toUpperCase();
+    if (!code) throw new BadRequestException("Coupon code is required");
+    const current = await this.prisma.coupon.findUnique({ where: { id }, select: { isFirstOrder: true } });
+    return this.prisma.coupon.update({ where: { id }, data: this.normalizeCouponData({ ...data, code, isFirstOrder: current?.isFirstOrder === true }) });
+  }
+
+  async deleteCoupon(id: string) {
+    return this.prisma.coupon.delete({ where: { id } });
+  }
+
+  private normalizeCouponData(data: any) {
+    return {
+      code: data.code,
+      description: data.description || null,
+      discountAmount: data.discountAmount ? Number(data.discountAmount) : null,
+      discountPercent: data.discountPercent ? Number(data.discountPercent) : null,
+      minOrderAmount: data.minOrderAmount ? Number(data.minOrderAmount) : null,
+      startsAt: data.startsAt ? new Date(data.startsAt) : null,
+      endsAt: data.endsAt ? new Date(data.endsAt) : null,
+      isActive: data.isActive !== false,
+      isFirstOrder: false
+    };
+  }
+
   async getSettings() {
     return { data: await this.getSettingsValue() };
   }
@@ -1220,7 +1255,6 @@ export class AdminService {
 
     // Email footers render from a cached snapshot of these values.
     await this.emailService.refreshContactDetails();
-    await this.syncFirstOrderOfferCoupon(merged);
 
     return { data: setting.value };
   }
@@ -1249,10 +1283,6 @@ export class AdminService {
       // Orders at or above the threshold ship free. Values are in rupees.
       deliveryFee: 60,
       freeDeliveryAbove: 1000,
-      firstOrderOfferEnabled: false,
-      firstOrderOfferCode: "",
-      firstOrderOfferTitle: "First order offer",
-      firstOrderOfferDiscountPercent: 10,
       footerText: "Fly Free. Designed for comfort and self-expression.",
       newsletterTitle: "Ready to wear your fandom?",
       newsletterText: "Get first access to new theme drops, restocks, and subscriber-only offers.",
@@ -1281,30 +1311,6 @@ export class AdminService {
       ...existing,
       socialLinks: { ...defaults.socialLinks, ...(existing.socialLinks || {}) }
     };
-  }
-
-  private async syncFirstOrderOfferCoupon(settings: any) {
-    const enabled = settings?.firstOrderOfferEnabled === true;
-    const code = String(settings?.firstOrderOfferCode || "").trim().toUpperCase();
-    const discountPercent = Number(settings?.firstOrderOfferDiscountPercent || 0);
-
-    if (!code) return;
-
-    await this.prisma.coupon.upsert({
-      where: { code },
-      update: {
-        description: settings?.firstOrderOfferTitle || "First order offer",
-        discountPercent: discountPercent > 0 ? discountPercent : null,
-        discountAmount: null,
-        isActive: enabled
-      },
-      create: {
-        code,
-        description: settings?.firstOrderOfferTitle || "First order offer",
-        discountPercent: discountPercent > 0 ? discountPercent : null,
-        isActive: enabled
-      }
-    });
   }
 
   /**

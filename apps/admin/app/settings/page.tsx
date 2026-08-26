@@ -41,10 +41,6 @@ type AppSettings = {
   deliveryFee: number;
   /** Rupees. Orders at or above this ship free. */
   freeDeliveryAbove: number;
-  firstOrderOfferEnabled: boolean;
-  firstOrderOfferCode: string;
-  firstOrderOfferTitle: string;
-  firstOrderOfferDiscountPercent: number;
   socialLinks: {
     facebook?: string;
     instagram?: string;
@@ -83,10 +79,6 @@ const emptySettings: AppSettings = {
   orderPrefix: 'FF',
   deliveryFee: 60,
   freeDeliveryAbove: 1000,
-  firstOrderOfferEnabled: false,
-  firstOrderOfferCode: '',
-  firstOrderOfferTitle: 'First order offer',
-  firstOrderOfferDiscountPercent: 10,
   socialLinks: {
     instagram: 'https://www.instagram.com/flyfree.ne/'
   }
@@ -260,34 +252,6 @@ export default function SettingsPage() {
                   />
                   <span className="text-xs font-normal text-black/50">
                     Orders are numbered {settings.orderPrefix || 'FF'}-{new Date().getFullYear()}-000001.
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-3 rounded border border-black/10 p-4 text-sm font-bold md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={settings.firstOrderOfferEnabled}
-                    onChange={(event) => update('firstOrderOfferEnabled', event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Enable first-order offer
-                </label>
-
-                <Field label="First Order Offer Title" value={settings.firstOrderOfferTitle} onChange={(value) => update('firstOrderOfferTitle', value)} />
-                <Field label="First Order Coupon Code" value={settings.firstOrderOfferCode} onChange={(value) => update('firstOrderOfferCode', value.toUpperCase())} />
-
-                <label className="grid gap-2 text-sm font-bold">
-                  First Order Discount %
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={settings.firstOrderOfferDiscountPercent}
-                    onChange={(event) => update('firstOrderOfferDiscountPercent', Number(event.target.value))}
-                    className="rounded border border-black/10 px-3 py-2"
-                  />
-                  <span className="text-xs font-normal text-black/50">
-                    Saving settings creates or updates this coupon automatically.
                   </span>
                 </label>
 

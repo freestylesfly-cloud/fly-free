@@ -9,6 +9,19 @@ import { AdminGuard } from "../auth/admin.guard";
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  // ==================== COUPONS ====================
+  @Get("coupons")
+  listCoupons() { return this.adminService.listCoupons(); }
+
+  @Post("coupons")
+  createCoupon(@Body() data: any) { return this.adminService.createCoupon(data); }
+
+  @Put("coupons/:id")
+  updateCoupon(@Param("id") id: string, @Body() data: any) { return this.adminService.updateCoupon(id, data); }
+
+  @Delete("coupons/:id")
+  deleteCoupon(@Param("id") id: string) { return this.adminService.deleteCoupon(id); }
+
   // ==================== PRODUCTS ====================
   @ApiTags("👨‍💼 Admin Products")
   @Get("categories")

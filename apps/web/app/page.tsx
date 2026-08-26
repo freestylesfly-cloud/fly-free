@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { TicketPercent, Users } from 'lucide-react';
+import { TicketPercent } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
 import { HomeReviewsCarousel } from './components/HomeReviewsCarousel';
 import { ShoppableCommunityMedia } from './components/ShoppableCommunityMedia';
+import { InfluencerCodeCard } from './components/InfluencerCodeCard';
 import { Rail } from './components/Rail';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
@@ -417,63 +418,13 @@ function CreatorsSection({ influencers }: { influencers: Influencer[] }) {
   if (influencers.length === 0) return null;
 
   return (
-    <section className="border-b bg-white" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="px-4 py-10 sm:px-6 md:py-14">
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>Creator codes</p>
-            <h2 className="mt-2 text-xl font-black uppercase tracking-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
-              Shop with the Fly Free crew
-            </h2>
-          </div>
-          <Link href="/community" className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-            View community -&gt;
-          </Link>
+    <Rail title="Shop with the Fly Free crew" viewAllHref="/community" viewAllLabel="View community">
+      {influencers.map((influencer) => (
+        <div key={influencer.id} data-rail-item className="mo-slide w-[72vw] flex-shrink-0 sm:w-[280px]">
+          <InfluencerCodeCard influencer={influencer} />
         </div>
-
-        <div className="mo-slider mt-6 flex gap-3 overflow-x-auto pb-3 sm:gap-5">
-          {influencers.map((influencer) => (
-            <a
-              key={influencer.id}
-              data-rail-item
-              href={influencer.instagramUrl || '/community'}
-              target={influencer.instagramUrl ? '_blank' : undefined}
-              rel={influencer.instagramUrl ? 'noopener noreferrer' : undefined}
-              className="mo-slide group w-[72vw] flex-shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-xl sm:w-[280px]"
-              style={{ borderColor: 'var(--border-color)' }}
-            >
-              <div className="relative aspect-[4/5] overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                {influencer.imageUrl ? (
-                  <img src={influencer.imageUrl} alt={influencer.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-5xl font-black" style={{ color: 'var(--color-primary)' }}>
-                    {influencer.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/5 to-transparent" />
-                <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-1 text-[10px] font-black uppercase text-black shadow-lg">
-                  <Users size={12} /> Creator
-                </span>
-                <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                  <p className="text-xl font-black uppercase leading-tight">{influencer.name}</p>
-                  {influencer.socialHandle && <p className="mt-1 text-sm font-bold text-white/75">{influencer.socialHandle}</p>}
-                </div>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] items-center gap-3 p-4">
-                <div>
-                  <p className="text-[11px] font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>Use code</p>
-                  <p className="text-xl font-black tracking-wide" style={{ color: 'var(--text-primary)' }}>{influencer.code}</p>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-                  <TicketPercent size={13} />
-                  {influencer.buyerDiscountPercent || 10}% OFF
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
+      ))}
+    </Rail>
   );
 }
 

@@ -502,6 +502,11 @@ class ApiService {
     });
   }
 
+  async getCoupons() { return this.request('/api/admin/coupons'); }
+  async createCoupon(data: any) { return this.request('/api/admin/coupons', { method: 'POST', body: JSON.stringify(data) }); }
+  async updateCoupon(id: string, data: any) { return this.request(`/api/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }); }
+  async deleteCoupon(id: string) { return this.request(`/api/admin/coupons/${id}`, { method: 'DELETE' }); }
+
   // ============ NOTIFICATIONS ============
   async getActivityLogs(params?: { level?: string; status?: string; search?: string; page?: number; limit?: number }) {
     const query = new URLSearchParams();

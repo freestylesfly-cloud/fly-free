@@ -292,12 +292,12 @@ export function ImageUploadField({
       />
 
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded bg-white p-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/75 p-3 sm:p-5">
+          <div className="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:max-h-[calc(100svh-2.5rem)] sm:p-5">
             <div className="mb-1 flex items-center justify-between">
               <h3 className="font-black">Crop {label.toLowerCase()}</h3>
-              <button type="button" onClick={closePreview} className="rounded p-2 hover:bg-black/5" aria-label="Cancel upload">
-                <X size={18} />
+              <button type="button" onClick={closePreview} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 hover:bg-black/5" aria-label="Close crop preview" title="Close crop preview">
+                <X size={20} />
               </button>
             </div>
             <p className="mb-4 text-xs font-bold text-black/50">
@@ -310,7 +310,7 @@ export function ImageUploadField({
               onPointerMove={onDrag}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
-              className="relative w-full cursor-grab touch-none select-none overflow-hidden rounded border border-black/10 bg-black active:cursor-grabbing"
+              className="relative mx-auto max-h-[min(62svh,720px)] w-full cursor-grab touch-none select-none overflow-hidden rounded border border-black/10 bg-black active:cursor-grabbing"
               style={{ aspectRatio: String(aspect) }}
             >
               <img

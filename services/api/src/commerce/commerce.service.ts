@@ -245,7 +245,14 @@ export class CommerceService {
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const coupon = body.couponCode || body.offerCode ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal, userId) : null;
-    const discount = coupon?.discount || 0;
+    const discountBase = coupon?.influencer?.products?.length
+      ? orderItems
+          .filter((item) => coupon.influencer.products.some((product: any) => product.id === item.product.id))
+          .reduce((sum, item) => sum + item.price * item.quantity, 0)
+      : subtotal;
+    const discount = coupon?.influencer
+      ? Math.round(discountBase * (coupon.influencer.buyerDiscountPercent / 100))
+      : coupon?.discount || 0;
 
     // Delivery is the only charge on top of items; there is no tax line.
     const payable = Math.max(subtotal - discount, 0);
@@ -602,7 +609,7 @@ export class CommerceService {
     if (!normalized) return null;
 
     const coupon = await this.prisma.coupon.findUnique({ where: { code: normalized } });
-    const influencer = await this.prisma.influencer.findUnique({ where: { code: normalized } }).catch(() => null);
+    const influencer = await this.prisma.influencer.findUnique({ where: { code: normalized }, include: { products: true } }).catch(() => null);
     const now = new Date();
 
     if (coupon?.isActive) {
@@ -630,11 +637,11 @@ export class CommerceService {
   }
 
   private async isBlockedFirstOrderOffer(code: string, userId: string) {
-    const setting = await this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } });
-    const value = setting?.value as any;
-    const offerEnabled = value?.firstOrderOfferEnabled === true;
-    const offerCode = String(value?.firstOrderOfferCode || "").trim().toUpperCase();
-    if (!offerEnabled || !offerCode || code !== offerCode) return false;
+    const offer = await this.prisma.coupon.findFirst({
+      where: { code, isFirstOrder: true, isActive: true },
+      select: { id: true }
+    });
+    if (!offer) return false;
 
     const previousOrders = await this.prisma.order.count({ where: { userId } });
     return previousOrders > 0;

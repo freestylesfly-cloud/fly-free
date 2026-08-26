@@ -343,6 +343,7 @@ model Coupon {
   startsAt        DateTime?
   endsAt          DateTime?
   isActive        Boolean   @default(true)
+  isFirstOrder    Boolean   @default(false)
 }
 
 model Payment {

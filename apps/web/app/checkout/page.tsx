@@ -21,6 +21,7 @@ export default function CheckoutPage() {
   const clearCart = useCartStore((state) => state.clearCart);
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
+  const hydrated = useAuthStore((state) => state.hydrated);
 
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -38,6 +39,7 @@ export default function CheckoutPage() {
   const [couponMessage, setCouponMessage] = useState('');
   const [couponValid, setCouponValid] = useState(false);
   const [firstOrderOffer, setFirstOrderOffer] = useState<any>(null);
+  const [availableCodes, setAvailableCodes] = useState<any[]>([]);
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [pricePulse, setPricePulse] = useState(false);
 
@@ -82,6 +84,7 @@ export default function CheckoutPage() {
     : 'Select an address for delivery estimate';
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!user || !token) {
       window.location.href = '/auth/login?next=/checkout';
       return;
@@ -89,7 +92,37 @@ export default function CheckoutPage() {
     loadAddresses();
     void loadDeliverySettings();
     void loadFirstOrderOffer();
-  }, [user, token]);
+    void loadAvailableCodes();
+  }, [hydrated, user, token]);
+
+  async function loadAvailableCodes() {
+    try {
+      const [influencerResponse, couponResponse] = await Promise.all([
+        fetch('/api/influencers'),
+        fetch('/api/ecommerce/coupons?limit=50')
+      ]);
+      const influencers = influencerResponse.ok ? await influencerResponse.json() : [];
+      const coupons = couponResponse.ok ? await couponResponse.json() : [];
+      const influencerList = Array.isArray(influencers) ? influencers : influencers?.data || [];
+      const couponList = Array.isArray(coupons) ? coupons : coupons?.data || [];
+      setAvailableCodes([
+        ...influencerList.filter((item: any) => item?.code).map((item: any) => ({
+          type: 'INFLUENCER',
+          code: item.code,
+          title: item.name,
+          discountPercent: item.buyerDiscountPercent || 0
+        })),
+        ...couponList.filter((item: any) => item?.code && item.isActive !== false && item.isFirstOrder !== true).map((item: any) => ({
+          type: 'COUPON',
+          code: item.code,
+          title: item.name || 'Store offer',
+          discountPercent: item.discountPercent || 0
+        }))
+      ]);
+    } catch {
+      setAvailableCodes([]);
+    }
+  }
 
   async function loadFirstOrderOffer() {
     try {
@@ -181,7 +214,12 @@ export default function CheckoutPage() {
 
   // Calculate discount
   const subtotal = getSubtotal();
-  const baseDiscount = appliedCoupon?.discountPercent ? Math.round((subtotal * appliedCoupon.discountPercent) / 100) : 0;
+  const eligibleSubtotal = appliedCoupon?.type === 'INFLUENCER' && Array.isArray(appliedCoupon.eligibleProductIds)
+    ? cartItems
+        .filter((item) => appliedCoupon.eligibleProductIds.includes(item.productId))
+        .reduce((sum, item) => sum + Number(item.price || 0) * item.quantity, 0)
+    : subtotal;
+  const baseDiscount = appliedCoupon?.discountPercent ? Math.round((eligibleSubtotal * appliedCoupon.discountPercent) / 100) : 0;
   const shipping = getShippingFee();
   const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal() - baseDiscount;
@@ -580,6 +618,32 @@ export default function CheckoutPage() {
                     >
                       Apply offer
                     </button>
+                  </div>
+                </div>
+              )}
+              {availableCodes.length > 0 && !couponValid && (
+                <div className="mb-4 rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>Available codes</p>
+                    <span className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{availableCodes.length} offers</span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {availableCodes.map((item) => (
+                      <button
+                        key={`${item.type}-${item.code}`}
+                        type="button"
+                        onClick={() => validateCoupon(item.code)}
+                        disabled={couponLoading}
+                        className="flex items-center justify-between gap-3 rounded border bg-white px-3 py-2 text-left transition hover:border-black/30 disabled:opacity-60"
+                        style={{ borderColor: 'var(--border-color)' }}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-black uppercase">{item.code}</span>
+                          <span className="mt-1 block truncate text-[11px] font-bold text-black/55">{item.title}</span>
+                        </span>
+                        <span className="shrink-0 text-xs font-black" style={{ color: 'var(--color-primary)' }}>{item.discountPercent}% off</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
