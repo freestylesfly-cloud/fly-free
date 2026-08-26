@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 /**
  * Media storage helpers.
  *
@@ -23,6 +25,11 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+async function readUploadError(response: Response) {
+  const body = await response.json().catch(() => null);
+  return body?.message || body?.error || 'Media upload failed';
+}
+
 /**
  * @param _bucket kept for call-site compatibility; the server always writes to
  *                the `product-images` bucket.
@@ -38,8 +45,7 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.message || body?.error || 'Media upload failed');
+    throw new Error(await readUploadError(response));
   }
 
   const data = await response.json();
@@ -47,7 +53,39 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
 }
 
 export async function uploadMedia(bucket: string, file: File, folder = ''): Promise<string> {
-  return uploadImage(bucket, file, folder);
+  if (!file.type.startsWith('video/')) {
+    return uploadImage(bucket, file, folder);
+  }
+
+  const endpoint = typeof window !== 'undefined' ? '/admin/media-upload-url' : '/api/admin/media-upload-url';
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ mimeType: file.type, size: file.size, folder }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await readUploadError(response));
+  }
+
+  const upload = await response.json();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase browser upload is not configured on the admin app.');
+  }
+
+  const client = createClient(supabaseUrl, supabaseAnonKey);
+  const { error } = await client.storage.from(bucket).uploadToSignedUrl(upload.path, upload.token, file, {
+    contentType: file.type,
+  });
+
+  if (error) {
+    throw new Error(`Video upload failed: ${error.message}`);
+  }
+
+  return upload.publicUrl as string;
 }
 
 export async function deleteImage(_bucket: string, urlOrPath: string): Promise<void> {

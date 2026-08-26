@@ -14,6 +14,10 @@ import { STANDARD_PAGES, STANDARD_PAGE_SLUGS } from "../cms/standard-pages";
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
 const STORAGE_BUCKET = "product-images";
+const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const VIDEO_MIME_TYPES = ["video/mp4", "video/webm"];
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 
 /**
  * Prisma's default interactive-transaction deadline is 5s, which is fine
@@ -1316,17 +1320,71 @@ export class AdminService {
 
     const [, mimeType, base64] = match;
     const normalizedMimeType = mimeType.toLowerCase();
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"];
+    const allowedTypes = [...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES];
     if (!allowedTypes.includes(normalizedMimeType)) {
       throw new BadRequestException(`Unsupported media type: ${mimeType}`);
     }
 
     const buffer = Buffer.from(base64, "base64");
-    const maxBytes = normalizedMimeType.startsWith("video/") ? 80 * 1024 * 1024 : 12 * 1024 * 1024;
+    const maxBytes = normalizedMimeType.startsWith("video/") ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
     if (buffer.byteLength > maxBytes) {
       throw new BadRequestException(normalizedMimeType.startsWith("video/") ? "Video must be under 80MB" : "Image must be under 12MB");
     }
 
+    return this.uploadBuffer(buffer, normalizedMimeType, folder);
+  }
+
+  /**
+   * Creates a short-lived upload token for large admin videos. The admin app
+   * sends the real bytes directly to Supabase with this token, avoiding Vercel
+   * and JSON body limits while keeping the service-role key on the API.
+   */
+  async createMediaUploadUrl(data: { mimeType?: string; size?: number; folder?: string }) {
+    const mimeType = String(data?.mimeType || "").toLowerCase();
+    if (!VIDEO_MIME_TYPES.includes(mimeType)) {
+      throw new BadRequestException("Use MP4 or WebM video.");
+    }
+
+    if (Number(data?.size || 0) > MAX_VIDEO_BYTES) {
+      throw new BadRequestException("Video must be under 80MB");
+    }
+
+    const storage = this.storageClient();
+    const objectPath = this.objectPathFor(data?.folder || "misc", mimeType);
+    const { data: signed, error } = await storage.storage.from(STORAGE_BUCKET).createSignedUploadUrl(objectPath);
+
+    if (error || !signed?.token) {
+      this.logger.error(`Could not create media upload URL: ${error?.message || "missing token"}`);
+      throw new BadRequestException(`Could not prepare media upload: ${error?.message || "missing upload token"}`);
+    }
+
+    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
+    return {
+      path: objectPath,
+      token: signed.token,
+      publicUrl: pub.publicUrl,
+      expiresInSeconds: 7200
+    };
+  }
+
+  private async uploadBuffer(buffer: Buffer, mimeType: string, folder = "misc") {
+    const storage = this.storageClient();
+    const objectPath = this.objectPathFor(folder, mimeType);
+
+    const { data, error } = await storage.storage
+      .from(STORAGE_BUCKET)
+      .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
+
+    if (error) {
+      this.logger.error(`Admin media upload failed: ${error.message}`);
+      throw new BadRequestException(`Failed to upload media: ${error.message}`);
+    }
+
+    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
+    return { url: pub.publicUrl };
+  }
+
+  private storageClient() {
     const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !serviceKey) {
@@ -1342,22 +1400,13 @@ export class AdminService {
       );
     }
 
-    const storage = createClient(url, serviceKey);
-    const extension = normalizedMimeType.split("/")[1].replace("jpeg", "jpg");
+    return createClient(url, serviceKey);
+  }
+
+  private objectPathFor(folder: string, mimeType: string) {
+    const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
     const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, "").replace(/^\/+|\/+$/g, "") || "misc";
-    const objectPath = `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
-
-    const { data, error } = await storage.storage
-      .from(STORAGE_BUCKET)
-      .upload(objectPath, buffer, { contentType: normalizedMimeType, upsert: false });
-
-    if (error) {
-      this.logger.error(`Admin media upload failed: ${error.message}`);
-      throw new BadRequestException(`Failed to upload media: ${error.message}`);
-    }
-
-    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
-    return { url: pub.publicUrl };
+    return `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
   }
 
   /**

@@ -218,6 +218,11 @@ export class AdminController {
     return this.adminService.uploadImage(body?.image, body?.folder);
   }
 
+  @Post("media-upload-url")
+  createMediaUploadUrl(@Body() body: { mimeType?: string; size?: number; folder?: string }) {
+    return this.adminService.createMediaUploadUrl(body);
+  }
+
   @Post("delete-image")
   deleteImage(@Body() body: { url: string }) {
     return this.adminService.deleteImage(body?.url);
