@@ -228,10 +228,22 @@ export function ImageUploadField({
 
   const tooSmall = natural ? natural.width < targetWidth * 0.5 : false;
 
+  useEffect(() => {
+    if (!preview) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !uploading) closePreview();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [preview, uploading]);
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 rounded-lg border border-black/10 bg-black/[0.015] p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-black">{label}</span>
+        <div>
+          <span className="block text-sm font-black">{label}</span>
+          <span className="mt-1 block text-xs font-bold text-black/45">{formatAspect(aspect)} · {targetWidth} × {targetHeight}px</span>
+        </div>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -241,39 +253,47 @@ export function ImageUploadField({
         </button>
       </div>
 
-      <p className="text-xs font-bold text-black/45">
-        {formatAspect(aspect)} · export {targetWidth} × {targetHeight}px
-      </p>
-
-      <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(140px,180px)_minmax(0,1fr)] sm:items-start">
         <div
-          className="flex items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]"
+          className="relative flex w-full items-center justify-center overflow-hidden rounded border border-black/10 bg-white shadow-sm"
           style={{ aspectRatio: String(aspect) }}
         >
           {value ? (
             <img src={value} alt={alt || label} className="h-full w-full object-cover" />
           ) : (
-            <ImageIcon className="text-black/35" size={24} />
+            <div className="flex flex-col items-center gap-2 text-black/35">
+              <ImageIcon size={26} />
+              <span className="text-[10px] font-black uppercase">No image</span>
+            </div>
           )}
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <div className="relative">
             <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-black/35" />
             <input
               value={value}
               onChange={(event) => onChange(event.target.value)}
-              placeholder="Paste image URL or upload from device"
+              placeholder="Paste image URL"
               className="w-full rounded border border-black/10 py-2 pl-9 pr-3 text-sm"
             />
           </div>
           {value && (
-            <button
-              type="button"
-              onClick={removeImage}
-              className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-xs font-bold text-red-600"
-            >
-              <Trash2 size={14} /> Remove and clean storage
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-xs font-bold"
+              >
+                <Upload size={14} /> Replace image
+              </button>
+              <button
+                type="button"
+                onClick={removeImage}
+                className="inline-flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-xs font-bold text-red-600"
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
           )}
           {hint && <p className="text-xs text-black/50">{hint}</p>}
           {error && <p className="text-xs font-bold text-red-600">{error}</p>}
@@ -292,8 +312,10 @@ export function ImageUploadField({
       />
 
       {preview && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/75 p-3 sm:p-5">
-          <div className="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:max-h-[calc(100svh-2.5rem)] sm:p-5">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/75 p-3 sm:p-5" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !uploading) closePreview();
+        }}>
+          <div className="my-auto max-h-[calc(100svh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:max-h-[calc(100svh-2.5rem)] sm:p-5" onMouseDown={(event) => event.stopPropagation()}>
             <div className="mb-1 flex items-center justify-between">
               <h3 className="font-black">Crop {label.toLowerCase()}</h3>
               <button type="button" onClick={closePreview} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 hover:bg-black/5" aria-label="Close crop preview" title="Close crop preview">
