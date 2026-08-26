@@ -10,7 +10,6 @@ import { EmailService } from "../email/email.service";
 import { createClient } from "@supabase/supabase-js";
 import type { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
-import { STANDARD_PAGES, STANDARD_PAGE_SLUGS } from "../cms/standard-pages";
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
 const STORAGE_BUCKET = "product-images";
@@ -1503,31 +1502,12 @@ export class AdminService {
   }
 
   /**
-   * Creates any storefront page that does not exist yet.
-   * Content starts blank on purpose: there is no customer-facing fallback copy.
-   * Existing pages are left untouched, so this is safe to re-run.
+   * Pages are now database-driven. Admins can create any published page and the
+   * storefront footer will load it through the CMS API.
    */
   async createMissingPages() {
-    const existing = await this.prisma.page.findMany({
-      where: { slug: { in: STANDARD_PAGE_SLUGS } },
-      select: { slug: true }
-    });
-    const have = new Set(existing.map((page) => page.slug));
-    const missing = STANDARD_PAGES.filter((page) => !have.has(page.slug));
-
-    if (missing.length > 0) {
-      await this.prisma.page.createMany({
-        data: missing.map((page) => ({
-          slug: page.slug,
-          title: page.title,
-          content: "",
-          metaTitle: page.title,
-          isPublished: true
-        }))
-      });
-    }
-
-    return { created: missing.map((page) => page.slug), skipped: existing.length };
+    const count = await this.prisma.page.count();
+    return { created: [], skipped: count, message: "Pages are managed dynamically from Admin > Pages." };
   }
 
   async getPage(id: string) {

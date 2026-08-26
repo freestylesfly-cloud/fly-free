@@ -8,5 +8,5 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default function TermsPage() {
-  return <CmsTextPage slug="terms-and-conditions" />;
+  return <CmsTextPage slug="terms-and-conditions-of-sale" />;
 }

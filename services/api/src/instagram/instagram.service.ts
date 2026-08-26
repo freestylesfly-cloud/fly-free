@@ -11,6 +11,7 @@ export class InstagramService {
     try {
       const posts = await this.prisma.instagramPost.findMany({
         orderBy: { displayOrder: 'asc' },
+        include: { products: this.productPreviewInclude() },
       });
       return { data: posts, total: posts.length };
     } catch (error) {
@@ -23,6 +24,7 @@ export class InstagramService {
     try {
       const post = await this.prisma.instagramPost.findUnique({
         where: { id },
+        include: { products: this.productPreviewInclude() },
       });
       if (!post) {
         throw new BadRequestException('Instagram post not found');
@@ -40,6 +42,7 @@ export class InstagramService {
     caption: string;
     instagramLink: string;
     displayOrder?: number;
+    productIds?: string[];
   }) {
     try {
       // Validation
@@ -63,6 +66,8 @@ export class InstagramService {
         throw new BadRequestException('Invalid video URL');
       }
 
+      const productIds = this.normalizeProductIds(data.productIds);
+
       const post = await this.prisma.instagramPost.create({
         data: {
           imageUrl: data.imageUrl || null,
@@ -70,7 +75,9 @@ export class InstagramService {
           caption: data.caption.trim(),
           instagramLink: data.instagramLink.trim(),
           displayOrder: data.displayOrder || 0,
+          products: productIds.length ? { connect: productIds.map((id) => ({ id })) } : undefined,
         },
+        include: { products: this.productPreviewInclude() },
       });
 
       this.logger.log(`Created Instagram post: ${post.id}`);
@@ -89,6 +96,7 @@ export class InstagramService {
       caption?: string;
       instagramLink?: string;
       displayOrder?: number;
+      productIds?: string[];
     }
   ) {
     try {
@@ -109,6 +117,9 @@ export class InstagramService {
         throw new BadRequestException('Invalid video URL');
       }
 
+      const shouldUpdateProducts = data.productIds !== undefined;
+      const productIds = this.normalizeProductIds(data.productIds);
+
       const post = await this.prisma.instagramPost.update({
         where: { id },
         data: {
@@ -117,7 +128,9 @@ export class InstagramService {
           ...(data.caption && { caption: data.caption.trim() }),
           ...(data.instagramLink && { instagramLink: data.instagramLink.trim() }),
           ...(data.displayOrder !== undefined && { displayOrder: data.displayOrder }),
+          ...(shouldUpdateProducts && { products: { set: productIds.map((productId) => ({ id: productId })) } }),
         },
+        include: { products: this.productPreviewInclude() },
       });
 
       this.logger.log(`Updated Instagram post: ${post.id}`);
@@ -161,5 +174,22 @@ export class InstagramService {
     } catch {
       return false;
     }
+  }
+
+  private normalizeProductIds(value: unknown): string[] {
+    const values = Array.isArray(value) ? value : value ? [value] : [];
+    return Array.from(new Set(values.map((item) => String(item).trim()).filter(Boolean)));
+  }
+
+  private productPreviewInclude() {
+    return {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: { take: 1, orderBy: { priority: 'asc' as const } },
+      },
+    };
   }
 }

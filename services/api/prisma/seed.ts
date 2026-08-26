@@ -9,7 +9,7 @@
  *   - the Admin role and one admin account (password set separately)
  *   - the `admin_settings` row, with every field blank so the storefront hides
  *     what has not been configured yet
- *   - the standard content pages the storefront looks up by slug
+ *   - the admin settings row used by dynamic storefront copy
  *
  * Everything else — categories, themes, products, hampers, size guides,
  * announcements, influencers, Instagram posts — is real business data and is
@@ -26,7 +26,6 @@ dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 import { PrismaClient } from '@prisma/client';
-import { STANDARD_PAGES } from '../src/cms/standard-pages';
 
 const prisma = new PrismaClient();
 
@@ -159,25 +158,8 @@ async function seedSettings() {
 }
 
 async function seedPages() {
-  let created = 0;
-
-  for (const page of STANDARD_PAGES) {
-    const existing = await prisma.page.findFirst({ where: { slug: page.slug } });
-    if (existing) continue;
-
-    await prisma.page.create({
-      data: {
-        slug: page.slug,
-        title: page.title,
-        content: page.content,
-        metaTitle: page.title,
-        isPublished: true
-      }
-    });
-    created += 1;
-  }
-
-  console.log(`  content pages:  ${created} created, ${STANDARD_PAGES.length - created} already present`);
+  const count = await prisma.page.count();
+  console.log(`  content pages:  ${count} database page${count === 1 ? '' : 's'} managed from Admin`);
 }
 
 async function main() {

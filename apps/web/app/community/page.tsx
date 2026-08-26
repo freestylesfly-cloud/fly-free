@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BadgeCheck, ExternalLink, Instagram, Play, TicketPercent, Users, Volume2 } from 'lucide-react';
 import { getApiBaseUrl } from '../lib/api';
+import { ShoppableCommunityMedia } from '../components/ShoppableCommunityMedia';
 
 const API_BASE = getApiBaseUrl();
 
@@ -11,6 +12,13 @@ type InstagramPost = {
   caption: string;
   instagramLink: string;
   displayOrder?: number;
+  products?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    price?: number | null;
+    images?: Array<{ url?: string | null }>;
+  }>;
 };
 
 type Influencer = {
@@ -132,23 +140,24 @@ export default async function CommunityPage() {
         </section>
       )}
 
-      <section className="px-5 py-10 sm:px-10 lg:px-16 lg:py-14">
-        <SectionHeader kicker="Instagram feed" title="Posts and videos" actionHref={social.instagram || undefined} actionLabel="Open Instagram" external />
-        {posts.length > 0 ? (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post, index) => (
-              <CommunityPostCard key={post.id} post={post} large={index === 0} fallbackHref={social.instagram || '#'} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-6 border bg-white p-8" style={{ borderColor: 'var(--border-color)' }}>
+      {posts.length > 0 ? (
+        <ShoppableCommunityMedia
+          posts={posts}
+          title="Posts and videos"
+          intro="Videos play muted in the list. Tap one to open full view with sound, timeline, and tagged products."
+          instagramHref={social.instagram}
+          splitImages
+        />
+      ) : (
+        <section className="px-5 py-10 sm:px-10 lg:px-16 lg:py-14">
+          <div className="border bg-white p-8" style={{ borderColor: 'var(--border-color)' }}>
             <h2 className="text-2xl font-black uppercase">No community posts yet</h2>
             <p className="mt-2 font-bold" style={{ color: 'var(--text-secondary)' }}>
               Add image or video posts from Admin &gt; Instagram.
             </p>
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </main>
   );
 }

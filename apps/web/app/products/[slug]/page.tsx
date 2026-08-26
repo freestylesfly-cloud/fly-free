@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ import {
   Maximize2,
   Minus,
   PackageCheck,
+  Play,
   Plus,
   Ruler,
   Share2,
@@ -100,6 +102,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   const sizes = useMemo(() => uniqueValues(variants.map((v) => v.size)), [variants]);
   const images = useMemo(() => product ? normalizeImages(product.images, product.name) : [], [product]);
   const selectedHamper = useMemo(() => hampers.find((hamper: any) => hamper.id === selectedHamperId), [hampers, selectedHamperId]);
+  const taggedMedia = useMemo(() => (product?.instagramPosts || []).filter((post: any) => post.videoUrl || post.imageUrl), [product]);
   const hamperImages = useMemo(() => normalizeHamperImages(selectedHamper), [selectedHamper]);
   const galleryImages = useMemo(() => (hamperImages.length ? [...hamperImages, ...images] : images), [hamperImages, images]);
   const activeImage = selectedImage || galleryImages[0];
@@ -620,6 +623,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
             </div>
           )}
 
+          {taggedMedia.length > 0 && (
+            <ProductTaggedMedia posts={taggedMedia} product={product} />
+          )}
+
           {/* Choices */}
           <ChoiceBlock
             title="Size"
@@ -1084,6 +1091,113 @@ function TrustPill({ icon, text }: { icon: React.ReactNode; text: string }) {
       <span className="shrink-0" style={{ color: 'var(--color-primary)' }}>{icon}</span>
       <span className="leading-4">{text}</span>
     </div>
+  );
+}
+
+function ProductTaggedMedia({ posts, product }: { posts: any[]; product: any }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const first = posts[0];
+  const active = activeIndex == null ? null : posts[activeIndex];
+
+  useEffect(() => {
+    if (activeIndex == null) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setActiveIndex(null);
+      if (event.key === 'ArrowLeft') move(-1);
+      if (event.key === 'ArrowRight') move(1);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeIndex]);
+
+  function move(direction: -1 | 1) {
+    if (activeIndex == null) return;
+    setActiveIndex((activeIndex + direction + posts.length) % posts.length);
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setActiveIndex(0)}
+        className="group grid grid-cols-[96px_1fr] gap-3 overflow-hidden rounded-lg border p-2 text-left shadow-sm transition hover:shadow-lg"
+        style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+      >
+        <span className="relative aspect-[9/16] overflow-hidden rounded bg-black">
+          {first.videoUrl ? (
+            <video src={first.videoUrl} poster={first.imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+          ) : (
+            <img src={first.imageUrl} alt={first.caption || product.name} className="h-full w-full object-cover" />
+          )}
+          <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
+            <Play size={28} fill="currentColor" />
+          </span>
+        </span>
+        <span className="flex min-w-0 flex-col justify-center">
+          <span className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+            Wearing and styling
+          </span>
+          <span className="mt-2 line-clamp-2 text-base font-black leading-tight" style={{ color: 'var(--text-primary)' }}>
+            Watch this product in the community
+          </span>
+          <span className="mt-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            {posts.length} tagged post{posts.length === 1 ? '' : 's'}
+          </span>
+        </span>
+      </button>
+
+      {active && typeof document !== 'undefined' && createPortal((
+        <div className="fixed inset-0 z-[9999] isolate grid place-items-center overflow-hidden bg-black p-4 text-white" role="dialog" aria-modal="true" aria-label="Product community media viewer" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setActiveIndex(null);
+        }}>
+          <button type="button" onClick={() => setActiveIndex(null)} className="absolute right-4 top-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur transition hover:bg-white hover:text-black" aria-label="Close media viewer" title="Close viewer">
+            <X size={22} />
+          </button>
+          {posts.length > 1 && (
+            <>
+              <button type="button" onClick={() => move(-1)} className="absolute left-3 top-1/2 z-20 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white text-black" aria-label="Previous media">
+                <ChevronLeft size={24} />
+              </button>
+              <button type="button" onClick={() => move(1)} className="absolute right-3 top-1/2 z-20 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white text-black" aria-label="Next media">
+                <ChevronRight size={24} />
+              </button>
+            </>
+          )}
+          <div className="relative flex h-[calc(100svh-2rem)] w-full max-w-6xl items-center justify-center">
+            {posts.length > 1 && (
+              <>
+                <div className="pointer-events-none absolute left-[5%] hidden aspect-[9/16] w-[24%] max-w-[300px] -rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block">
+                  {posts[(activeIndex! - 1 + posts.length) % posts.length].videoUrl ? (
+                    <video src={posts[(activeIndex! - 1 + posts.length) % posts.length].videoUrl} poster={posts[(activeIndex! - 1 + posts.length) % posts.length].imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                  ) : (
+                    <img src={posts[(activeIndex! - 1 + posts.length) % posts.length].imageUrl} alt="" className="h-full w-full object-cover" />
+                  )}
+                </div>
+                <div className="pointer-events-none absolute right-[5%] hidden aspect-[9/16] w-[24%] max-w-[300px] rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block">
+                  {posts[(activeIndex! + 1) % posts.length].videoUrl ? (
+                    <video src={posts[(activeIndex! + 1) % posts.length].videoUrl} poster={posts[(activeIndex! + 1) % posts.length].imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                  ) : (
+                    <img src={posts[(activeIndex! + 1) % posts.length].imageUrl} alt="" className="h-full w-full object-cover" />
+                  )}
+                </div>
+              </>
+            )}
+            <div className="relative z-10 aspect-[9/16] max-h-[calc(100svh-2rem)] w-full max-w-[430px] overflow-hidden rounded-lg bg-black shadow-2xl ring-1 ring-white/20">
+              {active.videoUrl ? (
+                <video key={active.id} src={active.videoUrl} poster={active.imageUrl || undefined} className="h-full w-full object-cover" autoPlay controls playsInline preload="auto" />
+              ) : (
+                <img src={active.imageUrl} alt={active.caption || product.name} className="h-full w-full object-cover" />
+              )}
+            </div>
+          </div>
+        </div>
+      ), document.body)}
+    </>
   );
 }
 

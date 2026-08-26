@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check, Play, Upload, Link as LinkIcon, FileVideo, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Copy, Check, Play, Upload, Link as LinkIcon, FileVideo, ImageIcon, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -17,7 +17,15 @@ interface InstagramPost {
   caption: string;
   instagramLink: string;
   displayOrder: number;
+  products?: Product[];
   createdAt: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  price?: number;
 }
 
 const emptyForm = {
@@ -25,7 +33,8 @@ const emptyForm = {
   videoUrl: '',
   caption: '',
   instagramLink: '',
-  displayOrder: '1'
+  displayOrder: '1',
+  productIds: [] as string[]
 };
 
 /** "https://www.instagram.com/flyfree.ne/" -> "@flyfree.ne". */
@@ -47,9 +56,12 @@ export default function InstagramPage() {
   // The store's own profile URL is a setting, not a constant — a new post
   // starts there so a link is never left pointing nowhere.
   const { data: settings } = useFetch<any>(() => apiService.getSettings(), { skip: false });
+  const { data: productData } = useFetch<any>(() => apiService.getProducts({ page: 1, limit: 500 }), { skip: false });
   const profileUrl = String(settings?.socialLinks?.instagram || '').trim();
+  const allProducts: Product[] = Array.isArray(productData?.data) ? productData.data : [];
 
   const [formData, setFormData] = useState(emptyForm);
+  const [productSearch, setProductSearch] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -107,9 +119,19 @@ export default function InstagramPage() {
       videoUrl: post.videoUrl || '',
       caption: post.caption,
       instagramLink: post.instagramLink,
-      displayOrder: String(post.displayOrder || 1)
+      displayOrder: String(post.displayOrder || 1),
+      productIds: post.products?.map((product) => product.id) || []
     });
     setEditingId(post.id);
+  }
+
+  function toggleProduct(productId: string, checked: boolean) {
+    setFormData((current) => ({
+      ...current,
+      productIds: checked
+        ? Array.from(new Set([...current.productIds, productId]))
+        : current.productIds.filter((id) => id !== productId)
+    }));
   }
 
   function handleCopy(text: string, id: string) {
@@ -140,6 +162,15 @@ export default function InstagramPage() {
       setVideoUploading(false);
     }
   }
+
+  const selectedProducts = allProducts.filter((product) => formData.productIds.includes(product.id));
+  const filteredProducts = allProducts
+    .filter((product) => {
+      const query = productSearch.trim().toLowerCase();
+      if (!query) return true;
+      return product.name.toLowerCase().includes(query) || String(product.sku || '').toLowerCase().includes(query);
+    })
+    .slice(0, 40);
 
   return (
     <ProtectedRoute>
@@ -183,6 +214,45 @@ export default function InstagramPage() {
                   uploading={videoUploading}
                   error={videoError}
                 />
+
+                <div className="rounded border border-black/10 bg-black/[0.02] p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <label className="text-sm font-black">Associated products</label>
+                    <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-bold text-black/60">{formData.productIds.length} selected</span>
+                  </div>
+
+                  {selectedProducts.length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {selectedProducts.map((product) => (
+                        <button key={product.id} type="button" onClick={() => toggleProduct(product.id, false)} className="inline-flex items-center gap-1 rounded-full bg-coral/10 px-3 py-1 text-xs font-bold text-coral">
+                          {product.name} <X size={12} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(event) => setProductSearch(event.target.value)}
+                    placeholder="Search product to attach"
+                    className="mb-3 w-full rounded border border-black/10 px-3 py-2 text-sm"
+                  />
+
+                  <div className="max-h-52 space-y-1 overflow-y-auto rounded border border-black/10 bg-white p-2">
+                    {filteredProducts.length === 0 ? (
+                      <p className="p-2 text-sm text-black/60">No products found</p>
+                    ) : filteredProducts.map((product) => (
+                      <label key={product.id} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-black/5">
+                        <input type="checkbox" checked={formData.productIds.includes(product.id)} onChange={(event) => toggleProduct(product.id, event.target.checked)} className="h-4 w-4 rounded" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold">{product.name}</span>
+                          <span className="text-xs text-black/55">{product.sku || 'No SKU'}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
                 <div>
                   <label className="text-xs font-bold uppercase">Caption</label>
@@ -257,6 +327,7 @@ export default function InstagramPage() {
                   <h2 className="text-lg font-black">Posts ({posts?.length || 0})</h2>
                   <p className="mt-1 text-xs font-bold text-black/50">Sorted by display order. Videos show with controls on the community page.</p>
                 </div>
+
                 <div className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">
                   MP4/WebM under 80MB
                 </div>
@@ -296,6 +367,11 @@ export default function InstagramPage() {
                       <div className="p-3">
                         <p className="line-clamp-3 text-sm font-black leading-snug">{post.caption}</p>
                         <p className="mt-2 text-xs font-bold text-black/60">Display order: {post.displayOrder}</p>
+                        {post.products && post.products.length > 0 && (
+                          <p className="mt-1 line-clamp-2 text-xs font-bold text-coral">
+                            Products: {post.products.map((product) => product.name).join(', ')}
+                          </p>
+                        )}
                         <p className="mt-1 text-xs text-black/60 font-mono break-all">{post.instagramLink}</p>
 
                         <div className="mt-3 flex gap-2">
@@ -398,6 +474,7 @@ function normalizeForm(formData: typeof emptyForm) {
   const displayOrder = Number.parseInt(formData.displayOrder, 10);
   return {
     ...formData,
-    displayOrder: Number.isFinite(displayOrder) && displayOrder > 0 ? displayOrder : 1
+    displayOrder: Number.isFinite(displayOrder) && displayOrder > 0 ? displayOrder : 1,
+    productIds: formData.productIds
   };
 }

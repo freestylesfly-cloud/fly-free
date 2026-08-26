@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { STANDARD_PAGES } from "./standard-pages";
 
 @Injectable()
 export class CmsService {
@@ -43,33 +42,22 @@ export class CmsService {
       this.safeQuery("footer settings", () => this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } }), null),
       this.safeQuery("footer categories", () => this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] }), []),
       this.safeQuery("footer pages", () => this.prisma.page.findMany({
-        where: {
-          isPublished: true,
-          slug: { in: STANDARD_PAGES.map((page) => page.slug) }
-        },
-        select: { id: true, slug: true, title: true, updatedAt: true }
+        where: { isPublished: true },
+        select: { id: true, slug: true, title: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" }
       }), [])
     ]);
 
-    const standardPagesBySlug = new Map(STANDARD_PAGES.map((page) => [page.slug, page]));
     const storefrontPages = pages
-      .map((page) => {
-        const standardPage = standardPagesBySlug.get(page.slug);
-        if (!standardPage?.route.startsWith("/")) return null;
-
-        return {
-          id: page.id,
-          slug: page.slug,
-          title: page.title || standardPage.title,
-          route: standardPage.route,
-          updatedAt: page.updatedAt
-        };
-      })
+      .map((page) => ({
+        id: page.id,
+        slug: page.slug,
+        title: page.title || page.slug,
+        route: `/${page.slug}`,
+        updatedAt: page.updatedAt
+      }))
       .filter(Boolean)
-      .sort((a: any, b: any) =>
-        STANDARD_PAGES.findIndex((page) => page.slug === a.slug) -
-        STANDARD_PAGES.findIndex((page) => page.slug === b.slug)
-      );
+      .sort((a: any, b: any) => Number(new Date(b.updatedAt)) - Number(new Date(a.updatedAt)));
 
     return {
       settings: settings?.value || null,

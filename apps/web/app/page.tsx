@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Play, TicketPercent, Users } from 'lucide-react';
+import { TicketPercent, Users } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
 import { HomeReviewsCarousel } from './components/HomeReviewsCarousel';
+import { ShoppableCommunityMedia } from './components/ShoppableCommunityMedia';
 import { Rail } from './components/Rail';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
@@ -82,6 +83,7 @@ interface InstagramPost {
   videoUrl?: string;
   caption: string;
   instagramLink: string;
+  products?: Product[];
 }
 
 /** Admin → Settings → Social links. Null for anything left unset. */
@@ -400,74 +402,15 @@ function InstagramCommunitySection({
   const posts = instagram.filter((post) => post.imageUrl || post.videoUrl).slice(0, 6);
   if (posts.length === 0) return null;
 
-  const featureCaption = settings.homeCommunityText || posts[0]?.caption || '';
-
   return (
-    <section className="border-b bg-white" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="grid lg:grid-cols-[minmax(300px,0.78fr)_minmax(0,1.7fr)]">
-        <div className="flex min-h-[420px] flex-col justify-between px-5 py-8 text-white sm:px-10 lg:px-16 lg:py-12" style={{ background: 'linear-gradient(135deg, var(--color-tertiary), var(--color-primary))' }}>
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-white/70">Instagram</p>
-            <h2 className="mt-3 text-4xl font-black uppercase leading-none sm:text-6xl">
-              {settings.homeCommunityTitle || 'Our Community'}
-            </h2>
-          </div>
-          <div className="mt-16">
-            <p className="text-2xl font-black uppercase leading-none sm:text-4xl">{social.instagramHandle || '@flyfree.ne'}</p>
-            <span className="fly-line mt-4" aria-hidden="true" />
-            <p className="mt-5 max-w-md text-base font-bold leading-relaxed text-white/85">{featureCaption}</p>
-            {social.instagram && (
-              <a href={social.instagram} target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex w-fit rounded-lg bg-white px-7 py-3 text-sm font-black uppercase tracking-wide text-black transition hover:shadow-xl">
-                Follow
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-px bg-black/10 sm:grid-cols-3">
-          {posts.map((post, index) => (
-            <a
-              key={post.id}
-              href={post.instagramLink || social.instagram || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`group relative overflow-hidden bg-black ${index === 0 ? 'col-span-2 min-h-[420px] sm:col-span-1 sm:row-span-2' : 'min-h-[210px]'}`}
-            >
-              <CommunityMedia post={post} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent opacity-90 transition group-hover:opacity-100" />
-              {post.videoUrl && (
-                <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase text-black shadow-lg">
-                  <Play size={12} fill="currentColor" /> Video
-                </span>
-              )}
-              <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
-                <p className="line-clamp-3 text-sm font-black leading-tight sm:text-base">{post.caption}</p>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
+    <ShoppableCommunityMedia
+      posts={posts}
+      title={settings.homeCommunityTitle || 'Shop the community live'}
+      intro={settings.homeCommunityText || social.instagramHandle || 'Tap any post to watch, view sound controls, and shop tagged products.'}
+      instagramHref={social.instagram}
+      limit={6}
+    />
   );
-}
-
-function CommunityMedia({ post }: { post: InstagramPost }) {
-  if (post.videoUrl) {
-    return (
-      <video
-        src={post.videoUrl}
-        poster={post.imageUrl}
-        className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-      />
-    );
-  }
-
-  return <img src={post.imageUrl} alt={post.caption} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />;
 }
 
 function CreatorsSection({ influencers }: { influencers: Influencer[] }) {

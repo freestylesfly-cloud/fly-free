@@ -39,6 +39,7 @@ export class InstagramController {
       caption: string;
       instagramLink: string;
       displayOrder?: number;
+      productIds?: string[];
     }
   ) {
     return await this.instagramService.create(body);
@@ -57,6 +58,7 @@ export class InstagramController {
       caption?: string;
       instagramLink?: string;
       displayOrder?: number;
+      productIds?: string[];
     }
   ) {
     return await this.instagramService.update(id, body);

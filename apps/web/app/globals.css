@@ -767,6 +767,33 @@ a {
   transform: translateY(-1px);
 }
 
+.community-float-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 10;
+  display: none;
+  width: 54px;
+  height: 54px;
+  transform: translateY(-50%);
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text-primary);
+  box-shadow: 0 14px 34px rgba(26, 26, 26, 0.18);
+  cursor: pointer;
+}
+.community-float-arrow:hover {
+  background: var(--text-primary);
+  color: white;
+}
+
+@media (min-width: 640px) {
+  .community-float-arrow {
+    display: grid;
+  }
+}
+
 /* Horizontal snap slider */
 .mo-slider {
   scroll-snap-type: x mandatory;

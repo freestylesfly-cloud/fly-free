@@ -4,7 +4,12 @@
  * cookie instead of browser-readable localStorage.
  */
 
-const API_BASE = (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
+function apiBaseUrl() {
+  const raw = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
+  return raw.replace(/\/+$/, '').replace(/\/api$/, '');
+}
+
+const API_BASE = apiBaseUrl();
 const ADMIN_COOKIE = 'flyfree_admin_session';
 
 function readCookie(request: Request, name: string) {

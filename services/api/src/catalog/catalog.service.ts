@@ -91,6 +91,23 @@ export class CatalogService {
           where: { status: "APPROVED" },
           include: { user: { select: { name: true, image: true } } },
           orderBy: { createdAt: "desc" }
+        },
+        instagramPosts: {
+          where: {
+            OR: [
+              { imageUrl: { not: null } },
+              { videoUrl: { not: null } }
+            ]
+          },
+          orderBy: { displayOrder: "asc" },
+          select: {
+            id: true,
+            imageUrl: true,
+            videoUrl: true,
+            caption: true,
+            instagramLink: true,
+            displayOrder: true
+          }
         }
       }
     });

@@ -162,6 +162,7 @@ model Product {
   orderItems      OrderItem[]
   wishlistItems   Wishlist[]
   influencers     Influencer[]     @relation("InfluencerProducts")
+  instagramPosts   InstagramPost[]  @relation("InstagramPostProducts")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -528,6 +529,7 @@ model InstagramPost {
   caption       String
   instagramLink String
   displayOrder  Int      @default(0)
+  products      Product[] @relation("InstagramPostProducts")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
