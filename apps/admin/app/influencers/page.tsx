@@ -20,8 +20,15 @@ type Influencer = {
   instagramUrl?: string | null;
   facebookUrl?: string | null;
   xUrl?: string | null;
+  youtubeUrl?: string | null;
   socialHandle?: string | null;
   followers?: number | null;
+  instagramFollowers?: number | null;
+  facebookFollowers?: number | null;
+  xFollowers?: number | null;
+  youtubeFollowers?: number | null;
+  displayOrder?: number | null;
+  homepageFeatured?: boolean;
   buyerDiscountPercent: number;
   commissionRate: number;
   totalEarnings: number;
@@ -46,11 +53,19 @@ const emptyForm = {
   instagramUrl: '',
   facebookUrl: '',
   xUrl: '',
+  youtubeUrl: '',
   socialHandle: '',
   followers: '',
+  instagramFollowers: '',
+  facebookFollowers: '',
+  xFollowers: '',
+  youtubeFollowers: '',
+  displayOrder: '0',
+  homepageFeatured: false,
   buyerDiscountPercent: '10',
   commissionRate: '8',
   productIds: [] as string[],
+  isActive: true,
 };
 
 export default function InfluencersPage() {
@@ -101,15 +116,23 @@ export default function InfluencersPage() {
       name: form.name.trim(),
       email: form.email.trim(),
       code: form.code.trim().toUpperCase(),
-      imageUrl: form.imageUrl.trim() || undefined,
-      instagramUrl: form.instagramUrl.trim() || undefined,
-      facebookUrl: form.facebookUrl.trim() || undefined,
-      xUrl: form.xUrl.trim() || undefined,
-      socialHandle: form.socialHandle.trim() || undefined,
-      followers: form.followers ? Number(form.followers) : undefined,
+      imageUrl: form.imageUrl.trim() || null,
+      instagramUrl: form.instagramUrl.trim() || null,
+      facebookUrl: form.facebookUrl.trim() || null,
+      xUrl: form.xUrl.trim() || null,
+      youtubeUrl: form.youtubeUrl.trim() || null,
+      socialHandle: form.socialHandle.trim() || null,
+      followers: form.followers ? Number(form.followers) : null,
+      instagramFollowers: form.instagramFollowers ? Number(form.instagramFollowers) : null,
+      facebookFollowers: form.facebookFollowers ? Number(form.facebookFollowers) : null,
+      xFollowers: form.xFollowers ? Number(form.xFollowers) : null,
+      youtubeFollowers: form.youtubeFollowers ? Number(form.youtubeFollowers) : null,
+      displayOrder: Number(form.displayOrder || 0),
+      homepageFeatured: form.homepageFeatured,
       buyerDiscountPercent: Number(form.buyerDiscountPercent || 10),
       commissionRate: Number(form.commissionRate || 0),
       productIds: form.productIds,
+      isActive: form.isActive,
     };
 
     try {
@@ -149,11 +172,19 @@ export default function InfluencersPage() {
       instagramUrl: item.instagramUrl || '',
       facebookUrl: item.facebookUrl || '',
       xUrl: item.xUrl || '',
+      youtubeUrl: item.youtubeUrl || '',
       socialHandle: item.socialHandle || '',
       followers: item.followers ? String(item.followers) : '',
+      instagramFollowers: item.instagramFollowers ? String(item.instagramFollowers) : '',
+      facebookFollowers: item.facebookFollowers ? String(item.facebookFollowers) : '',
+      xFollowers: item.xFollowers ? String(item.xFollowers) : '',
+      youtubeFollowers: item.youtubeFollowers ? String(item.youtubeFollowers) : '',
+      displayOrder: String(item.displayOrder || 0),
+      homepageFeatured: item.homepageFeatured || false,
       buyerDiscountPercent: String(item.buyerDiscountPercent),
       commissionRate: String(item.commissionRate),
       productIds: item.products?.map((product) => product.id) || [],
+      isActive: item.isActive,
     });
   }
 
@@ -180,6 +211,9 @@ export default function InfluencersPage() {
                 <RefreshCw size={16} /> Refresh
               </button>
             </div>
+            <div className="rounded border border-blue-100 bg-blue-50 p-3 text-sm font-bold text-blue-900">
+              Website order follows the Order index below. Active influencers with selected products appear on the storefront creator promotion section.
+            </div>
 
             {error && <div className="rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
 
@@ -187,6 +221,7 @@ export default function InfluencersPage() {
               <table className="w-full min-w-[980px] text-sm">
                 <thead className="bg-black/5 text-left">
                   <tr>
+                    <th className="p-3">Website order</th>
                     <th className="p-3">Influencer</th>
                     <th className="p-3">Code</th>
                     <th className="p-3">Offer</th>
@@ -197,12 +232,18 @@ export default function InfluencersPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td className="p-4" colSpan={6}>Loading influencers...</td></tr>
+                    <tr><td className="p-4" colSpan={7}>Loading influencers...</td></tr>
                   ) : filteredInfluencers.length === 0 ? (
-                    <tr><td className="p-4 text-black/60" colSpan={6}>No influencers found.</td></tr>
+                    <tr><td className="p-4 text-black/60" colSpan={7}>No influencers found.</td></tr>
                   ) : filteredInfluencers.map((item) => (
                     <Fragment key={item.id}>
                       <tr className="border-t border-black/10 align-top">
+                        <td className="p-3">
+                          <div className="font-black text-ink">{item.displayOrder ?? 0}</div>
+                          <div className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.isActive ? 'bg-green-50 text-green-700' : 'bg-black/5 text-black/50'}`}>
+                            {item.isActive ? 'Active' : 'Hidden'}{item.homepageFeatured ? ' · Homepage' : ''}
+                          </div>
+                        </td>
                         <td className="p-3">
                           <div className="font-bold text-ink">{item.name}</div>
                           <div className="text-black/60">{item.email}</div>
@@ -243,9 +284,9 @@ export default function InfluencersPage() {
                       </tr>
                       {expandedInfluencerId === item.id && (
                         <tr className="border-t border-black/10 bg-black/[0.02]">
-                          <td colSpan={6} className="p-4">
+                          <td colSpan={7} className="p-4">
                             <div className="grid gap-4 md:grid-cols-3">
-                              <DetailBlock title="Social links" values={[item.instagramUrl, item.facebookUrl, item.xUrl]} empty="No social links added" />
+                              <DetailBlock title="Social links" values={[item.instagramUrl, item.facebookUrl, item.xUrl, item.youtubeUrl]} empty="No social links added" />
                               <div>
                                 <p className="text-xs font-black uppercase text-black/50">Offer products</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
@@ -256,7 +297,8 @@ export default function InfluencersPage() {
                               </div>
                               <div>
                                 <p className="text-xs font-black uppercase text-black/50">Performance</p>
-                                <p className="mt-2 text-sm text-black/70">{item.followers?.toLocaleString('en-IN') || 0} followers</p>
+                                <p className="mt-2 text-sm text-black/70">{item.followers?.toLocaleString('en-IN') || 0} total followers</p>
+                                <p className="text-sm text-black/70">IG {item.instagramFollowers?.toLocaleString('en-IN') || 0} · FB {item.facebookFollowers?.toLocaleString('en-IN') || 0} · X {item.xFollowers?.toLocaleString('en-IN') || 0} · YT {item.youtubeFollowers?.toLocaleString('en-IN') || 0}</p>
                                 <p className="text-sm text-black/70">{item.referrals?.length || 0} tracked referrals</p>
                               </div>
                             </div>
@@ -276,7 +318,20 @@ export default function InfluencersPage() {
 
             <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
             <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
-            <Field label="Code" value={form.code} onChange={(value) => setForm({ ...form, code: value.toUpperCase() })} placeholder="Auto if blank" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Code" value={form.code} onChange={(value) => setForm({ ...form, code: value.toUpperCase() })} placeholder="Auto if blank" />
+              <Field label="Website order index" type="number" value={form.displayOrder} onChange={(value) => setForm({ ...form, displayOrder: value })} />
+            </div>
+            <p className="-mt-2 text-xs font-bold text-black/50">Lower numbers show first on the website.</p>
+            <label className="flex items-center gap-2 rounded border border-black/10 px-3 py-2 text-sm font-bold">
+              <input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} />
+              Show this influencer on website
+            </label>
+            <label className="flex items-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-900">
+              <input type="checkbox" checked={form.homepageFeatured} onChange={(event) => setForm({ ...form, homepageFeatured: event.target.checked })} />
+              Feature this creator on homepage
+            </label>
+            <p className="-mt-2 text-xs font-bold text-black/50">If none are selected, the first active creator with products is shown.</p>
             <ImageUploadField
               label="Photo"
               value={form.imageUrl}
@@ -291,8 +346,16 @@ export default function InfluencersPage() {
             <Field label="Instagram URL" value={form.instagramUrl} onChange={(value) => setForm({ ...form, instagramUrl: value })} />
             <Field label="Facebook URL" value={form.facebookUrl} onChange={(value) => setForm({ ...form, facebookUrl: value })} />
             <Field label="X URL" value={form.xUrl} onChange={(value) => setForm({ ...form, xUrl: value })} />
-            <Field label="Social handle" value={form.socialHandle} onChange={(value) => setForm({ ...form, socialHandle: value })} />
-            <Field label="Followers" type="number" value={form.followers} onChange={(value) => setForm({ ...form, followers: value })} />
+            <Field label="YouTube URL" value={form.youtubeUrl} onChange={(value) => setForm({ ...form, youtubeUrl: value })} />
+            <Field label="Social handle (display name or profile URL)" value={form.socialHandle} onChange={(value) => setForm({ ...form, socialHandle: value })} />
+            <Field label="Total followers (all platforms)" type="number" value={form.followers} onChange={(value) => setForm({ ...form, followers: value })} />
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Instagram followers" type="number" value={form.instagramFollowers} onChange={(value) => setForm({ ...form, instagramFollowers: value })} />
+              <Field label="Facebook followers" type="number" value={form.facebookFollowers} onChange={(value) => setForm({ ...form, facebookFollowers: value })} />
+              <Field label="X followers" type="number" value={form.xFollowers} onChange={(value) => setForm({ ...form, xFollowers: value })} />
+              <Field label="YouTube followers" type="number" value={form.youtubeFollowers} onChange={(value) => setForm({ ...form, youtubeFollowers: value })} />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Buyer discount %" type="number" value={form.buyerDiscountPercent} onChange={(value) => setForm({ ...form, buyerDiscountPercent: value })} />
@@ -301,9 +364,10 @@ export default function InfluencersPage() {
 
             <div className="border-t pt-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-bold">Eligible products</h3>
+                <h3 className="font-bold">Promoted products</h3>
                 <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-bold text-black/60">{form.productIds.length} selected</span>
               </div>
+              <p className="mb-3 text-xs font-bold text-black/50">These products appear under this influencer card and are eligible for their code.</p>
 
               {selectedProducts.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -383,7 +447,7 @@ function DetailBlock({ title, values, empty }: { title: string; values: Array<st
     <div>
       <p className="text-xs font-black uppercase text-black/50">{title}</p>
       <div className="mt-2 space-y-1 text-sm text-black/70">
-        {visibleValues.length ? visibleValues.map((value) => <p key={value}>{value}</p>) : <p>{empty}</p>}
+        {visibleValues.length ? visibleValues.map((value, index) => <p key={`${value}-${index}`}>{value}</p>) : <p>{empty}</p>}
       </div>
     </div>
   );

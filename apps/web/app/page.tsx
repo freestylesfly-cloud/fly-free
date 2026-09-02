@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { TicketPercent } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
 import { HomeReviewsCarousel } from './components/HomeReviewsCarousel';
 import { ShoppableCommunityMedia } from './components/ShoppableCommunityMedia';
 import { InfluencerCodeCard } from './components/InfluencerCodeCard';
+import { InfluencerPromotionSection } from './components/InfluencerPromotionSection';
 import { Rail } from './components/Rail';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
@@ -75,7 +76,16 @@ interface Influencer {
   socialHandle?: string;
   followers?: number;
   instagramUrl?: string;
+  facebookUrl?: string;
+  xUrl?: string;
+  youtubeUrl?: string;
+  instagramFollowers?: number;
+  facebookFollowers?: number;
+  xFollowers?: number;
+  youtubeFollowers?: number;
   buyerDiscountPercent?: number;
+  isActive?: boolean;
+  products?: Product[];
 }
 
 interface InstagramPost {
@@ -125,13 +135,14 @@ async function getJson(path: string) {
 }
 
 async function getHomeData() {
-  const [themes, products, reviews, hampers, instagram, influencers, social, home] = await Promise.all([
+  const [themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, home] = await Promise.all([
     getJson('/cms/themes'),
     getJson('/catalog/products'),
     getJson('/reviews/latest?limit=12'),
     getJson('/cms/hampers'),
     getJson('/instagram-posts'),
     getJson('/influencers'),
+    getJson('/influencers/featured'),
     getJson('/cms/settings/social'),
     getJson('/cms/home'),
   ]);
@@ -143,6 +154,7 @@ async function getHomeData() {
     hampers: unwrap<Hamper>(hampers),
     instagram: unwrap<InstagramPost>(instagram),
     influencers: unwrap<Influencer>(influencers),
+    featuredInfluencers: unwrap<Influencer>(featuredInfluencers),
     social: (social || {}) as SocialLinks,
     settings: ((home as any)?.settings || {}) as HomeUiSettings,
   };
@@ -155,7 +167,7 @@ const rupees = (paise: number) => Math.round((paise || 0) / 100);
 const PRODUCT_CARD = 'mo-slide w-[45vw] flex-shrink-0 sm:w-[230px]';
 
 export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram, influencers, social, settings } = await getHomeData();
+  const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings } = await getHomeData();
 
   // The hero is simply the active product themes — each theme's banner is one
   // slide. There is no separate site-wide hero to configure.
@@ -216,6 +228,29 @@ export default async function HomePage() {
         </Rail>
       )}
 
+      {bestSellers.length > 0 && (
+        <Rail title="Trending now" viewAllHref="/products?sort=trending">
+          {bestSellers.map((product) => (
+            <div key={product.id} data-rail-item className={PRODUCT_CARD}>
+              <ProductCard
+                id={product.id}
+                name={product.name}
+                price={rupees(product.price)}
+                originalPrice={product.mrp ? rupees(product.mrp) : undefined}
+                slug={product.slug}
+                image={product.images?.[0]?.url}
+                hoverImage={product.images?.[1]?.url}
+                images={product.images}
+                variants={product.variants}
+                tag={product.theme?.name || product.category?.name}
+              />
+            </div>
+          ))}
+        </Rail>
+      )}
+
+      <InfluencerPromotionSection influencers={featuredInfluencers} />
+
       {themes.length > 0 && (
         <Rail title="Shop by theme" viewAllHref="/products">
           {themes.map((theme) => (
@@ -252,27 +287,6 @@ export default async function HomePage() {
       {recommended.length > 0 && (
         <Rail title="Recommended for you" viewAllHref="/products">
           {recommended.map((product) => (
-            <div key={product.id} data-rail-item className={PRODUCT_CARD}>
-              <ProductCard
-                id={product.id}
-                name={product.name}
-                price={rupees(product.price)}
-                originalPrice={product.mrp ? rupees(product.mrp) : undefined}
-                slug={product.slug}
-                image={product.images?.[0]?.url}
-                hoverImage={product.images?.[1]?.url}
-                images={product.images}
-                variants={product.variants}
-                tag={product.theme?.name || product.category?.name}
-              />
-            </div>
-          ))}
-        </Rail>
-      )}
-
-      {bestSellers.length > 0 && (
-        <Rail title="Trending now" viewAllHref="/products">
-          {bestSellers.map((product) => (
             <div key={product.id} data-rail-item className={PRODUCT_CARD}>
               <ProductCard
                 id={product.id}
@@ -414,12 +428,17 @@ function InstagramCommunitySection({
   );
 }
 
+function HomeReviewsSection({ reviews }: { reviews: Review[] }) {
+  return <HomeReviewsCarousel reviews={reviews} />;
+}
+
 function CreatorsSection({ influencers }: { influencers: Influencer[] }) {
-  if (influencers.length === 0) return null;
+  const activeInfluencers = influencers.filter((influencer) => influencer.isActive !== false);
+  if (activeInfluencers.length === 0) return null;
 
   return (
     <Rail title="Shop with the Fly Free crew" viewAllHref="/community" viewAllLabel="View community">
-      {influencers.map((influencer) => (
+      {activeInfluencers.map((influencer) => (
         <div key={influencer.id} data-rail-item className="mo-slide w-[72vw] flex-shrink-0 sm:w-[280px]">
           <InfluencerCodeCard influencer={influencer} />
         </div>
@@ -428,23 +447,21 @@ function CreatorsSection({ influencers }: { influencers: Influencer[] }) {
   );
 }
 
-function HomeReviewsSection({ reviews }: { reviews: Review[] }) {
-  return <HomeReviewsCarousel reviews={reviews} />;
-}
-
 function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
   if (!settings.homeAboutImageUrl && !settings.homeAboutTitle && !settings.homeAboutText) return null;
 
   return (
-    <section className="relative min-h-[72svh] overflow-hidden border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--text-primary)' }}>
+    <section className="overflow-hidden border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--text-primary)' }}>
+      <div className="grid lg:min-h-[620px] lg:grid-cols-[1.1fr_0.9fr]">
       {settings.homeAboutImageUrl && (
-        <img src={settings.homeAboutImageUrl} alt={settings.homeAboutTitle || 'About Fly Free'} className="absolute inset-0 h-full w-full object-cover" />
+        <div className="relative aspect-[4/3] min-h-[280px] bg-black/20 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[620px]">
+          <img src={settings.homeAboutImageUrl} alt={settings.homeAboutTitle || 'About Fly Free'} className="absolute inset-0 h-full w-full object-contain" />
+        </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/78 via-black/35 to-black/5" />
-      <div className="relative z-10 flex min-h-[72svh] flex-col justify-end px-5 pb-10 pt-24 text-white sm:px-10 lg:px-16">
-        <p className="text-sm font-black uppercase tracking-wide text-white/70">About Fly Free</p>
+      <div className="flex flex-col justify-center px-5 py-12 text-white sm:px-10 sm:py-16 lg:px-14 lg:py-20">
+        <p className="text-sm font-black uppercase tracking-wide text-white/70">The Fly Free story</p>
         {settings.homeAboutTitle && (
-          <h2 className="mt-5 max-w-5xl text-5xl font-black uppercase leading-[0.92] sm:text-7xl lg:text-8xl">
+          <h2 className="mt-4 max-w-2xl text-4xl font-black uppercase leading-[0.94] sm:text-6xl lg:text-7xl">
             {settings.homeAboutTitle}
           </h2>
         )}
@@ -457,6 +474,7 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
         <Link href={settings.homeCommunityCtaHref || '/about'} className="mt-8 inline-flex w-fit rounded-lg bg-white px-8 py-4 text-sm font-black uppercase tracking-wide text-black transition hover:shadow-xl">
           {settings.homeCommunityCtaLabel || 'Know more'}
         </Link>
+      </div>
       </div>
     </section>
   );

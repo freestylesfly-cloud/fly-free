@@ -9,19 +9,35 @@ export class InfluencerService {
   async getAllInfluencers() {
     return await this.prisma.influencer.findMany({
       include: {
+        products: {
+          include: { images: { orderBy: { priority: "asc" } }, variants: { include: { inventory: true } }, category: true, theme: true }
+        },
         referrals: true,
       },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }]
     });
   }
 
   // Get active influencers (for frontend display)
   async getActiveInfluencers() {
-    return await this.prisma.influencer.findMany({
+    const influencers = await this.prisma.influencer.findMany({
       where: { isActive: true },
       include: {
+        products: {
+          where: { isVisible: true },
+          include: { images: { orderBy: { priority: "asc" } }, variants: { include: { inventory: true } }, category: true, theme: true }
+        },
         referrals: true,
       },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }]
     });
+    const promoted = influencers.filter((influencer) => influencer.products.length > 0);
+    return promoted;
+  }
+
+  async getHomepageFeaturedInfluencers() {
+    const influencers = await this.getActiveInfluencers();
+    return influencers.filter((influencer) => influencer.homepageFeatured);
   }
 
   // Get influencer by ID
@@ -29,6 +45,10 @@ export class InfluencerService {
     return await this.prisma.influencer.findUnique({
       where: { id },
       include: {
+        products: {
+          where: { isVisible: true },
+          include: { images: { orderBy: { priority: "asc" } }, variants: { include: { inventory: true } }, category: true, theme: true }
+        },
         referrals: true,
       },
     });
@@ -44,13 +64,21 @@ export class InfluencerService {
         instagramUrl: data.instagramUrl,
         facebookUrl: data.facebookUrl,
         xUrl: data.xUrl,
+        youtubeUrl: data.youtubeUrl,
         socialHandle: data.socialHandle,
+        followers: data.followers === undefined ? undefined : data.followers === null ? null : Number(data.followers),
+        instagramFollowers: data.instagramFollowers === undefined ? undefined : data.instagramFollowers === null ? null : Number(data.instagramFollowers),
+        facebookFollowers: data.facebookFollowers === undefined ? undefined : data.facebookFollowers === null ? null : Number(data.facebookFollowers),
+        xFollowers: data.xFollowers === undefined ? undefined : data.xFollowers === null ? null : Number(data.xFollowers),
+        youtubeFollowers: data.youtubeFollowers === undefined ? undefined : data.youtubeFollowers === null ? null : Number(data.youtubeFollowers),
+        displayOrder: data.displayOrder === undefined ? 0 : Number(data.displayOrder),
         code: data.code || this.generateCode(),
         buyerDiscountPercent: data.buyerDiscountPercent || 10,
         commissionRate: data.commissionRate || 5.0,
         isActive: data.isActive !== false,
       },
       include: {
+        products: true,
         referrals: true,
       },
     });
@@ -67,13 +95,21 @@ export class InfluencerService {
         instagramUrl: data.instagramUrl,
         facebookUrl: data.facebookUrl,
         xUrl: data.xUrl,
+        youtubeUrl: data.youtubeUrl,
         socialHandle: data.socialHandle,
+        followers: data.followers === undefined ? undefined : Number(data.followers),
+        instagramFollowers: data.instagramFollowers === undefined ? undefined : Number(data.instagramFollowers),
+        facebookFollowers: data.facebookFollowers === undefined ? undefined : Number(data.facebookFollowers),
+        xFollowers: data.xFollowers === undefined ? undefined : Number(data.xFollowers),
+        youtubeFollowers: data.youtubeFollowers === undefined ? undefined : Number(data.youtubeFollowers),
+        displayOrder: data.displayOrder === undefined ? undefined : Number(data.displayOrder),
         code: data.code,
         buyerDiscountPercent: data.buyerDiscountPercent,
         commissionRate: data.commissionRate,
         isActive: data.isActive,
       },
       include: {
+        products: true,
         referrals: true,
       },
     });

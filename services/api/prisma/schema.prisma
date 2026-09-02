@@ -467,17 +467,26 @@ model Influencer {
   instagramUrl         String?
   facebookUrl          String?
   xUrl                 String?
+  youtubeUrl           String?
   buyerDiscountPercent Int        @default(10)
   commissionRate       Float      @default(5.0)
   totalEarnings        Int        @default(0)
   totalReferrals       Int        @default(0)
   isActive             Boolean    @default(true)
+  homepageFeatured    Boolean    @default(false)
   socialHandle         String?
   followers            Int?
+  instagramFollowers   Int?
+  facebookFollowers    Int?
+  xFollowers           Int?
+  youtubeFollowers     Int?
+  displayOrder         Int        @default(0)
   products             Product[]  @relation("InfluencerProducts")
   referrals            Referral[]
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
+
+  @@index([isActive, displayOrder])
 }
 
 model Referral {

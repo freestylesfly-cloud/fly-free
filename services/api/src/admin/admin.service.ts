@@ -1594,7 +1594,7 @@ export class AdminService {
         products: true,
         referrals: { include: { order: true }, orderBy: { createdAt: "desc" } }
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }]
     });
     return { data };
   }
@@ -1624,8 +1624,15 @@ export class AdminService {
         instagramUrl: data.instagramUrl,
         facebookUrl: data.facebookUrl,
         xUrl: data.xUrl,
+        youtubeUrl: data.youtubeUrl,
         socialHandle: data.socialHandle,
         followers: data.followers ? Number(data.followers) : undefined,
+        instagramFollowers: data.instagramFollowers === undefined ? undefined : Number(data.instagramFollowers),
+        facebookFollowers: data.facebookFollowers === undefined ? undefined : Number(data.facebookFollowers),
+        xFollowers: data.xFollowers === undefined ? undefined : Number(data.xFollowers),
+        youtubeFollowers: data.youtubeFollowers === undefined ? undefined : Number(data.youtubeFollowers),
+        displayOrder: data.displayOrder === undefined ? 0 : Number(data.displayOrder),
+        homepageFeatured: data.homepageFeatured === true,
         buyerDiscountPercent: Number(data.buyerDiscountPercent || 10),
         commissionRate: Number(data.commissionRate || 5),
         products: productIds.length ? { connect: productIds.map((productId) => ({ id: productId })) } : undefined
@@ -1645,8 +1652,15 @@ export class AdminService {
       instagramUrl: data.instagramUrl,
       facebookUrl: data.facebookUrl,
       xUrl: data.xUrl,
+      youtubeUrl: data.youtubeUrl,
       socialHandle: data.socialHandle,
-      followers: data.followers === undefined ? undefined : Number(data.followers),
+      followers: data.followers === undefined ? undefined : data.followers === null ? null : Number(data.followers),
+      instagramFollowers: data.instagramFollowers === undefined ? undefined : data.instagramFollowers === null ? null : Number(data.instagramFollowers),
+      facebookFollowers: data.facebookFollowers === undefined ? undefined : data.facebookFollowers === null ? null : Number(data.facebookFollowers),
+      xFollowers: data.xFollowers === undefined ? undefined : data.xFollowers === null ? null : Number(data.xFollowers),
+      youtubeFollowers: data.youtubeFollowers === undefined ? undefined : data.youtubeFollowers === null ? null : Number(data.youtubeFollowers),
+      displayOrder: data.displayOrder === undefined ? undefined : Number(data.displayOrder),
+      homepageFeatured: data.homepageFeatured === undefined ? undefined : data.homepageFeatured === true,
       buyerDiscountPercent: data.buyerDiscountPercent === undefined ? undefined : Number(data.buyerDiscountPercent),
       commissionRate: data.commissionRate === undefined ? undefined : Number(data.commissionRate),
       isActive: data.isActive

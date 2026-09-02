@@ -818,6 +818,30 @@ a {
   animation: fly-reveal-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.creator-card {
+  animation: fly-reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.creator-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-color));
+}
+
+.creator-promo-section {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 7%, transparent), transparent 38%),
+    linear-gradient(315deg, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 42%),
+    var(--bg-secondary);
+}
+
+.creator-promo-card {
+  background: transparent;
+  animation: fly-reveal-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.creator-promo-card:hover {
+  background: color-mix(in srgb, var(--color-primary) 2%, transparent);
+}
+
 @keyframes fly-reveal-up {
   from {
     opacity: 0;

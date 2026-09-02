@@ -15,6 +15,12 @@ export class InfluencerController {
   }
 
   @ApiTags("🌟 Influencers")
+  @Get("featured")
+  async getHomepageFeaturedInfluencers() {
+    return await this.influencerService.getHomepageFeaturedInfluencers();
+  }
+
+  @ApiTags("🌟 Influencers")
   @Get(":id")
   async getInfluencerById(@Param("id") id: string) {
     return await this.influencerService.getInfluencerById(id);

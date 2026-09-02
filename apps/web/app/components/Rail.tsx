@@ -19,6 +19,7 @@ export function Rail({
   viewAllHref,
   viewAllLabel = 'View all',
   external = false,
+  embedded = false,
   intervalMs = 4000,
   children
 }: {
@@ -26,6 +27,7 @@ export function Rail({
   viewAllHref?: string;
   viewAllLabel?: string;
   external?: boolean;
+  embedded?: boolean;
   intervalMs?: number;
   children: ReactNode;
 }) {
@@ -64,8 +66,8 @@ export function Rail({
   };
 
   return (
-    <section className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="px-4 py-10 sm:px-6 md:py-14">
+    <section className={embedded ? '' : 'border-b'} style={{ borderColor: 'var(--border-color)' }}>
+      <div className={embedded ? '' : 'px-4 py-10 sm:px-6 md:py-14'}>
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2
             className="text-xl font-black uppercase tracking-tight sm:text-3xl"

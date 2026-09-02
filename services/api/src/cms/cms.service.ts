@@ -15,7 +15,17 @@ export class CmsService {
       this.safeQuery("home announcements", () => this.getActiveAnnouncements(), []),
       this.safeQuery(
         "home influencers",
-        () => this.prisma.influencer.findMany({ where: { isActive: true }, take: 6, orderBy: { createdAt: "desc" } }),
+        () => this.prisma.influencer.findMany({
+          where: { isActive: true },
+          take: 6,
+          include: {
+            products: {
+              where: { isVisible: true },
+              include: { images: { orderBy: { priority: "asc" } }, variants: { include: { inventory: true } }, category: true, theme: true }
+            }
+          },
+          orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }]
+        }),
         []
       ),
       this.safeQuery(
