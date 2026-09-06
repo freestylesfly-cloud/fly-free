@@ -383,19 +383,27 @@ export default function CheckoutPage() {
    */
   async function verifyPayment(response: any, quoteToken: string) {
     try {
-      const verifyRes = await fetch(`/api/commerce/checkout/verify`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          quoteToken,
-          razorpayOrderId: response.razorpay_order_id,
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpaySignature: response.razorpay_signature
-        })
+      const verifyPayload = JSON.stringify({
+        quoteToken,
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature
       });
+      let verifyRes: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        verifyRes = await fetch(`/api/commerce/checkout/verify`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: verifyPayload
+        });
+
+        if (verifyRes.ok || verifyRes.status < 500) break;
+      }
+
+      if (!verifyRes) throw new Error('Payment verification request was not sent');
 
       const body = await verifyRes.json().catch(() => null);
 

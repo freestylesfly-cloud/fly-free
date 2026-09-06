@@ -100,6 +100,27 @@ export class CommerceService {
 
     const razorpayOrder = await this.createRazorpayOrder(userId, quote.total);
 
+    try {
+      await this.prisma.checkoutSession.create({
+        data: {
+          userId,
+          razorpayOrderId: razorpayOrder.id,
+          amount: Math.round(quote.total),
+          quote: {
+            ...quote,
+            userId,
+            razorpayOrderId: razorpayOrder.id,
+            expiresAt: Date.now() + QUOTE_TTL_MINUTES * 60_000
+          }
+        }
+      });
+    } catch (error) {
+      this.logger.error(`Checkout session persistence failed for user ${userId}, Razorpay order ${razorpayOrder.id}: ${this.errorMessage(error)}`);
+      throw new BadRequestException("We could not start payment safely. Please try again.");
+    }
+
+    this.logger.log(`Checkout started: user=${userId} razorpayOrder=${razorpayOrder.id} amount=${quote.total} items=${this.describeItems(quote)}`);
+
     return {
       success: true,
       data: {
@@ -116,6 +137,120 @@ export class CommerceService {
         currency: "INR"
       }
     };
+  }
+
+  async handleRazorpayWebhook(body: any, signature: string, rawBody?: Buffer) {
+    const webhookSecret = this.cleanConfigValue(this.config.get<string>("RAZORPAY_WEBHOOK_SECRET"));
+    if (!webhookSecret || !rawBody || !signature) {
+      throw new UnauthorizedException("Invalid Razorpay webhook configuration");
+    }
+
+    const expected = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+    if (expected.length !== signature.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+      throw new UnauthorizedException("Invalid Razorpay webhook signature");
+    }
+
+    if (body?.event !== "payment.captured") {
+      return { received: true };
+    }
+
+    const entity = body?.payload?.payment?.entity;
+    const razorpayPaymentId = entity?.id || entity?.payments?.[0]?.id;
+    const razorpayOrderId = entity?.order_id;
+    if (!razorpayPaymentId || !razorpayOrderId) {
+      throw new BadRequestException("Razorpay webhook is missing payment details");
+    }
+
+    const session = await this.prisma.checkoutSession.findUnique({ where: { razorpayOrderId } });
+    if (!session) {
+      this.logger.warn(`Captured Razorpay payment ${razorpayPaymentId} has no checkout session for order ${razorpayOrderId}`);
+      return { received: true, reconciled: false };
+    }
+
+    await this.prisma.checkoutSession.update({
+      where: { razorpayOrderId },
+      data: { paymentId: razorpayPaymentId, paidAt: new Date(), status: "CAPTURED" }
+    });
+
+    const existing = await this.prisma.order.findFirst({
+      where: { payment: { providerPaymentId: razorpayPaymentId } },
+      include: { payment: true, items: true }
+    });
+    if (existing) return { received: true, reconciled: true, orderId: existing.id };
+
+    const quote = session.quote as SignedQuote;
+    const { keySecret } = this.getRazorpayCredentials();
+    if (!keySecret) {
+      throw new BadRequestException("Razorpay is not configured on the API server");
+    }
+
+    const checkoutSignature = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+    const recoveryToken = jwt.sign({ userId: session.userId }, requireJwtSecret(this.config));
+
+    try {
+      await this.verifyCheckout(
+        {
+          quoteToken: this.signQuote({ ...quote, razorpayOrderId, expiresAt: Date.now() + 60_000 }),
+          razorpayOrderId,
+          razorpayPaymentId,
+          razorpaySignature: checkoutSignature
+        },
+        recoveryToken
+      );
+    } catch (error) {
+      await this.prisma.checkoutSession.update({
+        where: { razorpayOrderId },
+        data: { status: "RECOVERY_FAILED", lastError: this.errorMessage(error) }
+      });
+      this.logger.error(`Payment recovery failed: user=${session.userId} razorpayOrder=${razorpayOrderId} payment=${razorpayPaymentId}: ${this.errorMessage(error)}`);
+      throw error;
+    }
+
+    await this.prisma.checkoutSession.update({
+      where: { razorpayOrderId },
+      data: { status: "COMPLETED", lastError: null }
+    });
+    this.logger.log(`Payment recovered: user=${session.userId} razorpayOrder=${razorpayOrderId} payment=${razorpayPaymentId}`);
+    return { received: true, reconciled: true };
+  }
+
+  async listPaymentReconciliation(query: { search?: string; status?: string }) {
+    const search = String(query.search || "").trim();
+    const status = String(query.status || "").trim();
+    const sessions = await this.prisma.checkoutSession.findMany({
+      where: {
+        ...(status ? { status } : {}),
+        ...(search
+          ? {
+              OR: [
+                { razorpayOrderId: { contains: search, mode: "insensitive" } },
+                { paymentId: { contains: search, mode: "insensitive" } },
+                { user: { email: { contains: search, mode: "insensitive" } } }
+              ]
+            }
+          : {})
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 100,
+      include: { user: { select: { id: true, name: true, email: true, phone: true } } }
+    });
+
+    return sessions.map((session) => ({
+      id: session.id,
+      status: session.status,
+      amount: session.amount,
+      razorpayOrderId: session.razorpayOrderId,
+      paymentId: session.paymentId,
+      lastError: session.lastError,
+      paidAt: session.paidAt,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      user: session.user,
+      quote: session.quote
+    }));
   }
 
   /** Seals a quote so the browser can hold it without being able to alter it. */
@@ -310,12 +445,16 @@ export class CommerceService {
       throw new BadRequestException("Complete Razorpay payment details are required");
     }
 
+    this.logger.log(`Payment verification started: user=${userId} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId}`);
+
     // Razorpay retries its callback and customers double-click, so a payment
     // that already produced an order returns that order instead of a second one.
     const existing = await this.findOrderByPaymentId(body.razorpayPaymentId, userId);
     if (existing) return { success: true, data: existing };
 
     if (!this.isValidRazorpaySignature(body.razorpayOrderId, body.razorpayPaymentId, body.razorpaySignature)) {
+      await this.markCheckoutError(body.razorpayOrderId, body.razorpayPaymentId, "Payment verification failed: invalid signature");
+      this.logger.warn(`Payment verification rejected: user=${userId} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId} reason=invalid-signature`);
       // Nothing was written when payment started, so there is nothing to undo.
       throw new BadRequestException("Payment verification failed");
     }
@@ -323,11 +462,24 @@ export class CommerceService {
     // The price the customer agreed to, sealed when payment started. Not
     // recomputed here: a price edit or an expiring coupon in the intervening
     // minutes must not change what an already-paying customer is billed.
-    const quote = this.readQuote(body.quoteToken, userId, body.razorpayOrderId);
+    let quote: SignedQuote;
+    try {
+      quote = this.readQuote(body.quoteToken, userId, body.razorpayOrderId);
+    } catch (error) {
+      await this.markCheckoutError(body.razorpayOrderId, body.razorpayPaymentId, this.errorMessage(error));
+      this.logger.error(`Checkout quote validation failed: user=${userId} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId}: ${this.errorMessage(error)}`);
+      throw error;
+    }
 
     // A valid signature only proves the payment belongs to this Razorpay order.
     // This proves the money actually arrived, and that it is the quoted amount.
-    await this.assertRazorpayOrderPaid(body.razorpayOrderId, quote.total);
+    try {
+      await this.assertRazorpayOrderPaid(body.razorpayOrderId, quote.total);
+    } catch (error) {
+      await this.markCheckoutError(body.razorpayOrderId, body.razorpayPaymentId, this.errorMessage(error));
+      this.logger.error(`Payment amount/status validation failed: user=${userId} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId}: ${this.errorMessage(error)}`);
+      throw error;
+    }
 
     const commission = quote.coupon?.influencerId
       ? Math.round(quote.total * (quote.coupon.commissionRate / 100))
@@ -441,8 +593,28 @@ export class CommerceService {
     }
 
     await this.sendOrderConfirmation(order, userId, quote);
+    await this.prisma.checkoutSession.updateMany({
+      where: { razorpayOrderId: body.razorpayOrderId },
+      data: { status: "COMPLETED", paymentId: body.razorpayPaymentId, paidAt: new Date(), lastError: null }
+    });
+    this.logger.log(`Order created: user=${userId} order=${order.id} orderNumber=${order.orderNumber} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId} items=${this.describeItems(quote)}`);
 
     return { success: true, data: order };
+  }
+
+  private async markCheckoutError(razorpayOrderId: string, paymentId: string | undefined, message: string) {
+    await this.prisma.checkoutSession.updateMany({
+      where: { razorpayOrderId },
+      data: { status: "VERIFICATION_FAILED", paymentId, lastError: message.slice(0, 500) }
+    });
+  }
+
+  private describeItems(quote: CheckoutQuote) {
+    return quote.items.map((item) => `${item.productId}/${item.variantId}x${item.quantity}`).join(",");
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
   }
 
   /**

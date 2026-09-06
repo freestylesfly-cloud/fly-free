@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Headers, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CommerceService } from "./commerce.service";
+import { AdminGuard } from "../auth/admin.guard";
 
 @ApiTags("🛍️ Commerce")
 @Controller("commerce")
@@ -22,5 +23,16 @@ export class CommerceController {
   @Post("checkout/verify")
   verifyCheckout(@Body() body: any, @Headers("authorization") token: string) {
     return this.commerceService.verifyCheckout(body, token);
+  }
+
+  @Post("webhooks/razorpay")
+  razorpayWebhook(@Body() body: any, @Headers("x-razorpay-signature") signature: string, @Req() request: any) {
+    return this.commerceService.handleRazorpayWebhook(body, signature, request.rawBody);
+  }
+
+  @Get("admin/payment-reconciliation")
+  @UseGuards(AdminGuard)
+  paymentReconciliation(@Query("search") search?: string, @Query("status") status?: string) {
+    return this.commerceService.listPaymentReconciliation({ search, status });
   }
 }

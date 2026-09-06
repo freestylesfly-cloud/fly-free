@@ -41,6 +41,7 @@ model User {
   image           String?
   addresses       Address[]
   orders          Order[]
+  checkoutSessions CheckoutSession[]
   wishlistItems   Wishlist[]
   reviews         Review[]
   createdAt       DateTime   @default(now())
@@ -306,6 +307,24 @@ model OrderStatusHistory {
   changedBy  String?
   order      Order        @relation(fields: [orderId], references: [id])
   createdAt  DateTime     @default(now())
+}
+
+model CheckoutSession {
+  id              String   @id @default(cuid())
+  userId          String
+  razorpayOrderId String   @unique
+  amount          Int
+  quote           Json
+  status          String   @default("OPEN")
+  lastError       String?
+  paymentId       String?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([paymentId])
 }
 
 model Invoice {

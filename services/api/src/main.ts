@@ -36,13 +36,14 @@ function rateLimitMax(pathname: string) {
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ bodyLimit: 30 * 1024 * 1024 })
+    new FastifyAdapter({ bodyLimit: 30 * 1024 * 1024 }),
+    { rawBody: true }
   );
   // Extra origins can be added per-environment without a code change:
   // CORS_ORIGINS="https://staging.example.com,https://other.example.com"
   const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
     .split(",")
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter(Boolean);
 
   const defaultCorsOrigins: Array<string | RegExp> = [
@@ -74,17 +75,18 @@ async function bootstrap() {
       }
 
       // Check if origin is in the allowed list
+      const normalizedOrigin = origin.replace(/\/$/, "");
       const allowed = defaultCorsOrigins.some((allowedOrigin) => {
         if (allowedOrigin instanceof RegExp) {
-          return allowedOrigin.test(origin);
+          return allowedOrigin.test(normalizedOrigin);
         }
-        return allowedOrigin === origin;
+        return allowedOrigin === normalizedOrigin;
       });
 
       if (allowed) {
         callback(null, true);
       } else {
-        console.warn(`CORS blocked request from origin: ${origin}`);
+        console.warn(`CORS blocked request from origin: ${normalizedOrigin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
