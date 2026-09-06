@@ -538,6 +538,13 @@ class ApiService {
     });
   }
 
+  async createManualPaidOrder(data: any) {
+    return this.request<any>('/api/commerce/admin/payment-reconciliation/manual-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getEventAnalytics(days = 30) {
     return this.request<any>(`/api/admin/analytics/events?days=${days}`);
   }

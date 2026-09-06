@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, CreditCard, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, CreditCard, Loader2, RefreshCw, Search, XCircle, Plus, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
@@ -58,6 +58,11 @@ export default function PaymentReconciliationPage() {
   const [recovering, setRecovering] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manual, setManual] = useState({ userId: '', userLabel: '', productId: '', productLabel: '', variantId: '', razorpayOrderId: '', razorpayPaymentId: '', quantity: '1', name: '', phone: '', street: '', line2: '', city: '', state: '', pincode: '' });
+  const [products, setProducts] = useState<any[]>([]);
+  const [variants, setVariants] = useState<any[]>([]);
+  const [savingManual, setSavingManual] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -98,6 +103,54 @@ export default function PaymentReconciliationPage() {
     }
   }
 
+  async function openManualOrder() {
+    try {
+      const result: any = await apiService.getProducts({ page: 1, limit: 100 });
+      setProducts(result?.data || result || []);
+      setManualOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load products');
+    }
+  }
+
+  async function selectProduct(productId: string) {
+    setManual((current) => ({ ...current, productId, productLabel: products.find((item) => item.id === productId)?.name || '', variantId: '' }));
+    if (!productId) { setVariants([]); return; }
+    try {
+      const result: any = await apiService.getProduct(productId);
+      setVariants(result?.data?.variants || result?.variants || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load product variants');
+    }
+  }
+
+  async function saveManualOrder() {
+    if (!manual.userId || !manual.productId || !manual.variantId || !manual.razorpayOrderId || !manual.razorpayPaymentId || !manual.name || !manual.phone || !manual.street || !manual.city || !manual.state || !manual.pincode) {
+      setError('Complete customer, Razorpay, variant, and delivery fields before creating the order.');
+      return;
+    }
+    setSavingManual(true);
+    setError('');
+    setNotice('');
+    try {
+      const result: any = await apiService.createManualPaidOrder({
+        userId: manual.userId,
+        razorpayOrderId: manual.razorpayOrderId,
+        razorpayPaymentId: manual.razorpayPaymentId,
+        variantId: manual.variantId,
+        quantity: Number(manual.quantity),
+        address: { name: manual.name, phone: manual.phone, street: manual.street, line2: manual.line2, city: manual.city, state: manual.state, pincode: manual.pincode, country: 'India' }
+      });
+      setNotice(result?.alreadyExists ? 'This payment already has an order.' : `Manual order created: ${result?.data?.orderNumber || result?.data?.id}`);
+      setManualOpen(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create manual order');
+    } finally {
+      setSavingManual(false);
+    }
+  }
+
   return (
     <ProtectedRoute>
       <DashboardLayout title="Payment Recovery" subtitle="Find captured Razorpay payments and confirm their orders">
@@ -134,6 +187,9 @@ export default function PaymentReconciliationPage() {
             </div>
             <button onClick={() => void load()} className="inline-flex items-center justify-center gap-2 rounded border border-black/10 px-4 py-2 text-sm font-bold">
               <RefreshCw size={15} /> Refresh
+            </button>
+            <button onClick={() => void openManualOrder()} className="inline-flex items-center justify-center gap-2 rounded bg-ink px-4 py-2 text-sm font-black text-white">
+              <Plus size={15} /> Manual paid order
             </button>
           </div>
 
@@ -208,6 +264,29 @@ export default function PaymentReconciliationPage() {
           </div>
         </div>
       </DashboardLayout>
+      {manualOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b border-black/10 pb-3"><div><h2 className="text-lg font-black">Create paid order manually</h2><p className="text-sm text-black/50">Use only after confirming Razorpay shows Captured.</p></div><button onClick={() => setManualOpen(false)}><X size={20} /></button></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Customer user ID" value={manual.userId} onChange={(value) => setManual((current) => ({ ...current, userId: value }))} />
+              <Field label="Customer name" value={manual.name} onChange={(value) => setManual((current) => ({ ...current, name: value }))} />
+              <Field label="Razorpay order ID" value={manual.razorpayOrderId} onChange={(value) => setManual((current) => ({ ...current, razorpayOrderId: value }))} />
+              <Field label="Razorpay payment ID" value={manual.razorpayPaymentId} onChange={(value) => setManual((current) => ({ ...current, razorpayPaymentId: value }))} />
+              <label className="text-sm font-bold">Product<select value={manual.productId} onChange={(event) => void selectProduct(event.target.value)} className="mt-1 block w-full rounded border border-black/10 p-2"><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} ({product.sku})</option>)}</select></label>
+              <label className="text-sm font-bold">Variant / size<select value={manual.variantId} onChange={(event) => setManual((current) => ({ ...current, variantId: event.target.value }))} className="mt-1 block w-full rounded border border-black/10 p-2"><option value="">Select variant</option>{variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.size} / {variant.color} / {variant.sku}</option>)}</select></label>
+              <Field label="Quantity" value={manual.quantity} onChange={(value) => setManual((current) => ({ ...current, quantity: value }))} type="number" />
+              <Field label="Phone" value={manual.phone} onChange={(value) => setManual((current) => ({ ...current, phone: value }))} />
+              <Field label="Street" value={manual.street} onChange={(value) => setManual((current) => ({ ...current, street: value }))} />
+              <Field label="Address line 2" value={manual.line2} onChange={(value) => setManual((current) => ({ ...current, line2: value }))} />
+              <Field label="City" value={manual.city} onChange={(value) => setManual((current) => ({ ...current, city: value }))} />
+              <Field label="State" value={manual.state} onChange={(value) => setManual((current) => ({ ...current, state: value }))} />
+              <Field label="Pincode" value={manual.pincode} onChange={(value) => setManual((current) => ({ ...current, pincode: value }))} />
+            </div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setManualOpen(false)} className="rounded border border-black/10 px-4 py-2 font-bold">Cancel</button><button onClick={() => void saveManualOrder()} disabled={savingManual} className="inline-flex items-center gap-2 rounded bg-ink px-4 py-2 font-black text-white disabled:opacity-50">{savingManual && <Loader2 className="animate-spin" size={15} />} Verify and create order</button></div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }
@@ -218,4 +297,8 @@ function Summary({ label, value, tone = 'normal' }: { label: string; value: numb
 
 function Detail({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return <div><p className="text-xs font-black uppercase text-black/40">{label}</p><p className={`mt-1 break-all font-bold ${mono ? 'font-mono text-xs' : ''}`}>{value}</p></div>;
+}
+
+function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
+  return <label className="text-sm font-bold">{label}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded border border-black/10 p-2" /></label>;
 }

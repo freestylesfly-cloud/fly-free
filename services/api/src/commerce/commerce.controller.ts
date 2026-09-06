@@ -41,4 +41,10 @@ export class CommerceController {
   recoverPayment(@Param("razorpayOrderId") razorpayOrderId: string) {
     return this.commerceService.recoverPaymentSession(razorpayOrderId);
   }
+
+  @Post("admin/payment-reconciliation/manual-order")
+  @UseGuards(AdminGuard)
+  createManualPaidOrder(@Body() body: any) {
+    return this.commerceService.createManualPaidOrder(body);
+  }
 }

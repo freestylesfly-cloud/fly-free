@@ -299,6 +299,109 @@ export class CommerceService {
     }
   }
 
+  async createManualPaidOrder(body: any) {
+    const userId = String(body.userId || "").trim();
+    const razorpayOrderId = String(body.razorpayOrderId || "").trim();
+    const razorpayPaymentId = String(body.razorpayPaymentId || "").trim();
+    const variantId = String(body.variantId || "").trim();
+    const quantity = Math.max(Number(body.quantity || 1), 1);
+
+    if (!userId || !razorpayOrderId || !razorpayPaymentId || !variantId) {
+      throw new BadRequestException("Customer, Razorpay order/payment IDs, and product variant are required");
+    }
+
+    const duplicate = await this.prisma.order.findFirst({
+      where: { payment: { providerPaymentId: razorpayPaymentId } },
+      select: { id: true, orderNumber: true }
+    });
+    if (duplicate) {
+      return { success: true, alreadyExists: true, data: duplicate };
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("Customer not found");
+
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: true }
+    });
+    if (!variant || !variant.product.isVisible) throw new NotFoundException("Product variant not found or unavailable");
+
+    const address = body.address || {};
+    if (!address.name || !address.phone || !address.street || !address.city || !address.state || !address.pincode) {
+      throw new BadRequestException("Complete delivery address is required");
+    }
+
+    const itemPrice = this.catalogPriceToRupees(variant.price || variant.product.price);
+    const itemSubtotal = itemPrice * quantity;
+    const gatewayPayment = await this.getRazorpayPayment(razorpayPaymentId);
+    if (gatewayPayment.order_id !== razorpayOrderId || gatewayPayment.status !== "captured") {
+      throw new BadRequestException("Razorpay payment is not captured for the supplied order");
+    }
+
+    const paidRupees = Number(gatewayPayment.amount) / 100;
+    const shippingFee = paidRupees - itemSubtotal;
+    if (!Number.isInteger(paidRupees) || shippingFee < 0) {
+      throw new BadRequestException("Razorpay amount does not match the selected product and quantity");
+    }
+
+    const order = await this.withOrderNumberRetry((orderNumber) =>
+      this.prisma.$transaction(async (tx: any) => tx.order.create({
+        data: {
+          orderNumber,
+          user: { connect: { id: userId } },
+          shippingName: address.name,
+          shippingPhone: address.phone,
+          shippingLine1: address.street,
+          shippingLine2: address.line2 || null,
+          shippingCity: address.city,
+          shippingState: address.state,
+          shippingPostalCode: address.pincode,
+          shippingCountry: address.country || "India",
+          status: "CONFIRMED",
+          subtotal: itemSubtotal,
+          discount: 0,
+          shippingFee,
+          tax: 0,
+          total: paidRupees,
+          items: { create: [{ productId: variant.productId, variantId, name: variant.product.name, sku: variant.sku, price: itemPrice, quantity }] },
+          payment: {
+            create: {
+              provider: "RAZORPAY",
+              status: "PAID",
+              amount: paidRupees,
+              providerPaymentId: razorpayPaymentId,
+              paidAt: new Date(gatewayPayment.created_at ? gatewayPayment.created_at * 1000 : Date.now()),
+              rawPayload: { checkoutSource: "admin-manual-recovery", razorpayOrderId, gatewayStatus: gatewayPayment.status }
+            }
+          },
+          statusHistory: { create: { toStatus: "CONFIRMED", note: "Manually reconciled after Razorpay capture.", changedBy: "admin" } }
+        },
+        include: { payment: true, items: true }
+      }))
+    );
+
+    if (!order) throw new BadRequestException("This Razorpay payment already has an order");
+    this.logger.warn(`Manual paid order created: user=${userId} order=${order.id} orderNumber=${order.orderNumber} razorpayOrder=${razorpayOrderId} payment=${razorpayPaymentId} variant=${variantId} quantity=${quantity}`);
+    await this.sendOrderConfirmation(order, userId, {
+      address: { name: address.name, phone: address.phone, line1: address.street, line2: address.line2 || null, city: address.city, state: address.state, postalCode: address.pincode, country: address.country || "India" },
+      items: [{ productId: variant.productId, variantId, name: variant.product.name, sku: variant.sku, price: itemPrice, quantity }],
+      subtotal: itemSubtotal, discount: 0, shippingFee, tax: 0, total: paidRupees, coupon: null
+    });
+    return { success: true, alreadyExists: false, data: order };
+  }
+
+  private async getRazorpayPayment(paymentId: string) {
+    const { keyId, keySecret } = this.getRazorpayCredentials();
+    if (!keyId || !keySecret) throw new BadRequestException("Razorpay is not configured on the API server");
+    const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`, {
+      headers: { Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}` }
+    });
+    const payload: any = await response.json().catch(() => null);
+    if (!response.ok || !payload?.id) throw new BadRequestException("Could not find this payment in Razorpay");
+    return payload;
+  }
+
   /** Seals a quote so the browser can hold it without being able to alter it. */
   private signQuote(quote: SignedQuote) {
     const body = Buffer.from(JSON.stringify(quote)).toString("base64url");
