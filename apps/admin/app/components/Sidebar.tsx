@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, FileText, Instagram, LayoutGrid, Mail, Package, ScrollText, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift, BarChart3, TrendingUp, TicketPercent } from 'lucide-react';
+import { Bell, FileText, Instagram, LayoutGrid, Mail, Package, ScrollText, ShoppingCart, Sparkles, Tags, Users, Sliders, LogOut, Menu, X, MessageSquare, Share2, Ruler, Gift, BarChart3, TrendingUp, TicketPercent, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ const menuItems = [
       { label: 'Hampers', href: '/hampers', icon: Gift },
       { label: 'Size Guides', href: '/size-guides', icon: Ruler },
       { label: 'Orders', href: '/orders', icon: ShoppingCart },
+      { label: 'Payment Recovery', href: '/payment-reconciliation', icon: CreditCard },
       { label: 'Users', href: '/users', icon: Users },
     ],
   },

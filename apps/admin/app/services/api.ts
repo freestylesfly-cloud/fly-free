@@ -525,6 +525,19 @@ class ApiService {
     return this.request<any>('/api/admin/activity-logs/stats');
   }
 
+  async getPaymentReconciliation(params?: { search?: string; status?: string }) {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+    return this.request<any[]>(`/api/commerce/admin/payment-reconciliation?${query.toString()}`);
+  }
+
+  async recoverPayment(razorpayOrderId: string) {
+    return this.request<any>(`/api/commerce/admin/payment-reconciliation/${encodeURIComponent(razorpayOrderId)}/recover`, {
+      method: 'POST',
+    });
+  }
+
   async getEventAnalytics(days = 30) {
     return this.request<any>(`/api/admin/analytics/events?days=${days}`);
   }

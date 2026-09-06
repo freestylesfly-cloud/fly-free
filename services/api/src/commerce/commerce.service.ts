@@ -253,6 +253,52 @@ export class CommerceService {
     }));
   }
 
+  async recoverPaymentSession(razorpayOrderId: string) {
+    const session = await this.prisma.checkoutSession.findUnique({ where: { razorpayOrderId } });
+    if (!session) throw new NotFoundException("Checkout session not found");
+    if (!session.paymentId) {
+      throw new BadRequestException("No captured payment is attached to this checkout session");
+    }
+
+    const { keySecret } = this.getRazorpayCredentials();
+    if (!keySecret) throw new BadRequestException("Razorpay is not configured on the API server");
+
+    const recoverySignature = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpayOrderId}|${session.paymentId}`)
+      .digest("hex");
+    const recoveryToken = jwt.sign({ userId: session.userId }, requireJwtSecret(this.config));
+
+    try {
+      const result = await this.verifyCheckout(
+        {
+          quoteToken: this.signQuote({
+            ...(session.quote as SignedQuote),
+            razorpayOrderId,
+            expiresAt: Date.now() + 60_000
+          }),
+          razorpayOrderId,
+          razorpayPaymentId: session.paymentId,
+          razorpaySignature: recoverySignature
+        },
+        recoveryToken
+      );
+
+      await this.prisma.checkoutSession.update({
+        where: { razorpayOrderId },
+        data: { status: "COMPLETED", lastError: null }
+      });
+      this.logger.log(`Admin payment recovery completed: razorpayOrder=${razorpayOrderId} payment=${session.paymentId}`);
+      return result;
+    } catch (error) {
+      await this.prisma.checkoutSession.update({
+        where: { razorpayOrderId },
+        data: { status: "RECOVERY_FAILED", lastError: this.errorMessage(error) }
+      });
+      throw error;
+    }
+  }
+
   /** Seals a quote so the browser can hold it without being able to alter it. */
   private signQuote(quote: SignedQuote) {
     const body = Buffer.from(JSON.stringify(quote)).toString("base64url");

@@ -35,4 +35,10 @@ export class CommerceController {
   paymentReconciliation(@Query("search") search?: string, @Query("status") status?: string) {
     return this.commerceService.listPaymentReconciliation({ search, status });
   }
+
+  @Post("admin/payment-reconciliation/:razorpayOrderId/recover")
+  @UseGuards(AdminGuard)
+  recoverPayment(@Param("razorpayOrderId") razorpayOrderId: string) {
+    return this.commerceService.recoverPaymentSession(razorpayOrderId);
+  }
 }
