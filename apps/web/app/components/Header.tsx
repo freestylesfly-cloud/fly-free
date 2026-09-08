@@ -9,6 +9,7 @@ import { getApiBaseUrl } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { useCartStore } from '../stores/cartStore';
 import { Logo } from './Logo';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -760,7 +761,7 @@ function MegaMenu({
                       style={{ backgroundColor: 'var(--bg-tertiary)' }}
                     >
                       {item.imageUrl && (
-                        <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                        <img src={storageImage(item.imageUrl, IMAGE_WIDTH.thumb)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       )}
                     </span>
                     <span className="min-w-0">

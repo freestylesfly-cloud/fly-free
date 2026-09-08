@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatCurrency } from '../lib/utils';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
 import { trackEvent } from '../lib/analytics';
 import { useAuthStore } from '../stores/authStore';
@@ -227,9 +228,9 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
         <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
           {selectedImage ? (
             <>
-              <img src={selectedImage} alt={name} className="h-full w-full object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-0" />
+              <img src={storageImage(selectedImage, IMAGE_WIDTH.card)} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-0" />
               {selectedHoverImage && (
-                <img src={selectedHoverImage} alt={`${name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-700 group-hover:scale-105 group-hover:opacity-100" />
+                <img src={storageImage(selectedHoverImage, IMAGE_WIDTH.card)} alt={`${name} alternate view`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-700 group-hover:scale-105 group-hover:opacity-100" />
               )}
             </>
           ) : (
@@ -296,7 +297,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
                 style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
                 aria-label={`Show image ${index + 1}`}
               >
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <img src={storageImage(url, IMAGE_WIDTH.thumb)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>
@@ -467,7 +468,7 @@ function QuickAddPanel({
         <div className="px-4 py-4">
           <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-4">
             <div className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
-              {activeImage ? <img src={activeImage} alt={name} className="aspect-[4/5] h-full w-full object-cover" /> : <div className="flex aspect-[4/5] items-center justify-center"><Shirt size={36} /></div>}
+              {activeImage ? <img src={storageImage(activeImage, IMAGE_WIDTH.small)} alt={name} loading="lazy" decoding="async" className="aspect-[4/5] h-full w-full object-cover" /> : <div className="flex aspect-[4/5] items-center justify-center"><Shirt size={36} /></div>}
             </div>
             <div className="min-w-0">
               <p className="line-clamp-2 text-base font-black">{name}</p>
@@ -493,7 +494,7 @@ function QuickAddPanel({
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-clean">
               {imageList.slice(0, 6).map((url, index) => (
                 <button key={`${url}-${index}`} type="button" onClick={() => setSelectedImageIndex(index)} className="h-16 w-14 shrink-0 overflow-hidden rounded-xl border p-0.5 transition hover:shadow-sm" style={{ borderColor: selectedImageIndex === index ? 'var(--color-primary)' : 'var(--border-color)' }} aria-label={`View image ${index + 1}`}>
-                  <img src={url} alt="" className="h-full w-full rounded-lg object-cover" />
+                  <img src={storageImage(url, IMAGE_WIDTH.thumb)} alt="" loading="lazy" decoding="async" className="h-full w-full rounded-lg object-cover" />
                 </button>
               ))}
             </div>

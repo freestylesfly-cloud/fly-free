@@ -246,7 +246,7 @@ export default function HampersPage() {
                           <div className="flex items-center gap-3">
                             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]">
                               {hamper.imageUrl ? (
-                                <img src={hamper.imageUrl} alt={hamper.name} className="h-full w-full object-cover" />
+                                <img src={hamper.imageUrl} alt={hamper.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                               ) : (
                                 <Package size={22} className="text-black/35" />
                               )}

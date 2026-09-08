@@ -51,7 +51,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 {(product.images || []).map((image: any) => (
                   <div key={image.id} className="rounded border border-black/10 p-3">
                     <div className="aspect-square overflow-hidden rounded bg-paper">
-                      <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                      <img src={image.url} alt={image.alt || product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     </div>
                     <p className="mt-2 text-sm font-bold">{image.color || 'Default'}</p>
                   </div>

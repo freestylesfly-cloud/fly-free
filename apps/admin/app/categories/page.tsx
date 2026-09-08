@@ -152,7 +152,7 @@ export default function CategoriesPage() {
                       <div className="flex items-center gap-4">
                         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]">
                           {category.imageUrl ? (
-                            <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" />
+                            <img src={category.imageUrl} alt={category.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                           ) : (
                             <ImageIcon className="text-black/35" size={22} />
                           )}

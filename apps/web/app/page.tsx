@@ -9,6 +9,7 @@ import { InfluencerPromotionSection } from './components/InfluencerPromotionSect
 import { Rail } from './components/Rail';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
+import { IMAGE_WIDTH, storageImage } from './lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -266,8 +267,10 @@ export default async function HomePage() {
               >
                 {(theme.imageUrl || theme.bannerImageUrl) && (
                   <img
-                    src={theme.imageUrl || theme.bannerImageUrl}
+                    src={storageImage(theme.imageUrl || theme.bannerImageUrl, IMAGE_WIDTH.card)}
                     alt={theme.name}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 )}
@@ -319,8 +322,10 @@ export default async function HomePage() {
               >
                 {cover && (
                   <img
-                    src={cover}
+                    src={storageImage(cover, IMAGE_WIDTH.card)}
                     alt={hamper.name}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 )}
@@ -367,8 +372,9 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
             style={{ borderColor: 'var(--border-color)', backgroundColor: theme.primaryColor || 'var(--text-primary)' }}
           >
             <img
-              src={mediaUrl}
+              src={storageImage(mediaUrl, IMAGE_WIDTH.hero)}
               alt={theme.name}
+              decoding="async"
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-black/10 sm:bg-gradient-to-r sm:from-black/82 sm:via-black/32 sm:to-black/5" />
@@ -387,7 +393,7 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
                   {products.map((product) => (
                     <Link key={product.id} href={`/products/${product.slug}`} className="group overflow-hidden bg-white/95 text-black shadow-lg transition hover:shadow-xl">
                       <div className="aspect-[4/5] overflow-hidden bg-white">
-                        <img src={product.images?.[0]?.url} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                        <img src={storageImage(product.images?.[0]?.url, IMAGE_WIDTH.small)} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                       </div>
                       <div className="p-2.5 sm:p-3">
                         <p className="line-clamp-2 text-[11px] font-black uppercase leading-tight sm:text-xs">{product.name}</p>
@@ -455,7 +461,7 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
       <div className="grid lg:min-h-[620px] lg:grid-cols-[1.1fr_0.9fr]">
       {settings.homeAboutImageUrl && (
         <div className="relative aspect-[4/3] min-h-[280px] bg-black/20 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[620px]">
-          <img src={settings.homeAboutImageUrl} alt={settings.homeAboutTitle || 'About Fly Free'} className="absolute inset-0 h-full w-full object-contain" />
+          <img src={storageImage(settings.homeAboutImageUrl, IMAGE_WIDTH.card)} alt={settings.homeAboutTitle || 'About Fly Free'} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-contain" />
         </div>
       )}
       <div className="flex flex-col justify-center px-5 py-12 text-white sm:px-10 sm:py-16 lg:px-14 lg:py-20">

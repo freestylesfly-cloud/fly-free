@@ -11,6 +11,7 @@ import { useFetch } from '../hooks/useFetch';
 import { saveBlob } from '../lib/download';
 import { apiService } from '../services/api';
 import { Search, Plus, Eye, Printer, Download, AlertCircle } from 'lucide-react';
+import { ORDER_STATUSES, orderStatusLabel, orderStatusStyle, type OrderStatus } from '../lib/orderStatus';
 
 interface OrderItem {
   id: string;
@@ -25,7 +26,7 @@ interface Order {
   id: string;
   orderNumber: string;
   userId: string;
-  status: 'PLACED' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: OrderStatus;
   subtotal: number;
   tax: number;
   shippingCost: number;
@@ -36,14 +37,6 @@ interface Order {
   createdAt: string;
   updatedAt: string;
 }
-
-const statusColors: Record<string, { bg: string; text: string }> = {
-  PLACED: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  SHIPPED: { bg: 'bg-purple-100', text: 'text-purple-700' },
-  DELIVERED: { bg: 'bg-green-100', text: 'text-green-700' },
-  CANCELLED: { bg: 'bg-red-100', text: 'text-red-700' },
-};
 
 export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -167,7 +160,7 @@ export default function OrdersPage() {
       label: 'Status',
       sortable: true,
       render: (value: Order['status']) => (
-        <span className={`px-3 py-1 rounded-full text-sm font-bold ${statusColors[value].bg} ${statusColors[value].text}`}>
+        <span className={`px-3 py-1 rounded-full text-sm font-bold ${orderStatusStyle(value).bg} ${orderStatusStyle(value).text}`}>
           {value}
         </span>
       ),
@@ -240,11 +233,9 @@ export default function OrdersPage() {
               className="px-4 py-2 rounded-lg border border-black/10 focus:outline-none focus:border-coral bg-white"
             >
               <option value="all">All Status</option>
-              <option value="PLACED">Placed</option>
-              <option value="CONFIRMED">Confirmed</option>
-              <option value="SHIPPED">Shipped</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
+              {ORDER_STATUSES.map((status) => (
+                <option key={status} value={status}>{orderStatusLabel(status)}</option>
+              ))}
             </select>
           </div>
 
@@ -324,11 +315,9 @@ export default function OrdersPage() {
                       }}
                       className="mt-1 px-3 py-1 rounded-lg border border-black/10 focus:outline-none focus:border-coral bg-white font-bold"
                     >
-                      <option value="PLACED">Placed</option>
-                      <option value="CONFIRMED">Confirmed</option>
-                      <option value="SHIPPED">Shipped</option>
-                      <option value="DELIVERED">Delivered</option>
-                      <option value="CANCELLED">Cancelled</option>
+                      {ORDER_STATUSES.map((status) => (
+                        <option key={status} value={status}>{orderStatusLabel(status)}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

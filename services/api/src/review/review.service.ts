@@ -56,7 +56,14 @@ export class ReviewService {
 
       const { data, error } = await this.storage.storage
         .from(REVIEW_BUCKET)
-        .upload(objectPath, buffer, { contentType: mimeType, upsert: false });
+        .upload(objectPath, buffer, {
+          contentType: mimeType,
+          // Without this, Supabase serves the object as `no-cache`, so every page
+          // view re-downloads every image and is billed as cached egress. Paths are
+          // timestamped and never reused, so they are safe to cache indefinitely.
+          cacheControl: "31536000",
+          upsert: false
+        });
 
       if (error) {
         this.logger.error(`Review image upload failed: ${error.message}`);

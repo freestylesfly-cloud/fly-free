@@ -195,7 +195,7 @@ export default function ProductThemesPage() {
                       <div className="flex flex-1 items-center gap-4">
                         <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded border border-black/10 bg-black/[0.03]">
                           {theme.bannerImageUrl || theme.imageUrl ? (
-                            <img src={theme.bannerImageUrl || theme.imageUrl} alt={theme.name} className="h-full w-full object-cover" />
+                            <img src={theme.bannerImageUrl || theme.imageUrl} alt={theme.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                           ) : (
                             <ImageIcon className="text-black/35" size={22} />
                           )}

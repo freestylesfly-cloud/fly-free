@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, Check, ChevronDown, ListFilter, Search, Shirt, SlidersHorizontal, Star, X } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 import { ProductCard } from '../components/ProductCard';
 import { getApiBaseUrl } from '../lib/api';
 
@@ -618,8 +619,8 @@ function ProductListRow({ product }: { product: any }) {
       <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
         {product.images?.[0]?.url ? (
           <>
-            <img src={product.images[0].url} alt={product.name} className="h-full w-full object-cover" />
-            {product.images?.[1]?.url && <img src={product.images[1].url} alt={`${product.name} alternate view`} className="absolute inset-0 h-full w-full object-cover opacity-0 transition hover:opacity-100" />}
+            <img src={storageImage(product.images[0].url, IMAGE_WIDTH.small)} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            {product.images?.[1]?.url && <img src={storageImage(product.images[1].url, IMAGE_WIDTH.small)} alt={`${product.name} alternate view`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover opacity-0 transition hover:opacity-100" />}
           </>
         ) : (
           <Shirt size={42} style={{ color: 'var(--text-tertiary)' }} />

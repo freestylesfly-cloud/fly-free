@@ -9,6 +9,7 @@ import { MapPin, ShoppingBag, Plus, Loader2, Tag, Check, Truck, ShieldCheck, Rot
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { trackEvent } from '../lib/analytics';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -708,7 +709,7 @@ export default function CheckoutPage() {
                 <div key={`${item.productId}-${item.variantId || item.size}-${item.color}`} className="flex gap-3 text-sm">
                   <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
                     {item.image ? (
-                      <img src={item.image} alt={item.productName} className="h-full w-full object-cover" />
+                      <img src={storageImage(item.image, IMAGE_WIDTH.thumb)} alt={item.productName} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <ShoppingBag size={22} style={{ color: 'var(--text-tertiary)' }} />

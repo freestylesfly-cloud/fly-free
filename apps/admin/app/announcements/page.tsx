@@ -130,7 +130,7 @@ export default function AnnouncementsPage() {
                   {announcements.map((item: any) => (
                     <article key={item.id} className="overflow-hidden rounded border border-black/10 bg-white">
                       {item.imageUrl && (
-                        <img src={item.imageUrl} alt={item.title} className="h-28 w-full object-cover" />
+                        <img src={item.imageUrl} alt={item.title} loading="lazy" decoding="async" className="h-28 w-full object-cover" />
                       )}
                       <div className="space-y-3 p-4">
                         <div className="flex items-start justify-between gap-3">

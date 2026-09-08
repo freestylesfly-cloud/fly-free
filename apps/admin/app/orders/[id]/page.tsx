@@ -10,6 +10,7 @@ import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useFetch } from '../../hooks/useFetch';
 import { saveBlob } from '../../lib/download';
 import { apiService } from '../../services/api';
+import { ORDER_STATUSES } from '../../lib/orderStatus';
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -109,7 +110,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                       onChange={(event) => updateStatus(event.target.value)}
                       className="rounded border border-black/10 px-3 py-2 font-bold"
                     >
-                      {['PLACED', 'CONFIRMED', 'PACKED', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED'].map((status) => <option key={status}>{status}</option>)}
+                      {ORDER_STATUSES.map((status) => <option key={status}>{status}</option>)}
                     </select>
                   </div>
                   <div className="flex flex-wrap gap-2">

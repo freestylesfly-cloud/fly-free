@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -140,7 +141,7 @@ export default function WishlistPage() {
                   {unavailable ? (
                     <div className="relative block aspect-[4/5] bg-black/[0.04]">
                       {image?.url ? (
-                        <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover grayscale" />
+                        <img src={storageImage(image.url, IMAGE_WIDTH.small)} alt={image.alt || product.name} loading="lazy" decoding="async" className="h-full w-full object-cover grayscale" />
                       ) : null}
                       <div className="absolute inset-0 flex items-center justify-center bg-black/45">
                         <span className="rounded bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-black">
@@ -151,7 +152,7 @@ export default function WishlistPage() {
                   ) : (
                     <Link href={`/products/${product.slug}`} className="block aspect-[4/5] bg-black/[0.04]">
                       {image?.url ? (
-                        <img src={image.url} alt={image.alt || product.name} className="h-full w-full object-cover" />
+                        <img src={storageImage(image.url, IMAGE_WIDTH.small)} alt={image.alt || product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : null}
                     </Link>
                   )}

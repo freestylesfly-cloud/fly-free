@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Package, Star, Send } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { getApiBaseUrl } from '../../../lib/api';
+import { IMAGE_WIDTH, storageImage } from '../../../lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -333,7 +334,7 @@ export default function OrderReviewPage() {
             <div key={item.productId} className="rounded-lg border p-6" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
               <div className="mb-4 flex gap-4">
                 {item.productImage && (
-                  <img src={item.productImage} alt={item.name} className="h-24 w-24 rounded object-cover" />
+                  <img src={storageImage(item.productImage, IMAGE_WIDTH.thumb)} alt={item.name} loading="lazy" decoding="async" className="h-24 w-24 rounded object-cover" />
                 )}
                 <div className="flex-1">
                   <Link href={item.productSlug ? `/products/${item.productSlug}` : '#'} className="font-black text-lg hover:opacity-70" style={{ color: 'var(--text-primary)' }}>
@@ -436,8 +437,10 @@ export default function OrderReviewPage() {
                       {reviews[item.productId].imageUrls.map((url, idx) => (
                         <div key={idx} className="relative">
                           <img
-                            src={url}
+                            src={storageImage(url, IMAGE_WIDTH.thumb)}
                             alt={`Review image ${idx + 1}`}
+                            loading="lazy"
+                            decoding="async"
                             className="h-24 w-24 rounded object-cover"
                           />
                           <button

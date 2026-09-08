@@ -13,6 +13,7 @@ import {
   Users,
   Youtube,
 } from 'lucide-react';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 export type InfluencerCode = {
   id: string;
@@ -113,7 +114,7 @@ export function InfluencerCodeCard({
       >
         {influencer.imageUrl ? (
           <img
-            src={influencer.imageUrl}
+            src={storageImage(influencer.imageUrl, IMAGE_WIDTH.small)}
             alt={influencer.name}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
           />

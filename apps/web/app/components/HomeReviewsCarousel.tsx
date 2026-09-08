@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Star } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 interface Review {
   id: string;
@@ -89,7 +90,7 @@ export function HomeReviewsCarousel({ reviews }: { reviews: Review[] }) {
                   </p>
                   <span className="mt-3 block h-16 w-16 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5">
                     {image ? (
-                      <img src={image} alt={review.title || review.product?.name || 'Customer review'} className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
+                      <img src={storageImage(image, IMAGE_WIDTH.small)} alt={review.title || review.product?.name || 'Customer review'} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-lg font-black" style={{ color: 'var(--color-primary)' }}>
                         {(review.user?.name || 'F').charAt(0).toUpperCase()}

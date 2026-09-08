@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Shirt, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 interface ImageZoomGalleryProps {
   images: Array<{ url: string; alt?: string; type?: 'front' | 'back' | 'detail' }>;
@@ -61,7 +62,7 @@ export function ImageZoomGallery({ images, productName, className = '' }: ImageZ
         {currentImage?.url ? (
           <>
             <img
-              src={currentImage.url}
+              src={storageImage(currentImage.url, IMAGE_WIDTH.detail)}
               alt={currentImage.alt || productName}
               className="w-full h-full object-cover"
               style={{
@@ -130,7 +131,7 @@ export function ImageZoomGallery({ images, productName, className = '' }: ImageZ
               aria-label={`View image ${idx + 1}: ${image.alt || productName}`}
             >
               {image.url ? (
-                <img src={image.url} alt={image.alt || `${productName} view ${idx + 1}`} className="w-full h-full object-cover" />
+                <img src={storageImage(image.url, IMAGE_WIDTH.thumb)} alt={image.alt || `${productName} view ${idx + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Shirt size={16} opacity={0.5} />

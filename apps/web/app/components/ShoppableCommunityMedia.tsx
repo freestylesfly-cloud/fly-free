@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Image as ImageIcon, Play, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency } from '../lib/utils';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 export type CommunityProduct = {
   id: string;
@@ -182,7 +183,7 @@ export function ShoppableCommunityMedia({
                     {activePost.products.map((product) => (
                       <Link key={product.id} href={`/products/${product.slug}`} className="flex w-52 shrink-0 items-center gap-2 rounded-lg bg-white p-2 text-left text-black transition hover:-translate-y-0.5 hover:shadow-lg">
                         <span className="h-14 w-11 shrink-0 overflow-hidden rounded bg-black/5">
-                          {product.images?.[0]?.url && <img src={product.images[0].url} alt={product.name} className="h-full w-full object-cover" />}
+                          {product.images?.[0]?.url && <img src={storageImage(product.images[0].url, IMAGE_WIDTH.thumb)} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />}
                         </span>
                         <span className="min-w-0">
                           <span className="block line-clamp-2 text-xs font-black leading-tight">{product.name}</span>
@@ -220,5 +221,5 @@ function PostMedia({ post, preview = false, active = false }: { post: CommunityP
     );
   }
 
-  return <img src={post.imageUrl || ''} alt={post.caption} className="h-full w-full object-cover" />;
+  return <img src={storageImage(post.imageUrl, IMAGE_WIDTH.card)} alt={post.caption} loading="lazy" decoding="async" className="h-full w-full object-cover" />;
 }

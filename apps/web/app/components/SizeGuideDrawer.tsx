@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { getApiBaseUrl } from '../lib/api';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 interface SizeRow {
   id: string;
@@ -112,7 +113,7 @@ export default function SizeGuideDrawer({
 
             {chartImage && (
               <div className="overflow-hidden border bg-white" style={{ borderColor: 'var(--border-color)' }}>
-                <img src={chartImage} alt={`${fitLabel(activeFit)} size chart`} className="w-full object-contain" />
+                <img src={storageImage(chartImage, IMAGE_WIDTH.card)} alt={`${fitLabel(activeFit)} size chart`} loading="lazy" decoding="async" className="w-full object-contain" />
               </div>
             )}
 

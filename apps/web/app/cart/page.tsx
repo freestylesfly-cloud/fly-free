@@ -6,6 +6,7 @@ import { ArrowRight, BadgeCheck, Minus, Plus, ShieldCheck, ShoppingBag, Shopping
 import { formatCurrency } from '../lib/utils';
 import { CartItem, useCartStore } from '../stores/cartStore';
 import { getApiBaseUrl } from '../lib/api';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 function cartLineKey(item: CartItem) {
   return `${item.productId}-${item.variantId || 'variant'}-${item.size}-${item.color}-${item.hamperId || 'no-hamper'}-${item.offerCode || 'no-offer'}`;
@@ -114,7 +115,7 @@ export default function CartPage() {
               >
                 <Link href={productHref} className="aspect-square overflow-hidden rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }} aria-label={item.productSlug ? `Open ${item.productName}` : 'Open all products'}>
                   {item.image ? (
-                    <img src={item.image} alt={item.productName} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
+                    <img src={storageImage(item.image, IMAGE_WIDTH.thumb)} alt={item.productName} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 hover:scale-105" />
                   ) : (
                     <div className="flex h-full items-center justify-center" style={{ color: 'var(--text-secondary)' }}>
                       <CartIcon size={32} />

@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
 import { MEDIA } from "../../lib/design";
 import { ThemeProductGrid } from "./ThemeProductGrid";
+import { IMAGE_WIDTH, storageImage } from '../../lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -37,7 +38,7 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
         }}
       >
         {theme.bannerImageUrl && (
-          <img src={theme.bannerImageUrl} alt={theme.name} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={storageImage(theme.bannerImageUrl, IMAGE_WIDTH.hero)} alt={theme.name} decoding="async" className="absolute inset-0 h-full w-full object-cover" />
         )}
         <div
           className="absolute inset-x-0 top-0 h-2/3"

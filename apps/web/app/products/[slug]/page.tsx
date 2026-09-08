@@ -32,6 +32,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
 import { MEDIA } from '../../lib/design';
+import { IMAGE_WIDTH, storageImage } from '../../lib/image';
 import { SITE_URL } from '../../lib/site';
 import { ProductCard } from '../../components/ProductCard';
 import { trackEvent } from '../../lib/analytics';
@@ -411,7 +412,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     }}
                     aria-label={`View product image ${idx + 1}`}
                   >
-                    <img src={img.url} alt={img.alt || `${product.name} ${idx + 1}`} className="h-full w-full object-cover" />
+                    <img src={storageImage(img.url, IMAGE_WIDTH.thumb)} alt={img.alt || `${product.name} ${idx + 1}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     <span className="absolute bottom-1 right-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-black shadow-sm" style={{ color: 'var(--text-primary)' }}>
                       {idx + 1}
                     </span>
@@ -431,7 +432,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                   onClick={() => setShowZoom(true)}
                 >
                   <img
-                    src={activeImage.url}
+                    src={storageImage(activeImage.url, IMAGE_WIDTH.detail)}
                     alt={activeImage.alt || product.name}
                     className="h-full w-full object-cover"
                     draggable={false}
@@ -777,8 +778,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                       {review.mediaUrls.map((url: string, index: number) => (
                         <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                           <img
-                            src={url}
+                            src={storageImage(url, IMAGE_WIDTH.thumb)}
                             alt={`Review photo ${index + 1}`}
+                            loading="lazy"
+                            decoding="async"
                             className="h-20 w-20 rounded object-cover transition hover:opacity-80"
                             style={{ border: '1px solid var(--border-color)' }}
                           />
@@ -907,8 +910,10 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                 </>
               )}
               <img
-                src={activeImage.url}
+                src={storageImage(activeImage.url, IMAGE_WIDTH.detail)}
                 alt={activeImage.alt || product.name}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full rounded object-contain p-3 transition-transform duration-200 sm:p-6"
                 style={{
                   transform: `scale(${zoomScale})`,
@@ -929,7 +934,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
                     }}
                     aria-label={`View image ${index + 1}`}
                   >
-                    <img src={image.url} alt={image.alt || product.name} className="h-full w-full rounded-lg object-cover" />
+                    <img src={storageImage(image.url, IMAGE_WIDTH.thumb)} alt={image.alt || product.name} loading="lazy" decoding="async" className="h-full w-full rounded-lg object-cover" />
                   </button>
                 ))}
               </div>
@@ -1034,7 +1039,7 @@ function HamperOption({ active, onClick, hamper }: { active: boolean; onClick: (
     >
       <span className="overflow-hidden rounded border" style={{ aspectRatio: MEDIA.hamper.css, borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
         {image ? (
-          <img src={image} alt={hamper.name} className="h-full w-full object-cover" />
+          <img src={storageImage(image, IMAGE_WIDTH.thumb)} alt={hamper.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center" style={{ color: 'var(--color-primary)' }}>
             <PackageCheck size={24} />
@@ -1132,7 +1137,7 @@ function ProductTaggedMedia({ posts, product }: { posts: any[]; product: any }) 
           {first.videoUrl ? (
             <video src={first.videoUrl} poster={first.imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
           ) : (
-            <img src={first.imageUrl} alt={first.caption || product.name} className="h-full w-full object-cover" />
+            <img src={storageImage(first.imageUrl, IMAGE_WIDTH.small)} alt={first.caption || product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           )}
           <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
             <Play size={28} fill="currentColor" />
@@ -1175,14 +1180,14 @@ function ProductTaggedMedia({ posts, product }: { posts: any[]; product: any }) 
                   {posts[(activeIndex! - 1 + posts.length) % posts.length].videoUrl ? (
                     <video src={posts[(activeIndex! - 1 + posts.length) % posts.length].videoUrl} poster={posts[(activeIndex! - 1 + posts.length) % posts.length].imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
                   ) : (
-                    <img src={posts[(activeIndex! - 1 + posts.length) % posts.length].imageUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={storageImage(posts[(activeIndex! - 1 + posts.length) % posts.length].imageUrl, IMAGE_WIDTH.small)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   )}
                 </div>
                 <div className="pointer-events-none absolute right-[5%] hidden aspect-[9/16] w-[24%] max-w-[300px] rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block">
                   {posts[(activeIndex! + 1) % posts.length].videoUrl ? (
                     <video src={posts[(activeIndex! + 1) % posts.length].videoUrl} poster={posts[(activeIndex! + 1) % posts.length].imageUrl || undefined} className="h-full w-full object-cover" muted playsInline preload="metadata" />
                   ) : (
-                    <img src={posts[(activeIndex! + 1) % posts.length].imageUrl} alt="" className="h-full w-full object-cover" />
+                    <img src={storageImage(posts[(activeIndex! + 1) % posts.length].imageUrl, IMAGE_WIDTH.small)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   )}
                 </div>
               </>
@@ -1191,7 +1196,7 @@ function ProductTaggedMedia({ posts, product }: { posts: any[]; product: any }) 
               {active.videoUrl ? (
                 <video key={active.id} src={active.videoUrl} poster={active.imageUrl || undefined} className="h-full w-full object-cover" autoPlay controls playsInline preload="auto" />
               ) : (
-                <img src={active.imageUrl} alt={active.caption || product.name} className="h-full w-full object-cover" />
+                <img src={storageImage(active.imageUrl, IMAGE_WIDTH.card)} alt={active.caption || product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
               )}
             </div>
           </div>

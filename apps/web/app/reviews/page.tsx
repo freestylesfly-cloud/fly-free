@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getApiBaseUrl } from '../lib/api';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 const API_BASE = getApiBaseUrl();
 
@@ -91,7 +92,7 @@ function ReviewCard({ review, large }: { review: Review; large?: boolean }) {
     >
       {image && (
         <div className="mb-5 aspect-[4/3] overflow-hidden bg-black/5">
-          <img src={image} alt="" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <img src={storageImage(image, IMAGE_WIDTH.small)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
         </div>
       )}
       <Stars rating={review.rating || 5} />

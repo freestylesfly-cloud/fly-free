@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getApiBaseUrl } from '../lib/api';
 import { formatCurrency } from '../lib/utils';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 type Product = {
   id: string;
@@ -359,7 +360,7 @@ function MediaThumb({ src, name }: { src?: string; name: string }) {
   return (
     <span className="block aspect-[4/5] overflow-hidden rounded-md" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
       {src ? (
-        <img src={src} alt={name} className="h-full w-full object-cover" />
+        <img src={storageImage(src, IMAGE_WIDTH.thumb)} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
       ) : (
         <span className="flex h-full w-full items-center justify-center text-lg font-black" style={{ color: 'var(--color-primary)' }}>
           {name.charAt(0).toUpperCase()}

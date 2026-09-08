@@ -33,7 +33,9 @@ export async function uploadImage(
     const { data, error } = await client.storage
       .from(bucket)
       .upload(filePath, file, {
-        cacheControl: '3600',
+        // A year, not an hour: a short TTL makes browsers re-request every image
+        // on every page view, and each of those hits is billed as cached egress.
+        cacheControl: '31536000',
         upsert: false,
       });
 

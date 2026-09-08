@@ -8,6 +8,27 @@ const nextConfig: NextConfig = {
   experimental: {
     devtoolSegmentExplorer: false
   },
+  images: {
+    // Product imagery lives in Supabase Storage. Serving it straight to the
+    // browser meant every page view pulled full-size originals from Supabase and
+    // was billed as egress. Routing it through the Next optimizer instead means
+    // Supabase is read once per image, then Vercel's CDN serves every visitor.
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**"
+      }
+    ],
+    formats: ["image/webp"],
+    // Source paths embed a timestamp and are never reused, so an optimized
+    // variant stays valid forever. A replaced image gets a brand-new URL.
+    minimumCacheTTL: 31536000,
+    // The optimizer rejects any width not listed here, so these must stay in
+    // sync with the widths passed to storageImage() in app/lib/image.ts.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384]
+  },
   async rewrites() {
     return {
       beforeFiles: [

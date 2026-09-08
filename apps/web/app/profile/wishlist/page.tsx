@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Heart, Loader2, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { IMAGE_WIDTH, storageImage } from '../../lib/image';
 
 interface WishlistItem {
   id: string;
@@ -102,7 +103,7 @@ export default function WishlistPage() {
                 {unavailable ? (
                   <div className="relative block aspect-square bg-[#f0eee9]">
                     {item.product.images?.[0]?.url ? (
-                      <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover grayscale" />
+                      <img src={storageImage(item.product.images[0].url, IMAGE_WIDTH.small)} alt={item.product.name} loading="lazy" decoding="async" className="h-full w-full object-cover grayscale" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#888]">No image</div>
                     )}
@@ -115,7 +116,7 @@ export default function WishlistPage() {
                 ) : (
                   <Link href={`/products/${item.product.slug}`} className="block aspect-square bg-[#f0eee9]">
                     {item.product.images?.[0]?.url ? (
-                      <img src={item.product.images[0].url} alt={item.product.name} className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
+                      <img src={storageImage(item.product.images[0].url, IMAGE_WIDTH.small)} alt={item.product.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#888]">No image</div>
                     )}

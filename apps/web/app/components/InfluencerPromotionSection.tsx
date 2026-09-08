@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, AtSign, Facebook, Instagram, TicketPercent, Users, Youtube } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { Rail } from './Rail';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 interface PromotionProduct {
   id: string;
@@ -89,7 +90,7 @@ export function InfluencerPromotionSection({ influencers }: InfluencerPromotionS
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] lg:items-center">
                   <div className="flex min-w-0 items-center gap-4 sm:gap-5">
                     <div className="relative h-28 w-24 shrink-0 overflow-hidden rounded-md bg-black/10 shadow-lg sm:h-36 sm:w-32">
-                      {influencer.imageUrl ? <img src={influencer.imageUrl} alt={influencer.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-4xl font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{influencer.name.charAt(0).toUpperCase()}</div>}
+                      {influencer.imageUrl ? <img src={storageImage(influencer.imageUrl, IMAGE_WIDTH.small)} alt={influencer.name} loading="lazy" decoding="async" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-4xl font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{influencer.name.charAt(0).toUpperCase()}</div>}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-black uppercase" style={{ color: 'var(--color-primary)' }}>Featured creator</p>

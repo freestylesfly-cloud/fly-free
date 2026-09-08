@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MEDIA } from '../lib/design';
+import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 export interface HeroSlide {
   id: string;
@@ -75,7 +76,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             style={{ aspectRatio: HERO_ASPECT }}
           >
             {slide.image ? (
-              <img src={slide.image} alt={slide.title || ''} className="absolute inset-0 h-full w-full object-cover" />
+              <img src={storageImage(slide.image, IMAGE_WIDTH.hero)} alt={slide.title || ''} decoding="async" className="absolute inset-0 h-full w-full object-cover" />
             ) : (
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
             )}
