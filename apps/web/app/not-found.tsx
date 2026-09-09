@@ -16,7 +16,7 @@ interface Theme {
  */
 async function getThemes(): Promise<Theme[]> {
   try {
-    const response = await fetch(`${getApiBaseUrl()}/cms/themes`, { cache: 'no-store' });
+    const response = await fetch(`${getApiBaseUrl()}/cms/themes`);
     if (!response.ok) return [];
     const data = await response.json();
     return (Array.isArray(data) ? data : data?.data ?? []).slice(0, 6);

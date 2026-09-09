@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { InstagramService } from './instagram.service';
 import { AdminGuard } from '../auth/admin.guard';
+import { PublicCacheReadInterceptor } from '../cache/public-cache-read.interceptor';
 
 @ApiTags('📸 Instagram Feed')
 @Controller('instagram-posts')
@@ -9,6 +10,7 @@ export class InstagramController {
   constructor(private readonly instagramService: InstagramService) {}
 
   // Public: Get all Instagram posts
+  @UseInterceptors(PublicCacheReadInterceptor)
   @Get()
   async getAll(@Query('limit') limit?: string) {
     const posts = await this.instagramService.getAll();
@@ -22,6 +24,7 @@ export class InstagramController {
   }
 
   // Public: Get single Instagram post
+  @UseInterceptors(PublicCacheReadInterceptor)
   @Get(':id')
   async getById(@Param('id') id: string) {
     return await this.instagramService.getById(id);

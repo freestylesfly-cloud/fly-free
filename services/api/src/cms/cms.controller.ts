@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseInterceptors } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CmsService } from "./cms.service";
+import { PublicCacheReadInterceptor } from "../cache/public-cache-read.interceptor";
 
 @ApiTags("📰 CMS")
+@UseInterceptors(PublicCacheReadInterceptor)
 @Controller("cms")
 export class CmsController {
   constructor(private readonly cmsService: CmsService) {}

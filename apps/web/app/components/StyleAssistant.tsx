@@ -81,7 +81,7 @@ export function StyleAssistant() {
     let cancelled = false;
 
     async function loadProducts() {
-      const response = await fetch(`${API_BASE}/catalog/products`, { cache: 'no-store' }).catch(() => null);
+      const response = await fetch(`${API_BASE}/catalog/products`).catch(() => null);
       if (!response?.ok || cancelled) return;
       const payload = await response.json().catch(() => null);
       const items = Array.isArray(payload) ? payload : payload?.data || [];

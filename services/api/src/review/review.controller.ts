@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers, UseGuards, UseInterceptors } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { ReviewService } from "./review.service";
 import { AdminGuard } from "../auth/admin.guard";
+import { PublicCacheReadInterceptor } from "../cache/public-cache-read.interceptor";
 
 @Controller("reviews")
 export class ReviewController {
@@ -9,6 +10,7 @@ export class ReviewController {
 
   // Get reviews for a product (public)
   @ApiTags("⭐ Reviews")
+  @UseInterceptors(PublicCacheReadInterceptor)
   @Get("product/:productId")
   async getProductReviews(
     @Param("productId") productId: string,
@@ -19,6 +21,7 @@ export class ReviewController {
 
   // Get latest approved reviews across all products (public, for homepage)
   @ApiTags("⭐ Reviews")
+  @UseInterceptors(PublicCacheReadInterceptor)
   @Get("latest")
   async getLatestReviews(@Query("limit") limit?: string) {
     return await this.reviewService.getLatestReviews(parseInt(limit || "8"));

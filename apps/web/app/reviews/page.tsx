@@ -22,7 +22,7 @@ function unwrap<T>(payload: any): T[] {
 
 async function getReviews() {
   try {
-    const response = await fetch(`${API_BASE}/reviews/latest?limit=48`, { cache: 'no-store' });
+    const response = await fetch(`${API_BASE}/reviews/latest?limit=48`);
     if (!response.ok) return [];
     return unwrap<Review>(await response.json());
   } catch {

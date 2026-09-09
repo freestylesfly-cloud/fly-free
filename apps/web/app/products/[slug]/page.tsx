@@ -142,7 +142,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
         setRecommendations([]);
         setRecommendationsLoading(false);
 
-        const productResponse = await fetch(`${API_URL}/catalog/products/${slug}`, { cache: 'no-store' });
+        const productResponse = await fetch(`${API_URL}/catalog/products/${slug}`);
 
         if (!productResponse.ok) {
           throw new Error('This product could not be loaded right now.');

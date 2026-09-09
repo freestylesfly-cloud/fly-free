@@ -57,7 +57,7 @@ export function Footer() {
   });
 
   useEffect(() => {
-    fetch(`${getApiBaseUrl()}/cms/footer`, { cache: 'no-store' })
+    fetch(`${getApiBaseUrl()}/cms/footer`)
       .then((response) => (response.ok ? response.json() : null))
       .then((footer) => {
         const settings = footer?.settings || {};

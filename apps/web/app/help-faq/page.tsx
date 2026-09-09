@@ -21,8 +21,8 @@ export const dynamic = 'force-dynamic';
 async function getHelpData() {
   try {
     const [faqResponse, footerResponse] = await Promise.all([
-      fetch(`${API_BASE}/cms/faqs`, { cache: 'no-store' }),
-      fetch(`${API_BASE}/cms/footer`, { cache: 'no-store' }),
+      fetch(`${API_BASE}/cms/faqs`),
+      fetch(`${API_BASE}/cms/footer`),
     ]);
     return {
       faqs: faqResponse.ok ? await faqResponse.json() : [],

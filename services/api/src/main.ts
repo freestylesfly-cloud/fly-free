@@ -4,6 +4,7 @@ import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { PublicCacheInterceptor } from "./cache/public-cache.interceptor";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -96,6 +97,11 @@ async function bootstrap() {
   });
   app.setGlobalPrefix("api");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Any successful write can change what the storefront shows — an admin edit, but
+  // also an order that moves stock or a submitted review. Registered globally so a
+  // new write endpoint cannot forget to invalidate and leave the public cache stale.
+  app.useGlobalInterceptors(new PublicCacheInterceptor());
   const fastify = app.getHttpAdapter().getInstance();
   fastify.addHook("onRequest", (request: any, reply: any, done: any) => {
     const method = String(request.method || "").toUpperCase();

@@ -74,8 +74,10 @@ function ProductsBrowser() {
         }
 
         const [productsResponse, filtersResponse] = await Promise.all([
-          fetch(`${API_URL}/catalog/products?${params.toString()}`, { cache: 'no-store' }),
-          fetch(`${API_URL}/catalog/filters`, { cache: 'no-store' }),
+          // The API now sends Cache-Control on catalog reads; `no-store` here would
+          // tell the browser to ignore it and re-download the catalog every view.
+          fetch(`${API_URL}/catalog/products?${params.toString()}`),
+          fetch(`${API_URL}/catalog/filters`),
         ]);
 
         const productsData = await productsResponse.json();

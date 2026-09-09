@@ -51,11 +51,34 @@ export class CatalogService {
           { theme: { name: { contains: filters.q, mode: "insensitive" } } }
         ] : undefined
       },
-      include: {
-        category: true,
-        theme: true,
-        images: { orderBy: { priority: "asc" } },
-        variants: { include: { inventory: true } },
+      // Selected, not included: `include` shipped every column of every product
+      // plus whole category, theme, variant and inventory rows, and 68% of the
+      // resulting payload was fields the storefront never renders. The grid is
+      // the most-requested endpoint on the site, so that waste dominated the
+      // database's network transfer. Detail-only fields (material, washCare,
+      // brand, seo*, sku, tags) are served by getProduct instead.
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        price: true,
+        mrp: true,
+        discountPercent: true,
+        isFeatured: true,
+        isTrending: true,
+        isNewArrival: true,
+        videoUrl: true,
+        images: {
+          select: { id: true, url: true, alt: true, color: true, priority: true },
+          orderBy: { priority: "asc" }
+        },
+        category: { select: { name: true, slug: true } },
+        theme: { select: { name: true, slug: true } },
+        // `price` is required: quick-add prices from the variant when it has one.
+        variants: {
+          select: { id: true, size: true, color: true, price: true, inventory: { select: { stock: true } } }
+        },
         reviews: {
           where: { status: "APPROVED" },
           select: { rating: true }

@@ -126,9 +126,11 @@ function unwrap<T>(payload: any): T[] {
   return [];
 }
 
+// Every path this fetches is public, identical for all visitors, and cached by
+// the API with a matching Cache-Control, so let the browser reuse it.
 async function getJson(path: string) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
+    const response = await fetch(`${API_BASE}${path}`);
     return response.ok ? await response.json() : null;
   } catch {
     return null;
