@@ -115,8 +115,22 @@ export class AdminController {
 
   // ==================== USERS ====================
   @Get("users")
-  listUsers(@Query("page") page?: string, @Query("limit") limit?: string) {
-    return this.adminService.listUsers(page ? parseInt(page) : 1, limit ? parseInt(limit) : 10);
+  listUsers(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("sortBy") sortBy?: string,
+    @Query("sortOrder") sortOrder?: string,
+    @Query("verified") verified?: string
+  ) {
+    return this.adminService.listUsers(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+      search,
+      sortBy,
+      sortOrder === "asc" ? "asc" : "desc",
+      verified === "true" ? true : verified === "false" ? false : undefined
+    );
   }
 
   @Get("users/:id")

@@ -286,11 +286,20 @@ class ApiService {
   }
 
   // ============ USERS ============
-  async getUsers(params?: PaginationParams) {
+  /**
+   * Searching, sorting and paging all happen on the server. Sending only `page`
+   * and `limit` and filtering the result in the browser hides every customer past
+   * the first page, so pass the search term and sort through rather than trimming
+   * the list after it arrives.
+   */
+  async getUsers(params?: PaginationParams & { verified?: boolean }) {
     const query = new URLSearchParams();
     if (params?.page) query.append('page', params.page.toString());
     if (params?.limit) query.append('limit', params.limit.toString());
     if (params?.search) query.append('search', params.search);
+    if (params?.sortBy) query.append('sortBy', params.sortBy);
+    if (params?.sortOrder) query.append('sortOrder', params.sortOrder);
+    if (typeof params?.verified === 'boolean') query.append('verified', String(params.verified));
 
     const response: any = await this.request(`/api/admin/users?${query.toString()}`);
     const users = (response?.data ?? response ?? []).map((user: any) => ({
@@ -301,7 +310,7 @@ class ApiService {
       totalOrders: user.totalOrders ?? 0,
       totalSpent: user.totalSpent ?? 0,
       lastOrderDate: user.lastOrderDate ?? null,
-      isActive: user.isActive ?? true,
+      emailVerified: user.emailVerified ?? false,
       addresses: user.addresses ?? []
     }));
 

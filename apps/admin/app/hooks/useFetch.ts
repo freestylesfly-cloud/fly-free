@@ -9,6 +9,13 @@ interface UseFetchState<T> {
 interface UseFetchOptions {
   skip?: boolean;
   retries?: number;
+  /**
+   * Values that should trigger a refetch when they change, e.g. a page number or
+   * search term. `fetchFn` is held in a ref and is deliberately not a dependency,
+   * so without this the hook fetches once on mount and never again — which forces
+   * callers to download everything up front and filter on the client.
+   */
+  deps?: unknown[];
 }
 
 /**
@@ -60,6 +67,9 @@ export function useFetch<T>(
     }
   }, [maxRetries]);
 
+  // Serialised so a fresh array literal each render does not retrigger the fetch.
+  const depsKey = JSON.stringify(options?.deps ?? []);
+
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -72,7 +82,7 @@ export function useFetch<T>(
     return () => {
       isMountedRef.current = false;
     };
-  }, [options?.skip, performFetch]);
+  }, [options?.skip, performFetch, depsKey]);
 
   const refetch = useCallback(async () => {
     retryCountRef.current = 0;

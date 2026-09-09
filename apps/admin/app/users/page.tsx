@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
@@ -30,13 +30,14 @@ interface User {
   totalSpent: number;
   lastOrderDate: string | null;
   createdAt: string;
-  isActive: boolean;
+  emailVerified: boolean;
   addresses: Address[];
 }
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterActive, setFilterActive] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterVerified, setFilterVerified] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<keyof User>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -45,10 +46,30 @@ export default function UsersPage() {
 
   const itemsPerPage = 10;
 
-  // Fetch users using centralized API service
+  // Debounced so typing does not fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchTerm.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const verifiedFilter = filterVerified === 'all' ? undefined : filterVerified === 'verified';
+
+  // Search, sort and paging run in the database. Fetching a fixed slice and
+  // filtering it here would hide every customer outside that slice.
   const { data: usersData, loading, error, refetch } = useFetch<any>(
-    () => apiService.getUsers({ page: 1, limit: 100 }),
-    { skip: false }
+    () =>
+      apiService.getUsers({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchQuery || undefined,
+        sortBy,
+        sortOrder,
+        verified: verifiedFilter
+      }),
+    { skip: false, deps: [currentPage, searchQuery, sortBy, sortOrder, verifiedFilter] }
   );
 
   const users = ((usersData?.data || []) as Partial<User>[]).map((user, index) => ({
@@ -62,33 +83,13 @@ export default function UsersPage() {
     totalSpent: user.totalSpent ?? 0,
     lastOrderDate: user.lastOrderDate ?? null,
     createdAt: user.createdAt ?? new Date().toISOString(),
-    isActive: user.isActive ?? true,
+    emailVerified: user.emailVerified ?? false,
     addresses: user.addresses ?? []
   })) as User[];
 
-  const filteredUsers = users.filter(user => {
-    const query = searchTerm.toLowerCase();
-    const matchesSearch =
-      user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query);
-    const matchesActive = filterActive === 'all' || (filterActive === 'active' ? user.isActive : !user.isActive);
-    return matchesSearch && matchesActive;
-  });
-
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    const aVal = a[sortBy] ?? '';
-    const bVal = b[sortBy] ?? '';
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const paginatedUsers = sortedUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+  // Totals cover the whole filtered set, not just the page on screen.
+  const stats = usersData?.stats ?? { total: 0, verified: 0, revenue: 0 };
+  const totalPages = usersData?.pagination?.pages ?? 1;
 
   const columns: Column<User>[] = [
     {
@@ -135,13 +136,13 @@ export default function UsersPage() {
       ),
     },
     {
-      key: 'isActive',
-      label: 'Status',
+      key: 'emailVerified',
+      label: 'Email',
       render: (value) => (
         <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-          value ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+          value ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
         }`}>
-          {value ? 'Active' : 'Inactive'}
+          {value ? 'Verified' : 'Unverified'}
         </span>
       ),
     },
@@ -157,44 +158,41 @@ export default function UsersPage() {
               <Search className="absolute left-3 top-3 w-5 h-5 text-black/40" />
               <input
                 type="text"
-                placeholder="Search by name or email..."
+                placeholder="Search by name, email or phone..."
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full sm:w-96 pl-10 pr-4 py-2 rounded-lg border border-black/10 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/30"
               />
             </div>
 
             <select
-              value={filterActive}
+              value={filterVerified}
               onChange={(e) => {
-                setFilterActive(e.target.value);
+                setFilterVerified(e.target.value);
                 setCurrentPage(1);
               }}
               className="px-4 py-2 rounded-lg border border-black/10 focus:outline-none focus:border-coral bg-white"
             >
               <option value="all">All Users</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="verified">Email verified</option>
+              <option value="unverified">Not verified</option>
             </select>
           </div>
 
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-white border border-black/10 p-4">
-              <p className="text-black/60 text-sm">Total Users</p>
-              <p className="text-3xl font-black text-ink">{users.length}</p>
+              <p className="text-black/60 text-sm">{searchQuery || verifiedFilter !== undefined ? 'Matching Users' : 'Total Users'}</p>
+              <p className="text-3xl font-black text-ink">{stats.total.toLocaleString()}</p>
             </div>
             <div className="rounded-lg bg-white border border-black/10 p-4">
-              <p className="text-black/60 text-sm">Active Users</p>
-              <p className="text-3xl font-black text-coral">{users.filter(u => u.isActive).length}</p>
+              <p className="text-black/60 text-sm">Email Verified</p>
+              <p className="text-3xl font-black text-coral">{stats.verified.toLocaleString()}</p>
             </div>
             <div className="rounded-lg bg-white border border-black/10 p-4">
               <p className="text-black/60 text-sm">Total Revenue</p>
               <p className="text-3xl font-black text-mint">
-                ₹{users.reduce((sum, u) => sum + u.totalSpent, 0).toLocaleString()}
+                ₹{stats.revenue.toLocaleString()}
               </p>
             </div>
           </div>
@@ -202,7 +200,7 @@ export default function UsersPage() {
           {/* Table */}
           <DataTable<User>
             columns={columns}
-            data={paginatedUsers}
+            data={users}
             keyExtractor={(row) => row.id}
             loading={loading}
             sortBy={sortBy}
@@ -214,6 +212,7 @@ export default function UsersPage() {
                 setSortBy(key);
                 setSortOrder('desc');
               }
+              setCurrentPage(1);
             }}
             currentPage={currentPage}
             totalPages={totalPages}

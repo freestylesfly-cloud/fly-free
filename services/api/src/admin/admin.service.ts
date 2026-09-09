@@ -841,37 +841,110 @@ export class AdminService {
   }
 
   // ==================== USERS ====================
-  async listUsers(page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          image: true,
-          createdAt: true
-        },
-        orderBy: { createdAt: "desc" }
-      }),
-      this.prisma.user.count()
-    ]);
+  /**
+   * Columns the caller may sort by, mapped to SQL. Interpolating a caller-supplied
+   * column name straight into the query would be an injection hole, so anything
+   * not on this list falls back to newest-first.
+   */
+  private static readonly USER_SORT_COLUMNS: Record<string, string> = {
+    createdAt: 'u."createdAt"',
+    name: "u.name",
+    email: "u.email",
+    totalOrders: '"totalOrders"',
+    totalSpent: '"totalSpent"',
+    lastOrderDate: '"lastOrderDate"'
+  };
 
-    const usersWithOrders = await Promise.all(
-      users.map(async (u: any) => ({
-        ...u,
-        totalOrders: await this.prisma.order.count({ where: { userId: u.id } }),
-        totalSpent: (await this.prisma.order.aggregate({ where: { userId: u.id }, _sum: { total: true } }))._sum.total || 0,
-        lastOrderDate: (await this.prisma.order.findFirst({ where: { userId: u.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }))?.createdAt || null
-      }))
+  /**
+   * Search, sort and paginate customers.
+   *
+   * Done as one grouped query rather than per-user lookups: the previous version
+   * ran three extra queries for every row returned, so a page of 100 users cost
+   * 300 round trips. It also had no search at all, which meant the admin UI could
+   * only filter whatever rows it had already downloaded — customers past the first
+   * page were invisible and unfindable.
+   *
+   * `search` matches name, email or phone. Aggregate columns are sorted in SQL so
+   * ordering applies to the whole result set, not just the visible page.
+   */
+  async listUsers(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy = "createdAt",
+    sortOrder: "asc" | "desc" = "desc",
+    verified?: boolean
+  ) {
+    const take = Math.min(Math.max(Math.trunc(limit) || 10, 1), 200);
+    const currentPage = Math.max(Math.trunc(page) || 1, 1);
+    const offset = (currentPage - 1) * take;
+
+    const conditions: string[] = [];
+    const filters: unknown[] = [];
+
+    const term = search?.trim();
+    if (term) {
+      // Escape LIKE wildcards so a literal % or _ in the box matches itself.
+      const escaped = term.replace(/[\\%_]/g, (char) => "\\" + char);
+      filters.push(`%${escaped}%`);
+      const placeholder = `$${filters.length}`;
+      conditions.push(
+        `(u.name ILIKE ${placeholder} OR u.email ILIKE ${placeholder} OR u.phone ILIKE ${placeholder})`
+      );
+    }
+    if (typeof verified === "boolean") {
+      filters.push(verified);
+      conditions.push(`u."emailVerified" = $${filters.length}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const orderColumn =
+      AdminService.USER_SORT_COLUMNS[sortBy] ?? AdminService.USER_SORT_COLUMNS.createdAt;
+    const direction = sortOrder === "asc" ? "ASC" : "DESC";
+
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT u.id, u.name, u.email, u.phone, u.image, u."createdAt", u."emailVerified",
+              COUNT(o.id)::int AS "totalOrders",
+              COALESCE(SUM(o.total), 0)::bigint AS "totalSpent",
+              MAX(o."createdAt") AS "lastOrderDate"
+         FROM "User" u
+         LEFT JOIN "Order" o ON o."userId" = u.id
+         ${where}
+        GROUP BY u.id
+        ORDER BY ${orderColumn} ${direction} NULLS LAST, u.id DESC
+        LIMIT $${filters.length + 1} OFFSET $${filters.length + 2}`,
+      ...filters,
+      take,
+      offset
     );
 
+    // Totals describe the whole filtered set, so the summary cards stay correct
+    // while the table shows a single page.
+    const [totals] = await this.prisma.$queryRawUnsafe<any[]>(
+      `SELECT COUNT(DISTINCT u.id)::int AS total,
+              COUNT(DISTINCT u.id) FILTER (WHERE u."emailVerified")::int AS verified,
+              COALESCE(SUM(o.total), 0)::bigint AS revenue
+         FROM "User" u
+         LEFT JOIN "Order" o ON o."userId" = u.id
+         ${where}`,
+      ...filters
+    );
+
+    const total = Number(totals?.total ?? 0);
+
     return {
-      data: usersWithOrders,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+      data: rows.map((row) => ({
+        ...row,
+        // bigint does not survive JSON, and these are rupee totals well inside
+        // the safe integer range.
+        totalSpent: Number(row.totalSpent ?? 0)
+      })),
+      stats: {
+        total,
+        verified: Number(totals?.verified ?? 0),
+        revenue: Number(totals?.revenue ?? 0)
+      },
+      pagination: { page: currentPage, limit: take, total, pages: Math.max(Math.ceil(total / take), 1) }
     };
   }
 
