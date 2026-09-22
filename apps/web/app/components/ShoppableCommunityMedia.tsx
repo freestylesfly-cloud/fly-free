@@ -44,6 +44,8 @@ export function ShoppableCommunityMedia({
   const imagePosts = shownPosts.filter((post) => !post.videoUrl && post.imageUrl);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const activePost = activeIndex == null ? null : shownPosts[activeIndex];
+  const previousPost = activeIndex == null ? null : shownPosts[(activeIndex - 1 + shownPosts.length) % shownPosts.length];
+  const nextPost = activeIndex == null ? null : shownPosts[(activeIndex + 1) % shownPosts.length];
 
   useEffect(() => {
     if (activeIndex == null) return;
@@ -95,7 +97,7 @@ export function ShoppableCommunityMedia({
                 type="button"
                 data-community-item
                 onClick={() => openPost(post)}
-                className="group relative h-[420px] w-[72vw] max-w-[300px] shrink-0 snap-center overflow-hidden rounded-lg bg-black text-left shadow-lg transition hover:-translate-y-1 hover:shadow-2xl sm:h-[500px] sm:w-[280px]"
+                className={`group relative h-[420px] shrink-0 snap-center overflow-hidden rounded-lg bg-black text-left shadow-lg transition hover:-translate-y-1 hover:shadow-2xl sm:h-[500px] ${frameAspect(post)}`}
               >
                 <PostMedia post={post} preview />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/10" />
@@ -127,7 +129,7 @@ export function ShoppableCommunityMedia({
             <h3 className="text-lg font-black uppercase" style={{ color: 'var(--text-primary)' }}>Photo posts</h3>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {imagePosts.map((post) => (
-                <button key={post.id} type="button" onClick={() => openPost(post)} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-black shadow-sm">
+                <button key={post.id} type="button" onClick={() => openPost(post)} className="group relative aspect-[3/4] overflow-hidden rounded-lg bg-black shadow-sm">
                   <PostMedia post={post} preview />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/64 via-transparent to-transparent opacity-80" />
                   <p className="absolute inset-x-0 bottom-0 line-clamp-2 p-3 text-left text-sm font-black text-white">{post.caption}</p>
@@ -156,15 +158,25 @@ export function ShoppableCommunityMedia({
             <div className="relative flex w-full max-w-6xl items-center justify-center">
               {shownPosts.length > 1 && (
                 <>
-                  <div className="pointer-events-none absolute left-[5%] hidden aspect-[9/16] w-[24%] max-w-[300px] -rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block">
-                    <PostMedia post={shownPosts[(activeIndex! - 1 + shownPosts.length) % shownPosts.length]} preview />
+                  <div className={`pointer-events-none absolute left-[5%] hidden w-[24%] max-w-[300px] -rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block ${frameAspect(previousPost!)}`}>
+                    <PostMedia post={previousPost!} preview />
                   </div>
-                  <div className="pointer-events-none absolute right-[5%] hidden aspect-[9/16] w-[24%] max-w-[300px] rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block">
-                    <PostMedia post={shownPosts[(activeIndex! + 1) % shownPosts.length]} preview />
+                  <div className={`pointer-events-none absolute right-[5%] hidden w-[24%] max-w-[300px] rotate-6 overflow-hidden rounded-lg bg-black opacity-40 blur-[1px] lg:block ${frameAspect(nextPost!)}`}>
+                    <PostMedia post={nextPost!} preview />
                   </div>
                 </>
               )}
-              <div className="relative z-10 aspect-[9/16] max-h-[82svh] w-full max-w-[430px] overflow-hidden rounded-lg bg-black shadow-2xl ring-1 ring-white/15">
+              {/* Height is capped through max-width so the ratio always holds: a bare
+                  max-height would let a tall viewport shorten the box and object-cover
+                  would eat the bottom of the poster, where the URL and CTA sit. */}
+              <div
+                className="relative z-10 w-full overflow-hidden rounded-lg bg-black shadow-2xl ring-1 ring-white/15"
+                style={{
+                  aspectRatio: activePost.videoUrl ? '9 / 16' : '3 / 4',
+                  maxHeight: '82svh',
+                  maxWidth: activePost.videoUrl ? 'min(430px, calc(82svh * 9 / 16))' : 'min(560px, calc(82svh * 3 / 4))'
+                }}
+              >
                 <PostMedia post={activePost} active />
                 {activePost.videoUrl && (
                   <span className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-black uppercase text-black">
@@ -221,5 +233,25 @@ function PostMedia({ post, preview = false, active = false }: { post: CommunityP
     );
   }
 
-  return <img src={storageImage(post.imageUrl, IMAGE_WIDTH.card)} alt={post.caption} loading="lazy" decoding="async" className="h-full w-full object-cover" />;
+  // `contain` in the viewer: the frame is already 3:4 so an admin-cropped cover
+  // fills it edge to edge, and a pasted image of any other shape is letterboxed
+  // on the black backdrop rather than having its edges cut off.
+  return (
+    <img
+      src={storageImage(post.imageUrl, active ? IMAGE_WIDTH.detail : IMAGE_WIDTH.card)}
+      alt={post.caption}
+      loading="lazy"
+      decoding="async"
+      className={`h-full w-full ${active ? 'object-contain' : 'object-cover'}`}
+    />
+  );
+}
+
+/**
+ * The frame a post is shown in, matched to how its media was produced: reels are
+ * shot 9:16, and Admin → Instagram saves every cover image at 3:4. Framing both
+ * at one ratio is what was cropping the bottom off the image posts.
+ */
+function frameAspect(post: CommunityPost) {
+  return post.videoUrl ? 'aspect-[9/16]' : 'aspect-[3/4]';
 }

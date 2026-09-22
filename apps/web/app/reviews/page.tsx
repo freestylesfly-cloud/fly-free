@@ -30,6 +30,9 @@ async function getReviews() {
   }
 }
 
+/** Same reason as the homepage: without it this is frozen at the last deploy. */
+export const revalidate = 60;
+
 export default async function ReviewsPage() {
   const reviews = await getReviews();
   const average = reviews.length

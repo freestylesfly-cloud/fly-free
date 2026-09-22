@@ -341,7 +341,11 @@ export default function InstagramPage() {
                 <div className="grid max-h-[680px] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
                   {posts.map((post) => (
                     <div key={post.id} className="overflow-hidden rounded border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-                      <div className="relative aspect-[4/5] overflow-hidden bg-black/5">
+                      {/* Each medium in its own frame: videos are shot 9:16, cover
+                          images are saved 3:4 by the uploader above. A single shared
+                          ratio would crop one of them, and the admin preview has to
+                          show exactly what the storefront will. */}
+                      <div className={`relative overflow-hidden bg-black/5 ${post.videoUrl ? 'aspect-[9/16]' : 'aspect-[3/4]'}`}>
                         {post.videoUrl ? (
                           <>
                             <video src={post.videoUrl} poster={post.imageUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" controls />

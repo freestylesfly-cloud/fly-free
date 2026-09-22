@@ -13,6 +13,10 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "admin:set-password": "tsx prisma/set-admin-password.ts",
+    "db:copy:check": "node scripts/migrate-database.mjs",
+    "db:copy": "node scripts/migrate-database.mjs --apply",
+    "db:copy:resume": "node scripts/migrate-database.mjs --apply --resume",
+    "db:copy:verify": "node scripts/migrate-database.mjs --verify",
     "storage:cache-audit": "node scripts/fix-storage-cache-headers.mjs",
     "storage:cache-fix": "node scripts/fix-storage-cache-headers.mjs --apply",
     "db:studio": "prisma studio"

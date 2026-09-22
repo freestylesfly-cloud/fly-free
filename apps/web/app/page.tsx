@@ -169,6 +169,18 @@ const rupees = (paise: number) => Math.round((paise || 0) / 100);
  *  hints that the row scrolls, and fixed from `sm` up. */
 const PRODUCT_CARD = 'mo-slide w-[45vw] flex-shrink-0 sm:w-[230px]';
 
+/**
+ * Regenerate at most once a minute.
+ *
+ * Without this the route is prerendered once at build and Vercel serves that HTML
+ * until the next deploy — a homepage was still showing the Instagram feed, products
+ * and themes from a deploy thirteen days earlier, so nothing an admin added ever
+ * appeared. 60s matches PUBLIC_CACHE_SECONDS in the API's public cache: fetching
+ * any sooner would only re-read the same cached payload, and this keeps the CDN in
+ * front of Supabase, which is what the egress budget depends on.
+ */
+export const revalidate = 60;
+
 export default async function HomePage() {
   const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings } = await getHomeData();
 

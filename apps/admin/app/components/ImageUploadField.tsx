@@ -332,8 +332,15 @@ export function ImageUploadField({
               onPointerMove={onDrag}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
-              className="relative mx-auto max-h-[min(62svh,720px)] w-full cursor-grab touch-none select-none overflow-hidden rounded border border-black/10 bg-black active:cursor-grabbing"
-              style={{ aspectRatio: String(aspect) }}
+              className="relative mx-auto w-full cursor-grab touch-none select-none overflow-hidden rounded border border-black/10 bg-black active:cursor-grabbing"
+              style={{
+                aspectRatio: String(aspect),
+                // Cap the height by capping the width, never with max-height: the
+                // crop maths below derives frameHeight from frameWidth / aspect, so
+                // a box the browser had shortened would hide the bottom of the very
+                // region it is about to upload.
+                maxWidth: `calc(min(62svh, 720px) * ${aspect})`
+              }}
             >
               <img
                 ref={imageRef}
