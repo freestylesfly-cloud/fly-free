@@ -25,6 +25,13 @@ export class CommerceController {
     return this.commerceService.verifyCheckout(body, token);
   }
 
+  // The same job as checkout/verify for an order a prize voucher covers in
+  // full: there is no gateway payment to verify, only credit to spend.
+  @Post("checkout/voucher-complete")
+  completeVoucherCheckout(@Body() body: any, @Headers("authorization") token: string) {
+    return this.commerceService.completeVoucherCheckout(body, token);
+  }
+
   @Post("webhooks/razorpay")
   razorpayWebhook(@Body() body: any, @Headers("x-razorpay-signature") signature: string, @Req() request: any) {
     return this.commerceService.handleRazorpayWebhook(body, signature, request.rawBody);

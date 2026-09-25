@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const clearCart = useCartStore((state) => state.clearCart);
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
+  const logout = useAuthStore((state) => state.logout);
   const hydrated = useAuthStore((state) => state.hydrated);
 
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,16 @@ export default function CheckoutPage() {
   const [availableCodes, setAvailableCodes] = useState<any[]>([]);
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [pricePulse, setPricePulse] = useState(false);
+
+  // Prize voucher. Held apart from the coupon because it is store credit, not a
+  // discount: it pays the total after delivery, and only one of the two can be
+  // on an order at a time.
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+
+  // A stored profile keeps rendering after its token dies, so the page looks
+  // signed in while every authenticated call fails. When the API tells us the
+  // session is gone, say so and offer the one action that fixes it.
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const [addressForm, setAddressForm] = useState({
     fullName: '',
@@ -167,11 +178,44 @@ export default function CheckoutPage() {
     }
   }
 
+  /**
+   * Generated prize vouchers look like ABCDEF-GHJKLM. Used only to decide which
+   * lookup to try FIRST — never to rule a code out, because a code that fails
+   * this test is still tried as a voucher before the shopper is turned away.
+   */
+  const VOUCHER_CODE_SHAPE = /^[A-Z0-9]{6}-[A-Z0-9]{6}$/;
+
+  /**
+   * Looks a prize voucher up for this account.
+   *
+   * Returns true when one was applied, so the caller can stop before treating
+   * the same code as a coupon.
+   */
+  async function tryVoucher(codeToApply: string) {
+    const res = await fetch(`/api/ecommerce/voucher/${encodeURIComponent(codeToApply)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json().catch(() => null);
+    if (data?.expiredSession) setSessionExpired(true);
+    if (!res.ok || !data?.valid) return data?.message || '';
+
+    // A voucher and a coupon cannot share an order.
+    setAppliedCoupon(null);
+    setAppliedVoucher(data);
+    setCouponValid(true);
+    setCouponMessage(
+      data.usesLeft === 1
+        ? `✓ Prize voucher applied. Rs ${Number(data.balance).toLocaleString('en-IN')} available. This is your last use.`
+        : `✓ Prize voucher applied. Rs ${Number(data.balance).toLocaleString('en-IN')} available, ${data.usesLeft} uses left.`
+    );
+    return true;
+  }
+
   // Validate coupon
   async function validateCoupon(nextCode?: string) {
     const codeToApply = String(nextCode || couponCode).trim().toUpperCase();
     if (!codeToApply) {
-      setCouponMessage('Enter a coupon code');
+      setCouponMessage('Enter a coupon or voucher code');
       return;
     }
 
@@ -180,6 +224,43 @@ export default function CheckoutPage() {
     setCouponMessage('');
     setCouponValid(false);
     setAppliedCoupon(null);
+    setAppliedVoucher(null);
+
+    // Try the voucher table first for anything shaped like a voucher, so a winner
+    // is never told their prize is an invalid coupon.
+    let voucherMessage = '';
+    let voucherTried = false;
+    if (VOUCHER_CODE_SHAPE.test(codeToApply)) {
+      voucherTried = true;
+      try {
+        const outcome = await tryVoucher(codeToApply);
+        if (outcome === true) {
+          setCouponLoading(false);
+          return;
+        }
+        voucherMessage = String(outcome || '');
+      } catch {
+        voucherMessage = '';
+      }
+    }
+
+    /**
+     * Last resort before rejecting a code: check the voucher table even when the
+     * code did not look like one. The shape is a hint, not a rule — a voucher the
+     * pattern failed to recognise must not come back as "invalid coupon".
+     */
+    async function voucherFallback() {
+      if (voucherTried) return false;
+      voucherTried = true;
+      try {
+        const outcome = await tryVoucher(codeToApply);
+        if (outcome === true) return true;
+        voucherMessage = String(outcome || '');
+      } catch {
+        // Leave the coupon's own message to speak for itself.
+      }
+      return false;
+    }
 
     try {
       const cartProductIds = cartItems.map(item => item.productId);
@@ -198,12 +279,14 @@ export default function CheckoutPage() {
             setCouponMessage(`✓ Coupon applied! ${data.discountPercent}% off`);
           }
         } else {
-          setCouponMessage(`✕ ${data.message}`);
+          if (await voucherFallback()) return;
+          setCouponMessage(`✕ ${voucherMessage || data.message}`);
           setCouponValid(false);
         }
       } else {
         const err = await res.json();
-        setCouponMessage(`✕ ${err.message || 'Invalid coupon'}`);
+        if (await voucherFallback()) return;
+        setCouponMessage(`✕ ${voucherMessage || err.message || 'Invalid coupon'}`);
       }
     } catch (err) {
       setCouponMessage('✕ Error validating coupon');
@@ -224,7 +307,18 @@ export default function CheckoutPage() {
   const shipping = getShippingFee();
   const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal() - baseDiscount;
-  const couponFeedbackText = couponValid && appliedCoupon
+  // Voucher credit is spent against the finished total, delivery included, and
+  // never for more than the order is worth — the rest stays on the voucher.
+  const voucherApplied = appliedVoucher ? Math.min(Number(appliedVoucher.balance || 0), total) : 0;
+  const amountDue = Math.max(total - voucherApplied, 0);
+  const voucherRemaining = appliedVoucher ? Number(appliedVoucher.balance || 0) - voucherApplied : 0;
+  // On the final permitted use any leftover credit is gone for good, so the
+  // shopper is told before they pay rather than after.
+  const voucherLastUse = Boolean(appliedVoucher) && Number(appliedVoucher?.usesLeft || 0) <= 1;
+  const voucherForfeits = voucherLastUse && voucherRemaining > 0;
+  const couponFeedbackText = couponValid && appliedVoucher
+    ? `Prize voucher applied. Rs ${voucherApplied.toLocaleString('en-IN')} used on this order, Rs ${voucherRemaining.toLocaleString('en-IN')} left.`
+    : couponValid && appliedCoupon
     ? appliedCoupon.type === 'INFLUENCER'
       ? `${appliedCoupon.influencer?.name || 'Influencer'} code applied. Discount added to eligible products.`
       : `Coupon applied. ${appliedCoupon.discountPercent}% off.`
@@ -276,7 +370,8 @@ export default function CheckoutPage() {
           state: address.state,
           pincode: address.postalCode
         },
-        couponCode: appliedCoupon?.code || undefined
+        couponCode: appliedCoupon?.code || undefined,
+        voucherCode: appliedVoucher?.code || undefined
       };
 
       const checkoutAnalytics = {
@@ -288,6 +383,7 @@ export default function CheckoutPage() {
           subtotal,
           total,
           couponCode: appliedCoupon?.code || undefined,
+          voucherApplied,
           productIds: cartItems.map((item) => item.productId).join(',')
         }
       };
@@ -310,6 +406,14 @@ export default function CheckoutPage() {
 
       const order = await orderRes.json();
       const checkout = order.data || order;
+
+      // A prize voucher covering the whole order leaves nothing to charge, and
+      // Razorpay will not take a zero-amount payment. The server places the
+      // order directly instead.
+      if (checkout.mode === 'VOUCHER_FULL') {
+        await completeVoucherOrder(checkout);
+        return;
+      }
 
       if (typeof window === 'undefined' || !(window as any).Razorpay) {
         throw new Error('Payment library failed to load. Please refresh and try again.');
@@ -382,6 +486,56 @@ export default function CheckoutPage() {
    * The API creates the order here, after checking the payment signature, the
    * quote signature, and what Razorpay actually collected.
    */
+  /**
+   * Places an order a prize voucher pays for in full.
+   *
+   * Shares verifyPayment's retry and success handling; the only difference is
+   * that there is no gateway response to hand over, just the reference the
+   * server issued in place of a Razorpay order id.
+   */
+  async function completeVoucherOrder(checkout: any) {
+    try {
+      const body = JSON.stringify({
+        quoteToken: checkout.quoteToken,
+        reference: checkout.razorpayOrderId
+      });
+
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        res = await fetch(`/api/commerce/checkout/voucher-complete`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body
+        });
+        if (res.ok || res.status < 500) break;
+      }
+
+      if (!res) throw new Error('Order request was not sent');
+      const payload = await res.json().catch(() => null);
+
+      if (res.ok) {
+        const created = payload?.data || payload;
+        trackEvent('payment_success', {
+          orderId: created?.id,
+          metadata: { total: created?.total, orderNumber: created?.orderNumber, paidBy: 'voucher' }
+        });
+        clearCart();
+        window.location.href = `/order-success?orderId=${created?.id ?? ''}`;
+        return;
+      }
+
+      releaseCheckoutUi();
+      setError(payload?.message || payload?.error || 'We could not place your order. Please try again.');
+    } catch (err) {
+      releaseCheckoutUi();
+      setError('We could not place your order. Please try again.');
+      console.error('Voucher order error:', err);
+    }
+  }
+
   async function verifyPayment(response: any, quoteToken: string) {
     try {
       const verifyPayload = JSON.stringify({
@@ -609,7 +763,7 @@ export default function CheckoutPage() {
             <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', borderWidth: '1px' }}>
               <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Tag size={20} />
-                Have a coupon?
+                Have a coupon or prize voucher?
               </h2>
               {firstOrderOffer?.eligible && !couponValid && (
                 <div className="mb-3 rounded-lg border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
@@ -659,7 +813,7 @@ export default function CheckoutPage() {
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
-                  placeholder="Enter coupon code"
+                  placeholder="Enter coupon or voucher code"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   disabled={couponValid}
@@ -674,7 +828,7 @@ export default function CheckoutPage() {
                   {couponLoading ? <Loader2 size={16} className="inline animate-spin" /> : 'Apply'}
                 </button>
                 {couponValid && (
-                  <button onClick={() => { setAppliedCoupon(null); setCouponValid(false); setCouponCode(''); setCouponMessage('Coupon removed.'); toast('Coupon removed', { description: 'Your total has been updated.' }); }} className="px-4 py-2 border rounded-lg text-sm font-bold hover:opacity-80 transition" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+                  <button onClick={() => { const wasVoucher = Boolean(appliedVoucher); setAppliedCoupon(null); setAppliedVoucher(null); setCouponValid(false); setCouponCode(''); setCouponMessage(wasVoucher ? 'Voucher removed.' : 'Coupon removed.'); toast(wasVoucher ? 'Voucher removed' : 'Coupon removed', { description: 'Your total has been updated.' }); }} className="px-4 py-2 border rounded-lg text-sm font-bold hover:opacity-80 transition" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
                     Remove
                   </button>
                 )}
@@ -762,6 +916,34 @@ export default function CheckoutPage() {
                 <span style={{ color: 'var(--text-primary)' }}>Total</span>
                 <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(total)}</span>
               </div>
+              {/* Shown below the total rather than as a discount, because the
+                  voucher pays the total rather than reducing it. */}
+              {voucherApplied > 0 && (
+                <>
+                  <div className="flex justify-between text-sm font-black" style={{ color: '#15803d' }}>
+                    <span>Prize voucher</span>
+                    <span>-&#8377;{formatMoney(voucherApplied)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-black">
+                    <span style={{ color: 'var(--text-primary)' }}>{amountDue > 0 ? 'To pay now' : 'Nothing to pay'}</span>
+                    <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(amountDue)}</span>
+                  </div>
+                  {appliedVoucher.expiresAt && (
+                    <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      Valid until {new Date(appliedVoucher.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                    </p>
+                  )}
+                  <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                    Use {appliedVoucher.maxRedemptions - appliedVoucher.usesLeft + 1} of {appliedVoucher.maxRedemptions}
+                    {voucherLastUse ? ' — this is your last one.' : `. ₹${formatMoney(voucherRemaining)} stays on your voucher for next time.`}
+                  </p>
+                  {voucherForfeits && (
+                    <p className="rounded-lg px-3 py-2 text-xs font-black" style={{ color: '#92400e', backgroundColor: '#fffbeb' }}>
+                      Heads up: &#8377;{formatMoney(voucherRemaining)} will be left unused and cannot be carried over, because this is the last use your voucher allows. Add more to your order to use it all.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="mb-5 grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4" style={{ color: 'var(--text-secondary)' }}>
@@ -778,12 +960,14 @@ export default function CheckoutPage() {
               style={{ backgroundColor: 'var(--color-primary)' }}
             >
               {processing ? <Loader2 size={18} className="inline animate-spin mr-2" /> : ''}
-              {processing ? 'Processing...' : 'Proceed to Payment'}
+              {processing ? 'Processing...' : amountDue === 0 && voucherApplied > 0 ? 'Place Order' : 'Proceed to Payment'}
             </button>
 
             {processing && (
               <p className="mt-3 text-center text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                Opening Razorpay. Please do not close this screen.
+                {amountDue === 0 && voucherApplied > 0
+                  ? 'Placing your order. Please do not close this screen.'
+                  : 'Opening Razorpay. Please do not close this screen.'}
               </p>
             )}
 
@@ -844,6 +1028,64 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
+
+      {/* Signed-in-but-not-really. The only useful action is to sign in again,
+          so this offers exactly that rather than an error the shopper cannot act on. */}
+      <AnimatePresence>
+        {sessionExpired && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1200] grid place-items-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Session expired"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+              className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+              style={{ backgroundColor: 'var(--bg-secondary)' }}
+            >
+              <h3 className="text-xl font-black" style={{ color: 'var(--text-primary)' }}>
+                Your sign-in has expired
+              </h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                You are still shown as signed in, but the session is no longer valid — which is why your saved
+                addresses and your prize voucher are not loading. Sign in again and your cart will be waiting.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await logout();
+                    } finally {
+                      router.push('/auth/login?next=/checkout');
+                    }
+                  }}
+                  className="rounded-lg px-5 py-3 text-sm font-black text-white transition hover:opacity-90"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  Sign in again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionExpired(false)}
+                  className="rounded-lg border px-5 py-3 text-sm font-black transition hover:bg-black/5"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                >
+                  Not now
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

@@ -35,6 +35,12 @@ type AppSettings = {
   homeCommunityText: string;
   homeCommunityCtaLabel: string;
   homeCommunityCtaHref: string;
+  sponsorKicker: string;
+  sponsorTitle: string;
+  sponsorCtaLabel: string;
+  sponsorPrizeTitle: string;
+  sponsorPrizeNote: string;
+  sponsorWinnersTitle: string;
   /** Prefix for generated order numbers, e.g. FF -> FF-2026-000123 */
   orderPrefix: string;
   /** Rupees. Charged when the order total is below the free threshold. */
@@ -76,6 +82,12 @@ const emptySettings: AppSettings = {
   homeCommunityText: 'Bihu drop is live. Wear Northeast stories.',
   homeCommunityCtaLabel: 'Know more',
   homeCommunityCtaHref: '/about',
+  sponsorKicker: 'Proudly sponsoring',
+  sponsorTitle: 'Fly Free in the community',
+  sponsorCtaLabel: 'See details',
+  sponsorPrizeTitle: 'What we are giving',
+  sponsorPrizeNote: 'Each winner receives a private prize code, redeemable at checkout. Codes are sent directly to the winner and are never published here.',
+  sponsorWinnersTitle: 'Congratulations',
   orderPrefix: 'FF',
   deliveryFee: 60,
   freeDeliveryAbove: 1000,
@@ -189,6 +201,14 @@ export default function SettingsPage() {
                   <TextareaField label="Community Title" value={settings.homeCommunityTitle} onChange={(value) => update('homeCommunityTitle', value)} rows={2} />
                   <TextareaField label="Community Text" value={settings.homeCommunityText} onChange={(value) => update('homeCommunityText', value)} rows={4} />
                   <Field label="Know More Label" value={settings.homeCommunityCtaLabel} onChange={(value) => update('homeCommunityCtaLabel', value)} />
+
+                  <p className="pt-2 text-xs font-bold uppercase text-black/45">Sponsorships section</p>
+                  <Field label="Sponsor Kicker" value={settings.sponsorKicker} onChange={(value) => update('sponsorKicker', value)} />
+                  <Field label="Sponsor Section Title" value={settings.sponsorTitle} onChange={(value) => update('sponsorTitle', value)} />
+                  <Field label="Sponsor Button Label" value={settings.sponsorCtaLabel} onChange={(value) => update('sponsorCtaLabel', value)} />
+                  <Field label="Prize Panel Title" value={settings.sponsorPrizeTitle} onChange={(value) => update('sponsorPrizeTitle', value)} />
+                  <TextareaField label="Prize Panel Note" value={settings.sponsorPrizeNote} onChange={(value) => update('sponsorPrizeNote', value)} rows={3} />
+                  <Field label="Winners Heading" value={settings.sponsorWinnersTitle} onChange={(value) => update('sponsorWinnersTitle', value)} />
                 </div>
 
                 <ImageUploadField

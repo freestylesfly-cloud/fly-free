@@ -12,6 +12,7 @@ import { InstagramModule } from "./instagram/instagram.module";
 import { ReviewModule } from "./review/review.module";
 import { InfluencerModule } from "./influencer/influencer.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { SponsorshipModule } from "./sponsorship/sponsorship.module";
 
 @Module({
   imports: [
@@ -30,7 +31,8 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     InstagramModule,
     ReviewModule,
     InfluencerModule,
-    AnalyticsModule
+    AnalyticsModule,
+    SponsorshipModule
   ]
 })
 export class AppModule {}

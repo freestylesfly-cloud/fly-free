@@ -516,6 +516,64 @@ class ApiService {
   async updateCoupon(id: string, data: any) { return this.request(`/api/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }); }
   async deleteCoupon(id: string) { return this.request(`/api/admin/coupons/${id}`, { method: 'DELETE' }); }
 
+  // ============ SPONSORSHIPS ============
+  async getSponsorships() {
+    return this.request('/api/admin/sponsorships');
+  }
+
+  async getSponsorship(id: string) {
+    return this.request(`/api/admin/sponsorships/${id}`);
+  }
+
+  async createSponsorship(data: any) {
+    return this.request('/api/admin/sponsorships', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSponsorship(id: string, data: any) {
+    return this.request(`/api/admin/sponsorships/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSponsorship(id: string) {
+    return this.request(`/api/admin/sponsorships/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // The generated code comes back in this response and nowhere else afterwards,
+  // so the create screen is where the admin copies it from.
+  async createPrizeVoucher(sponsorshipId: string, data: any) {
+    return this.request(`/api/admin/sponsorships/${sponsorshipId}/vouchers`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePrizeVoucher(voucherId: string, data: any) {
+    return this.request(`/api/admin/sponsorships/vouchers/${voucherId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePrizeVoucher(voucherId: string) {
+    return this.request(`/api/admin/sponsorships/vouchers/${voucherId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adjustPrizeVoucher(voucherId: string, data: { amount: number; note?: string }) {
+    return this.request(`/api/admin/sponsorships/vouchers/${voucherId}/adjust`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ============ NOTIFICATIONS ============
   async getActivityLogs(params?: { level?: string; status?: string; search?: string; page?: number; limit?: number }) {
     const query = new URLSearchParams();

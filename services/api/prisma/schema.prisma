@@ -31,21 +31,23 @@ enum ReviewStatus {
 }
 
 model User {
-  id              String     @id @default(cuid())
-  name            String?
-  email           String?    @unique
-  phone           String?    @unique
-  passwordHash    String?
-  emailVerified   Boolean    @default(false)
-  emailVerifiedAt DateTime?
-  image           String?
-  addresses       Address[]
-  orders          Order[]
-  checkoutSessions CheckoutSession[]
-  wishlistItems   Wishlist[]
-  reviews         Review[]
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                 String              @id @default(cuid())
+  name               String?
+  email              String?             @unique
+  phone              String?             @unique
+  passwordHash       String?
+  emailVerified      Boolean             @default(false)
+  emailVerifiedAt    DateTime?
+  image              String?
+  addresses          Address[]
+  orders             Order[]
+  checkoutSessions   CheckoutSession[]
+  wishlistItems      Wishlist[]
+  reviews            Review[]
+  prizeVouchers      PrizeVoucher[]
+  voucherRedemptions VoucherRedemption[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model EmailVerification {
@@ -94,27 +96,27 @@ model Category {
 }
 
 model Theme {
-  id             String          @id @default(cuid())
-  name           String
-  slug           String          @unique
-  description    String?
-  story          String?
-  imageUrl       String?
-  bannerImageUrl String?
-  featureImageUrl String?
-  homepageFeatured Boolean       @default(false)
-  primaryColor   String          @default("#111827")
-  secondaryColor String          @default("#ff6b5b")
-  accentColor    String          @default("#4ecdc4")
-  fontFamily     String          @default("Inter, Arial, sans-serif")
-  animationStyle String          @default("fade")
-  priority       Int             @default(0)
-  active         Boolean         @default(false)
-  startsAt       DateTime?
-  endsAt         DateTime?
-  products       Product[]
-  announcements  Announcement[]
-  hampers        ProductHamper[]
+  id               String          @id @default(cuid())
+  name             String
+  slug             String          @unique
+  description      String?
+  story            String?
+  imageUrl         String?
+  bannerImageUrl   String?
+  featureImageUrl  String?
+  homepageFeatured Boolean         @default(false)
+  primaryColor     String          @default("#111827")
+  secondaryColor   String          @default("#ff6b5b")
+  accentColor      String          @default("#4ecdc4")
+  fontFamily       String          @default("Inter, Arial, sans-serif")
+  animationStyle   String          @default("fade")
+  priority         Int             @default(0)
+  active           Boolean         @default(false)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  products         Product[]
+  announcements    Announcement[]
+  hampers          ProductHamper[]
 }
 
 model Collection {
@@ -163,7 +165,7 @@ model Product {
   orderItems      OrderItem[]
   wishlistItems   Wishlist[]
   influencers     Influencer[]     @relation("InfluencerProducts")
-  instagramPosts   InstagramPost[]  @relation("InstagramPostProducts")
+  instagramPosts  InstagramPost[]  @relation("InstagramPostProducts")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 }
@@ -292,6 +294,7 @@ model Order {
   invoice             Invoice?
   statusHistory       OrderStatusHistory[]
   reviews             Review[]
+  voucherRedemptions  VoucherRedemption[]
   reviewRequestSentAt DateTime?
   reviewSubmittedAt   DateTime?
   createdAt           DateTime             @default(now())
@@ -310,18 +313,18 @@ model OrderStatusHistory {
 }
 
 model CheckoutSession {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  razorpayOrderId String   @unique
+  razorpayOrderId String    @unique
   amount          Int
   quote           Json
-  status          String   @default("OPEN")
+  status          String    @default("OPEN")
   lastError       String?
   paymentId       String?
   paidAt          DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
 
   @@index([userId, status])
   @@index([paymentId])
@@ -492,7 +495,7 @@ model Influencer {
   totalEarnings        Int        @default(0)
   totalReferrals       Int        @default(0)
   isActive             Boolean    @default(true)
-  homepageFeatured    Boolean    @default(false)
+  homepageFeatured     Boolean    @default(false)
   socialHandle         String?
   followers            Int?
   instagramFollowers   Int?
@@ -538,29 +541,29 @@ model Return {
 }
 
 model SizeGuide {
-    id            String   @id @default(cuid())
-    fitType       String   @unique @default("regular") // regular, oversized, polo
-    chartImageUrl String?
-    note          String?
-    priority      Int      @default(0)
-    active        Boolean  @default(true)
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @updatedAt
-  
-    @@index([fitType])
-    @@index([active])
-  }
+  id            String   @id @default(cuid())
+  fitType       String   @unique @default("regular") // regular, oversized, polo
+  chartImageUrl String?
+  note          String?
+  priority      Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([fitType])
+  @@index([active])
+}
 
 model InstagramPost {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   imageUrl      String?
   videoUrl      String?
   caption       String
   instagramLink String
-  displayOrder  Int      @default(0)
+  displayOrder  Int       @default(0)
   products      Product[] @relation("InstagramPostProducts")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([displayOrder])
 }
@@ -613,4 +616,120 @@ model AnalyticsEvent {
   @@index([userId])
   @@index([state])
   @@index([pincodePrefix])
+}
+
+/// A partner event Fly Free sponsors — the Dibrugarh Korean Club collaboration
+/// is the first. The storefront banner runs from the moment this is created;
+/// the winners and their vouchers arrive after the event.
+///
+/// Visibility mirrors Announcement (isActive + priority + a startsAt/endsAt
+/// window) so the same "live right now" query serves both.
+model Sponsorship {
+  id             String         @id @default(cuid())
+  partnerName    String
+  /// Social handle as displayed, e.g. "@dibrugarhkorean.club".
+  partnerHandle  String?
+  partnerUrl     String?
+  eventName      String
+  eventDate      DateTime?
+  location       String?
+  /// Banner copy. Falls back to the partner and event names when blank.
+  headline       String?
+  blurb          String?
+  bannerImageUrl String?
+  partnerLogoUrl String?
+  isActive       Boolean        @default(false)
+  priority       Int            @default(0)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  /// Winners stay hidden until the event concludes and this is switched on.
+  /// Even then only name and position are published — never phone or code.
+  showWinners    Boolean        @default(false)
+  /// When the winners list stops being published, while the banner itself stays.
+  /// Set on reveal so an old result retires by itself instead of sitting on the
+  /// homepage for years waiting for someone to remember to switch it off.
+  winnersUntil   DateTime?
+  vouchers       PrizeVoucher[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  /// Serves the storefront's "live right now" lookup: the isActive equality
+  /// first, then the date window, then the sort. Nothing here is ever deleted,
+  /// so this query must stay index-only as the table grows.
+  @@index([isActive, startsAt, endsAt, priority])
+  @@index([isActive, priority])
+}
+
+/// A prize voucher handed to one event winner: store credit with a rupee
+/// balance, spendable over `maxRedemptions` orders until it runs out.
+///
+/// Amounts are WHOLE RUPEES, matching Order.total and every other figure
+/// downstream of priceCheckout. The catalog stores paise; this does not.
+model PrizeVoucher {
+  id              String              @id @default(cuid())
+  sponsorshipId   String
+  /// Secret. Shared with the winner privately and never served by a public
+  /// endpoint — the storefront banner selects columns explicitly to keep it out.
+  code            String              @unique
+  winnerName      String
+  winnerPhone     String?
+  /// 1 = first place. Orders the published winners list.
+  position        Int?
+  /// Rupees the voucher was issued for. Never changes; `balance` is what moves.
+  value           Int
+  balance         Int
+  maxRedemptions  Int                 @default(2)
+  redemptionsUsed Int                 @default(0)
+  expiresAt       DateTime?
+  isActive        Boolean             @default(true)
+  /// Whether the code belongs to one person. On by default: a prize is awarded
+  /// to a named winner. Turn it off for a code meant to be shared publicly, and
+  /// `maxRedemptions` becomes a pool everyone draws from rather than one
+  /// person's allowance.
+  lockToFirstUser Boolean             @default(true)
+  /// Winner's photo for the public card. Optional — the card falls back to
+  /// their initial.
+  winnerImageUrl  String?
+  /// Recorded on first redemption whatever the lock setting, because knowing who
+  /// spent first is useful either way. Only enforced when lockToFirstUser is on.
+  claimedByUserId String?
+  sponsorship     Sponsorship         @relation(fields: [sponsorshipId], references: [id], onDelete: Cascade)
+  claimedBy       User?               @relation(fields: [claimedByUserId], references: [id])
+  redemptions     VoucherRedemption[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([sponsorshipId])
+  @@index([claimedByUserId])
+}
+
+/// Every movement of voucher credit, and the reason for it.
+///
+/// PrizeVoucher.balance/redemptionsUsed are a denormalised running total for
+/// fast reads; this table is the truth an admin can audit. A REDEEM row is
+/// written inside the same transaction that creates the order, so a replayed
+/// payment cannot spend the balance twice.
+model VoucherRedemption {
+  id           String       @id @default(cuid())
+  voucherId    String
+  /// Null only for an admin ADJUSTMENT, which belongs to no order.
+  orderId      String?
+  userId       String?
+  /// Rupees moved. Positive on REDEEM, negative on REVERSAL.
+  amount       Int
+  balanceAfter Int
+  /// REDEEM | REVERSAL | ADJUSTMENT
+  kind         String       @default("REDEEM")
+  note         String?
+  voucher      PrizeVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  order        Order?       @relation(fields: [orderId], references: [id])
+  /// The customer who spent the credit. Null on an admin adjustment.
+  user         User?        @relation(fields: [userId], references: [id])
+  createdAt    DateTime     @default(now())
+
+  /// Makes a replayed webhook or a repeated cancellation a no-op rather than a
+  /// second movement of the same credit.
+  @@unique([voucherId, orderId, kind])
+  @@index([voucherId])
+  @@index([orderId])
 }

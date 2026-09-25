@@ -535,6 +535,61 @@ export class AdminService {
     };
   }
 
+  /**
+   * Returns prize-voucher credit spent on an order that was cancelled or refunded.
+   *
+   * The winner gets both the rupees and the redemption slot back, which is how a
+   * gift card is normally expected to behave. Idempotent by construction: the
+   * REVERSAL row collides on the (voucherId, orderId, kind) unique index, so
+   * flipping an order between CANCELLED and REFUNDED cannot pay the credit twice.
+   */
+  private async restoreVoucherCredit(orderId: string, status: string) {
+    const redemptions = await this.prisma.voucherRedemption.findMany({
+      where: { orderId, kind: "REDEEM" },
+      include: { voucher: { select: { id: true, code: true, balance: true } } }
+    });
+
+    for (const redemption of redemptions) {
+      // REDEEM rows carry a negative amount (the balance went down), so the
+      // rupees to hand back are its magnitude.
+      const refund = Math.abs(redemption.amount);
+
+      try {
+        await this.prisma.$transaction(async (tx: any) => {
+          // Written first: if the credit was already returned this throws on the
+          // unique index and the balance is left alone.
+          await tx.voucherRedemption.create({
+            data: {
+              voucherId: redemption.voucherId,
+              orderId,
+              userId: redemption.userId,
+              amount: refund,
+              balanceAfter: redemption.voucher.balance + refund,
+              kind: "REVERSAL",
+              note: `Order ${status.toLowerCase()}`
+            }
+          });
+
+          await tx.prizeVoucher.update({
+            where: { id: redemption.voucherId },
+            data: {
+              balance: { increment: refund },
+              redemptionsUsed: { decrement: 1 }
+            }
+          });
+        });
+
+        this.logger.log(
+          `Returned Rs ${refund} to voucher ${redemption.voucher.code} after order ${orderId} was ${status.toLowerCase()}`
+        );
+      } catch (error: any) {
+        if (error?.code === "P2002") continue; // already returned
+        this.logger.error(`Failed to return voucher credit for order ${orderId}:`, error);
+        throw error;
+      }
+    }
+  }
+
   async updateOrderStatus(id: string, status: string, note?: string, changedBy = "admin") {
     const validStatuses = ["PLACED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
     const normalizedStatus = status.toUpperCase();
@@ -567,6 +622,12 @@ export class AdminService {
           statusHistory: true
         }
       });
+
+      // Give prize-voucher credit back when the order is called off. Done before
+      // the status history so a failure here is visible rather than silent.
+      if (normalizedStatus === "CANCELLED" || normalizedStatus === "REFUNDED") {
+        await this.restoreVoucherCredit(id, normalizedStatus);
+      }
 
       // Create status history (non-critical)
       try {

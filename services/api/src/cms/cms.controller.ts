@@ -19,6 +19,18 @@ export class CmsController {
     return this.cmsService.getFooter();
   }
 
+  /** Partner event sponsorships shown on the homepage. Never carries voucher codes. */
+  @Get("sponsorships")
+  getSponsorships() {
+    return this.cmsService.getActiveSponsorships();
+  }
+
+  /** One sponsorship's public details page. */
+  @Get("sponsorships/:id")
+  getSponsorship(@Param("id") id: string) {
+    return this.cmsService.getPublicSponsorship(id);
+  }
+
   @Get("settings/logo")
   getSettingsLogo() {
     return this.cmsService.getSettingsLogo();

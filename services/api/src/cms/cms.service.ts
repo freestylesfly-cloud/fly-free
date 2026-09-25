@@ -1,11 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { SponsorshipService } from "../sponsorship/sponsorship.service";
 
 @Injectable()
 export class CmsService {
   private readonly logger = new Logger(CmsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sponsorshipService: SponsorshipService
+  ) {}
 
   async getHomePage() {
     const [collections, categories, themes, announcements, influencers, reviews, settings] = await Promise.all([
@@ -89,6 +93,22 @@ export class CmsService {
       include: { theme: true },
       orderBy: [{ priority: "asc" }, { createdAt: "desc" }]
     });
+  }
+
+  /**
+   * Sponsorships for the storefront banner.
+   *
+   * Delegates to SponsorshipService, which selects columns explicitly so that a
+   * voucher code or a winner's phone number cannot reach this public, cached
+   * response — the interceptor on this controller keeps it for 60s and serves it
+   * to every visitor alike.
+   */
+  getActiveSponsorships() {
+    return this.sponsorshipService.getActiveSponsorships();
+  }
+
+  getPublicSponsorship(id: string) {
+    return this.sponsorshipService.getPublicSponsorship(id);
   }
 
   async getSettingsLogo() {

@@ -64,7 +64,9 @@ export const MEDIA = {
   themeCard: { ratio: 16 / 9, css: '16 / 9', export: '800 × 450' },
   /** Product photos and hampers share one frame so galleries never jump. */
   product: { ratio: 4 / 5, css: '4 / 5', export: '1200 × 1500' },
-  hamper: { ratio: 4 / 5, css: '4 / 5', export: '1200 × 1500' }
+  hamper: { ratio: 4 / 5, css: '4 / 5', export: '1200 × 1500' },
+  /** Partner sponsorship banner. Matches the crop in Admin → Sponsorships. */
+  sponsorBanner: { ratio: 16 / 9, css: '16 / 9', export: '1600 × 900' }
 } as const;
 
 /**

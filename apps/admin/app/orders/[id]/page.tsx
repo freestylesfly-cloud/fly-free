@@ -150,7 +150,17 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   <Info label="Provider" value={order.payment?.provider || 'RAZORPAY'} />
                   <Info label="Status" value={order.payment?.status || 'PENDING'} />
                   <Info label="Razorpay ID" value={order.payment?.providerPaymentId || 'Pending'} />
-                  <Info label="Amount" value={`Rs ${Number(order.payment?.amount || order.total || 0).toLocaleString('en-IN')}`} />
+                  {/* A prize voucher pays part or all of the order, so the cash
+                      captured is less than the order total. Show both rather than
+                      one number that looks like an underpayment. */}
+                  <Info label="Paid by card/UPI" value={`Rs ${Number(order.payment?.amount ?? order.total ?? 0).toLocaleString('en-IN')}`} />
+                  {Number(order.payment?.rawPayload?.voucherApplied || 0) > 0 && (
+                    <Info
+                      label="Paid by voucher"
+                      value={`Rs ${Number(order.payment.rawPayload.voucherApplied).toLocaleString('en-IN')} (${order.payment.rawPayload.voucherCode})`}
+                    />
+                  )}
+                  <Info label="Order total" value={`Rs ${Number(order.total || 0).toLocaleString('en-IN')}`} />
                   <Info label="Paid at" value={order.payment?.paidAt ? new Date(order.payment.paidAt).toLocaleString() : 'Not paid yet'} />
                 </section>
 

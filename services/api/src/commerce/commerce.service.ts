@@ -46,6 +46,26 @@ type CheckoutQuote = {
     commissionRate: number;
     linkKey: string | null;
   } | null;
+  /**
+   * Prize-voucher credit spent on this order.
+   *
+   * A voucher is tender, not a discount: it is applied to `total` after
+   * shipping rather than to `subtotal` before it. That keeps `total` the real
+   * order value for invoices and reporting, stops a big voucher from pushing
+   * the order under the free-delivery threshold, and leaves any credit beyond
+   * the cart value on the voucher instead of burning it.
+   */
+  voucher: {
+    id: string;
+    code: string;
+    /** Rupees of credit this order consumes. */
+    applied: number;
+    balanceBefore: number;
+    /** Sealed into the quote so verification can guard the burn on it. */
+    maxRedemptions: number;
+  } | null;
+  /** What the gateway charges: `total` minus any voucher credit. */
+  amountDue: number;
 };
 
 /** A quote bound to one customer and one Razorpay order, with an expiry. */
@@ -98,45 +118,221 @@ export class CommerceService {
 
     await this.assertStockAvailable(quote);
 
-    const razorpayOrder = await this.createRazorpayOrder(userId, quote.total);
+    // A voucher that covers the order leaves nothing for the gateway to charge,
+    // and Razorpay rejects a zero-amount order. Such a checkout is finished by
+    // completeVoucherCheckout instead. The reference stands in for a Razorpay
+    // order id throughout — in the signed quote, in the CheckoutSession row, and
+    // as the payment id — so both paths share one set of replay defences.
+    const isVoucherOnly = quote.amountDue <= 0;
+    const paymentReference = isVoucherOnly
+      ? `vch_${crypto.randomUUID().replace(/-/g, "")}`
+      : (await this.createRazorpayOrder(userId, quote.amountDue)).id;
+
+    const signedQuote: SignedQuote = {
+      ...quote,
+      userId,
+      razorpayOrderId: paymentReference,
+      expiresAt: Date.now() + QUOTE_TTL_MINUTES * 60_000
+    };
 
     try {
       await this.prisma.checkoutSession.create({
         data: {
           userId,
-          razorpayOrderId: razorpayOrder.id,
-          amount: Math.round(quote.total),
-          quote: {
-            ...quote,
-            userId,
-            razorpayOrderId: razorpayOrder.id,
-            expiresAt: Date.now() + QUOTE_TTL_MINUTES * 60_000
-          }
+          razorpayOrderId: paymentReference,
+          amount: Math.round(quote.amountDue),
+          quote: signedQuote
         }
       });
     } catch (error) {
-      this.logger.error(`Checkout session persistence failed for user ${userId}, Razorpay order ${razorpayOrder.id}: ${this.errorMessage(error)}`);
+      this.logger.error(`Checkout session persistence failed for user ${userId}, payment reference ${paymentReference}: ${this.errorMessage(error)}`);
       throw new BadRequestException("We could not start payment safely. Please try again.");
     }
 
-    this.logger.log(`Checkout started: user=${userId} razorpayOrder=${razorpayOrder.id} amount=${quote.total} items=${this.describeItems(quote)}`);
+    this.logger.log(
+      `Checkout started: user=${userId} ref=${paymentReference} total=${quote.total} voucher=${quote.voucher?.applied ?? 0} due=${quote.amountDue} items=${this.describeItems(quote)}`
+    );
 
     return {
       success: true,
       data: {
-        razorpayOrderId: razorpayOrder.id,
-        quoteToken: this.signQuote({
-          ...quote,
-          userId,
-          razorpayOrderId: razorpayOrder.id,
-          expiresAt: Date.now() + QUOTE_TTL_MINUTES * 60_000
-        }),
+        mode: isVoucherOnly ? "VOUCHER_FULL" : "RAZORPAY",
+        razorpayOrderId: paymentReference,
+        quoteToken: this.signQuote(signedQuote),
         // Served from the API so the browser can never use a mismatched key.
-        razorpayKeyId: this.getRazorpayCredentials().keyId,
-        amount: quote.total,
+        razorpayKeyId: isVoucherOnly ? null : this.getRazorpayCredentials().keyId,
+        amount: quote.amountDue,
+        total: quote.total,
+        voucherApplied: quote.voucher?.applied ?? 0,
         currency: "INR"
       }
     };
+  }
+
+  /**
+   * Places an order a prize voucher pays for in full, with no gateway involved.
+   *
+   * Mirrors {@link verifyCheckout}'s guarantees without a payment to verify: the
+   * quote is the same signed token, the order and the voucher burn happen in one
+   * transaction, and the reference is written to the unique `providerPaymentId`
+   * column so a double-submit returns the first order rather than making a second.
+   */
+  async completeVoucherCheckout(body: any, token?: string) {
+    const userId = this.extractUserId(token);
+    const reference = String(body?.reference || "");
+
+    const existing = await this.findOrderByPaymentId(reference, userId);
+    if (existing) return { success: true, data: existing };
+
+    const quote = this.readQuote(body?.quoteToken, userId, reference);
+
+    if (!quote.voucher || quote.amountDue > 0) {
+      throw new BadRequestException("This order still has an amount to pay. Please complete payment from your cart.");
+    }
+
+    // Held in a local so the narrowing survives into the transaction closure.
+    const voucher = quote.voucher;
+
+    await this.assertStockAvailable(quote);
+
+    const order = await this.withOrderNumberRetry((orderNumber) =>
+      this.prisma.$transaction(
+        async (tx: any) => {
+          const created = await tx.order.create({
+            data: {
+              orderNumber,
+              user: { connect: { id: userId } },
+              shippingName: quote.address.name,
+              shippingPhone: quote.address.phone,
+              shippingLine1: quote.address.line1,
+              shippingLine2: quote.address.line2,
+              shippingCity: quote.address.city,
+              shippingState: quote.address.state,
+              shippingPostalCode: quote.address.postalCode,
+              shippingCountry: quote.address.country,
+              status: "CONFIRMED",
+              subtotal: quote.subtotal,
+              discount: quote.discount,
+              shippingFee: quote.shippingFee,
+              tax: quote.tax,
+              total: quote.total,
+              items: { create: quote.items },
+              payment: {
+                create: {
+                  provider: "VOUCHER",
+                  status: "PAID",
+                  // No money changed hands; the voucher ledger holds the value.
+                  amount: 0,
+                  providerPaymentId: reference,
+                  paidAt: new Date(),
+                  rawPayload: {
+                    checkoutSource: "web",
+                    voucherCode: voucher.code,
+                    voucherApplied: voucher.applied
+                  }
+                }
+              },
+              statusHistory: {
+                create: { toStatus: "CONFIRMED", note: "Paid in full by prize voucher.", changedBy: "system" }
+              }
+            },
+            include: { payment: true, items: true }
+          });
+
+          const shortfalls = await this.commitStock(tx, quote);
+          if (shortfalls.length) {
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: created.id,
+                toStatus: "CONFIRMED",
+                note: `Oversold: ${shortfalls.join(", ")}`,
+                changedBy: "system"
+              }
+            });
+          }
+
+          await this.burnVoucher(tx, quote, created.id, userId);
+          return created;
+        },
+        { timeout: 30_000, maxWait: 10_000 }
+      )
+    );
+
+    if (!order) {
+      const winner = await this.findOrderByPaymentId(reference, userId);
+      if (winner) return { success: true, data: winner };
+      throw new BadRequestException("We could not place this order. Please contact support.");
+    }
+
+    await this.sendOrderConfirmation(order, userId, quote);
+    await this.prisma.checkoutSession.updateMany({
+      where: { razorpayOrderId: reference },
+      data: { status: "COMPLETED", paymentId: reference, paidAt: new Date(), lastError: null }
+    });
+
+    this.logger.log(
+      `Voucher order created: user=${userId} order=${order.id} orderNumber=${order.orderNumber} voucher=${voucher.code} applied=${voucher.applied}`
+    );
+
+    return { success: true, data: order };
+  }
+
+  /**
+   * Spends voucher credit and records why, inside the caller's transaction.
+   *
+   * The balance and the use count are moved by a single guarded `updateMany` —
+   * the same trick {@link commitStock} uses — so two checkouts racing on one
+   * voucher cannot both succeed. Losing the race does NOT fail the order: for a
+   * Razorpay order the customer has already paid, and refusing to record their
+   * purchase would be worse than a shortfall an admin can settle.
+   */
+  private async burnVoucher(tx: any, quote: SignedQuote, orderId: string, userId: string) {
+    const voucher = quote.voucher;
+    if (!voucher || voucher.applied <= 0) return;
+
+    const burn = await tx.prizeVoucher.updateMany({
+      where: {
+        id: voucher.id,
+        isActive: true,
+        balance: { gte: voucher.applied },
+        // A literal sealed into the quote — Prisma cannot compare two columns.
+        redemptionsUsed: { lt: voucher.maxRedemptions }
+      },
+      data: {
+        balance: { decrement: voucher.applied },
+        redemptionsUsed: { increment: 1 },
+        claimedByUserId: userId
+      }
+    });
+
+    if (burn.count === 0) {
+      this.logger.error(
+        `Voucher ${voucher.code} could not cover Rs ${voucher.applied} on order ${orderId} — balance or use limit changed since checkout started`
+      );
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          toStatus: "CONFIRMED",
+          note: `Voucher shortfall: ${voucher.code} could not cover Rs ${voucher.applied}. Review this order.`,
+          changedBy: "system"
+        }
+      });
+      return;
+    }
+
+    await tx.voucherRedemption.create({
+      data: {
+        voucherId: voucher.id,
+        orderId,
+        userId,
+        // Negative: `amount` is always the signed change to the balance, so
+        // `balanceAfter === previous + amount` holds for every row whatever its
+        // kind, and the admin ledger can render the sign without special cases.
+        amount: -voucher.applied,
+        balanceAfter: voucher.balanceBefore - voucher.applied,
+        kind: "REDEEM"
+      }
+    });
   }
 
   async handleRazorpayWebhook(body: any, signature: string, rawBody?: Buffer) {
@@ -386,7 +582,8 @@ export class CommerceService {
     await this.sendOrderConfirmation(order, userId, {
       address: { name: address.name, phone: address.phone, line1: address.street, line2: address.line2 || null, city: address.city, state: address.state, postalCode: address.pincode, country: address.country || "India" },
       items: [{ productId: variant.productId, variantId, name: variant.product.name, sku: variant.sku, price: itemPrice, quantity }],
-      subtotal: itemSubtotal, discount: 0, shippingFee, tax: 0, total: paidRupees, coupon: null
+      subtotal: itemSubtotal, discount: 0, shippingFee, tax: 0, total: paidRupees, coupon: null,
+      voucher: null, amountDue: paidRupees
     });
     return { success: true, alreadyExists: false, data: order };
   }
@@ -528,7 +725,16 @@ export class CommerceService {
     );
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const coupon = body.couponCode || body.offerCode ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal, userId) : null;
+
+    // A prize voucher and a discount code are mutually exclusive, so that the
+    // ledger can say plainly what each voucher paid for. The voucher wins:
+    // it is a prize the winner is owed, not an offer they opted into.
+    const voucher = body.voucherCode ? await this.resolveVoucher(body.voucherCode, userId) : null;
+    const coupon =
+      !voucher && (body.couponCode || body.offerCode)
+        ? await this.resolveCoupon(body.couponCode || body.offerCode, subtotal, userId)
+        : null;
+
     const discountBase = coupon?.influencer?.products?.length
       ? orderItems
           .filter((item) => coupon.influencer.products.some((product: any) => product.id === item.product.id))
@@ -544,6 +750,11 @@ export class CommerceService {
     const shippingFee = payable >= freeDeliveryAbove ? 0 : deliveryFee;
     const tax = 0;
     const total = payable + shippingFee;
+
+    // Applied to the finished total, so it covers delivery too and never spends
+    // more credit than the order is actually worth.
+    const voucherApplied = voucher ? Math.min(voucher.balance, total) : 0;
+    const amountDue = total - voucherApplied;
 
     const quote: CheckoutQuote = {
       address: {
@@ -577,10 +788,65 @@ export class CommerceService {
             commissionRate: coupon.influencer?.commissionRate ?? 0,
             linkKey: coupon.influencer?.linkKey ?? null
           }
-        : null
+        : null,
+      voucher: voucher
+        ? {
+            id: voucher.id,
+            code: voucher.code,
+            applied: voucherApplied,
+            balanceBefore: voucher.balance,
+            maxRedemptions: voucher.maxRedemptions
+          }
+        : null,
+      amountDue
     };
 
     return quote;
+  }
+
+  /**
+   * Looks up a prize voucher the customer may spend right now.
+   *
+   * Every rejection carries a reason the winner can act on. That is a departure
+   * from {@link resolveCoupon}, which returns null for every failure and lets
+   * the customer pay full price none the wiser — acceptable for a marketing
+   * code, not for a prize somebody was awarded.
+   */
+  private async resolveVoucher(code: string, userId: string) {
+    const normalized = String(code || "").trim().toUpperCase();
+    if (!normalized) return null;
+
+    const voucher = await this.prisma.prizeVoucher.findUnique({
+      where: { code: normalized },
+      include: { sponsorship: { select: { partnerName: true, eventName: true } } }
+    });
+
+    if (!voucher || !voucher.isActive) {
+      throw new BadRequestException("That voucher code was not recognised. Check it and try again.");
+    }
+
+    // A named winner's prize is pinned on first use, so a code that leaves their
+    // hands is useless to anyone else. A shared code skips this: its
+    // maxRedemptions is a pool everyone draws from.
+    if (voucher.lockToFirstUser && voucher.claimedByUserId && voucher.claimedByUserId !== userId) {
+      throw new BadRequestException("This voucher is already in use on another account.");
+    }
+
+    if (voucher.expiresAt && voucher.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException("This voucher has expired.");
+    }
+
+    if (voucher.redemptionsUsed >= voucher.maxRedemptions) {
+      throw new BadRequestException(
+        `This voucher has been used its full ${voucher.maxRedemptions} time(s) and cannot be used again.`
+      );
+    }
+
+    if (voucher.balance <= 0) {
+      throw new BadRequestException("This voucher has no balance left.");
+    }
+
+    return voucher;
   }
 
   /**
@@ -623,7 +889,8 @@ export class CommerceService {
     // A valid signature only proves the payment belongs to this Razorpay order.
     // This proves the money actually arrived, and that it is the quoted amount.
     try {
-      await this.assertRazorpayOrderPaid(body.razorpayOrderId, quote.total);
+      // The gateway was only ever asked for what a voucher did not cover.
+      await this.assertRazorpayOrderPaid(body.razorpayOrderId, quote.amountDue ?? quote.total);
     } catch (error) {
       await this.markCheckoutError(body.razorpayOrderId, body.razorpayPaymentId, this.errorMessage(error));
       this.logger.error(`Payment amount/status validation failed: user=${userId} razorpayOrder=${body.razorpayOrderId} payment=${body.razorpayPaymentId}: ${this.errorMessage(error)}`);
@@ -660,12 +927,16 @@ export class CommerceService {
                 create: {
                   provider: "RAZORPAY",
                   status: "PAID",
-                  amount: quote.total,
+                  // Cash actually captured. With a voucher this is less than
+                  // Order.total; the rest is in the voucher ledger.
+                  amount: quote.amountDue ?? quote.total,
                   providerPaymentId: body.razorpayPaymentId,
                   paidAt: new Date(),
                   rawPayload: {
                     checkoutSource: "web",
                     couponCode: quote.coupon?.code || null,
+                    voucherCode: quote.voucher?.code || null,
+                    voucherApplied: quote.voucher?.applied || 0,
                     razorpayOrderId: body.razorpayOrderId
                   }
                 }
@@ -695,6 +966,10 @@ export class CommerceService {
               }
             });
           }
+
+          // Credit is spent only once the payment for the rest has cleared, so
+          // an abandoned Razorpay modal leaves the balance untouched.
+          await this.burnVoucher(tx, quote, created.id, userId);
 
           // Commission is only earned on money actually taken, which is why this
           // moved here from checkout.

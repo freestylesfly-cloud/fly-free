@@ -4,6 +4,8 @@ import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
 import { HomeReviewsCarousel } from './components/HomeReviewsCarousel';
 import { ShoppableCommunityMedia } from './components/ShoppableCommunityMedia';
+import { SponsorshipSection, type Sponsorship } from './components/SponsorshipSection';
+import { SponsorshipAnnouncement } from './components/SponsorshipAnnouncement';
 import { InfluencerCodeCard } from './components/InfluencerCodeCard';
 import { InfluencerPromotionSection } from './components/InfluencerPromotionSection';
 import { Rail } from './components/Rail';
@@ -118,6 +120,13 @@ interface HomeUiSettings {
   homeCommunityText?: string;
   homeCommunityCtaLabel?: string;
   homeCommunityCtaHref?: string;
+  sponsorKicker?: string;
+  sponsorTitle?: string;
+  sponsorCtaLabel?: string;
+  sponsorPrizeTitle?: string;
+  sponsorPrizeNote?: string;
+  sponsorWinnersTitle?: string;
+  sponsorWinnersLabel?: string;
 }
 
 function unwrap<T>(payload: any): T[] {
@@ -138,7 +147,7 @@ async function getJson(path: string) {
 }
 
 async function getHomeData() {
-  const [themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, home] = await Promise.all([
+  const [themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, home, sponsorships] = await Promise.all([
     getJson('/cms/themes'),
     getJson('/catalog/products'),
     getJson('/reviews/latest?limit=12'),
@@ -148,6 +157,7 @@ async function getHomeData() {
     getJson('/influencers/featured'),
     getJson('/cms/settings/social'),
     getJson('/cms/home'),
+    getJson('/cms/sponsorships'),
   ]);
 
   return {
@@ -160,6 +170,7 @@ async function getHomeData() {
     featuredInfluencers: unwrap<Influencer>(featuredInfluencers),
     social: (social || {}) as SocialLinks,
     settings: ((home as any)?.settings || {}) as HomeUiSettings,
+    sponsorships: unwrap<Sponsorship>(sponsorships),
   };
 }
 
@@ -182,7 +193,7 @@ const PRODUCT_CARD = 'mo-slide w-[45vw] flex-shrink-0 sm:w-[230px]';
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings } = await getHomeData();
+  const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings, sponsorships } = await getHomeData();
 
   // The hero is simply the active product themes — each theme's banner is one
   // slide. There is no separate site-wide hero to configure.
@@ -358,6 +369,11 @@ export default async function HomePage() {
       )}
 
       <HomeReviewsSection reviews={reviews} />
+
+      <SponsorshipSection sponsorships={sponsorships} copy={settings} />
+
+      {/* Announces the top-priority collaboration once per visitor. */}
+      <SponsorshipAnnouncement sponsorship={sponsorships[0]} copy={settings} />
 
       <CreatorsSection influencers={influencers} />
 

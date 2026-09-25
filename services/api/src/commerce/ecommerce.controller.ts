@@ -120,6 +120,16 @@ export class EcommerceController {
     return this.commerceService.setDefaultAddress(addressId, token);
   }
 
+  // ==================== PRIZE VOUCHERS ====================
+  // Deliberately on this controller, which has no cache interceptor: the reply
+  // carries one winner's balance, and a 60s URL-keyed cache would serve it to
+  // whoever asked next.
+  @ApiTags("🎁 Prize Vouchers")
+  @Get("voucher/:code")
+  previewVoucher(@Param("code") code: string, @Headers("authorization") token?: string) {
+    return this.commerceService.previewVoucher(code, token);
+  }
+
   // ==================== COUPONS ====================
   @ApiTags("🎟️ Coupons")
   @Get("coupons/:code")

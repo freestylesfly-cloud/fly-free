@@ -267,6 +267,82 @@ export class EcommerceService {
   }
 
   // ==================== COUPONS ====================
+  /**
+   * Tells the checkout page what a prize voucher is worth before it is spent.
+   *
+   * Sign-in is required: a voucher is pinned to one account on first use, so
+   * without knowing who is asking this cannot say whether the code is usable —
+   * and an anonymous lookup would turn the endpoint into a way of testing codes.
+   *
+   * Every rejection is returned as `{ valid: false, message }` rather than
+   * thrown, so the UI can show the winner why. The balance is only disclosed
+   * once the code has been matched to its rightful owner.
+   */
+  async previewVoucher(code: string, token?: string) {
+    const normalized = String(code || "").trim().toUpperCase();
+    if (!normalized) return { valid: false, message: "Enter a voucher code." };
+
+    // "Not signed in" and "signed in with a dead session" need different
+    // answers: the stored profile keeps rendering after a token expires, so a
+    // shopper who looks logged in would otherwise be told to do what they have
+    // already done.
+    const rawToken = String(token || "").replace("Bearer ", "").trim();
+    if (!rawToken || rawToken === "null" || rawToken === "undefined") {
+      return { valid: false, message: "Sign in to use your prize voucher." };
+    }
+
+    let userId: string;
+    try {
+      userId = this.extractUserId(token);
+    } catch {
+      return {
+        valid: false,
+        expiredSession: true,
+        message: "Your sign-in has expired. Please log out and log in again, then re-apply the code.",
+      };
+    }
+
+    const voucher = await this.prisma.prizeVoucher.findUnique({
+      where: { code: normalized },
+      include: { sponsorship: { select: { partnerName: true, eventName: true } } }
+    });
+
+    if (!voucher || !voucher.isActive) {
+      return { valid: false, message: "That voucher code was not recognised. Check it and try again." };
+    }
+    if (voucher.lockToFirstUser && voucher.claimedByUserId && voucher.claimedByUserId !== userId) {
+      return { valid: false, message: "This voucher is already in use on another account." };
+    }
+    if (voucher.expiresAt && voucher.expiresAt.getTime() < Date.now()) {
+      return { valid: false, message: "This voucher has expired." };
+    }
+    if (voucher.redemptionsUsed >= voucher.maxRedemptions) {
+      return {
+        valid: false,
+        message: `This voucher has been used its full ${voucher.maxRedemptions} time(s) and cannot be used again.`
+      };
+    }
+    if (voucher.balance <= 0) {
+      return { valid: false, message: "This voucher has no balance left." };
+    }
+
+    return {
+      valid: true,
+      type: "VOUCHER",
+      code: voucher.code,
+      // Rupees, like every other figure the checkout page works in.
+      balance: voucher.balance,
+      value: voucher.value,
+      usesLeft: voucher.maxRedemptions - voucher.redemptionsUsed,
+      maxRedemptions: voucher.maxRedemptions,
+      expiresAt: voucher.expiresAt,
+      winnerName: voucher.winnerName,
+      sharedCode: voucher.lockToFirstUser === false,
+      sponsorName: voucher.sponsorship?.partnerName || null,
+      eventName: voucher.sponsorship?.eventName || null
+    };
+  }
+
   async validateCoupon(code: string, cartProductIds?: string[], token?: string) {
     const normalized = String(code || "").trim().toUpperCase();
     const coupon = await this.prisma.coupon.findUnique({ where: { code: normalized } });

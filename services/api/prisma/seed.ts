@@ -76,6 +76,12 @@ const DEFAULT_SETTINGS = {
   homeCommunityText: 'Bihu drop is live. Wear Northeast stories.',
   homeCommunityCtaLabel: 'Know more',
   homeCommunityCtaHref: '/about',
+  sponsorKicker: 'Proudly sponsoring',
+  sponsorTitle: 'Fly Free in the community',
+  sponsorCtaLabel: 'See details',
+  sponsorPrizeTitle: 'What we are giving',
+  sponsorPrizeNote: 'Each winner receives a private prize code, redeemable at checkout. Codes are sent directly to the winner and are never published here.',
+  sponsorWinnersTitle: 'Congratulations',
   socialLinks: {
     instagram: 'https://www.instagram.com/flyfree.ne/'
   } as Record<string, string>
@@ -94,7 +100,13 @@ const HOME_UI_KEYS = [
   'homeCommunityTitle',
   'homeCommunityText',
   'homeCommunityCtaLabel',
-  'homeCommunityCtaHref'
+  'homeCommunityCtaHref',
+  'sponsorKicker',
+  'sponsorTitle',
+  'sponsorCtaLabel',
+  'sponsorPrizeTitle',
+  'sponsorPrizeNote',
+  'sponsorWinnersTitle'
 ] as const;
 
 async function seedAdmin() {
