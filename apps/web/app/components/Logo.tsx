@@ -16,15 +16,22 @@ export function Logo({
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
 
-  // The brand mark is 1920x1080 (16:9), so it must be constrained by HEIGHT and
-  // allowed to take its natural width. Forcing it into a square box shrinks it
-  // to a fraction of the available space.
-  const height = { sm: 30, md: 42, lg: 60 }[size];
+  // Constrained by HEIGHT with the width left to follow, because the mark is much
+  // wider than it is tall and a square box would scale it down to fit the wrong
+  // dimension.
+  //
+  // That makes the height budget the whole story: whatever empty canvas the file
+  // carries is scaled along with the artwork. The source is kept cropped to the
+  // ink for exactly this reason — an earlier 2000x2000 export had the mark filling
+  // 38% of its height, so a 42px box drew it at 16px. If the logo ever looks small
+  // again, measure the file before touching these numbers.
+  const height = { sm: 30, md: 44, lg: 60 }[size];
   const imageStyle: React.CSSProperties = {
     height,
     width: 'auto',
-    maxWidth: '240px',
-    objectFit: 'contain'
+    // Wide enough for a ~2.5:1 mark at `lg`; stops an unexpectedly wide file from
+    // pushing the header's other controls off the row.
+    maxWidth: '260px'
   };
 
   useEffect(() => {
