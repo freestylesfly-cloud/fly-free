@@ -1,4 +1,7 @@
-const CACHE_NAME = "flyfree-admin-shell-v2";
+// Bump this whenever anything in SHELL_URLS changes. Those files are precached
+// on install and never revalidated, so a new favicon keeps losing to the old one
+// until the cache name differs and `activate` deletes the previous bucket.
+const CACHE_NAME = "flyfree-admin-shell-v3";
 const SHELL_URLS = [
   "/manifest.json",
   "/favicon_io/android-chrome-192x192.png",
