@@ -74,7 +74,8 @@ export class CatalogService {
           orderBy: { priority: "asc" }
         },
         category: { select: { name: true, slug: true } },
-        theme: { select: { name: true, slug: true } },
+        // Colours feed the homepage "new drop" ring, so it matches the theme.
+        theme: { select: { name: true, slug: true, primaryColor: true, accentColor: true } },
         // `price` is required: quick-add prices from the variant when it has one.
         variants: {
           select: { id: true, size: true, color: true, price: true, inventory: { select: { stock: true } } }

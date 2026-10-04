@@ -926,3 +926,140 @@ a {
   }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Scroll reveals, the new-drop highlight, and the hero's motion.
+
+   `.fly-reveal` above is a mount-time animation — it runs as soon as the element
+   is parsed, so anything below the fold finished animating before the visitor
+   arrived. `.fly-in` is the scroll-triggered replacement: it stays in the "before"
+   state until `Reveal` sets data-revealed, and transitions rather than animates so
+   a stagger is one `transition-delay` instead of a keyframe per card.
+   --------------------------------------------------------------------------- */
+
+.fly-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.fly-in[data-revealed='true'] {
+  opacity: 1;
+  transform: translateY(0);
+  /* Dropped once the motion is done so long pages do not hold dozens of layers. */
+  will-change: auto;
+}
+
+/* The "new drop" ring.
+
+   Drawn on a pseudo-element behind the card so it never affects layout or the
+   card's own rounding. The gradient is a rotated oversized square rather than an
+   animated conic-gradient angle: `@property` still is not safe to rely on, and a
+   transform animates on the compositor. Colours come from the theme, passed in as
+   --drop-from / --drop-to. */
+.new-drop {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 2px;
+}
+
+/* 200% of the width covers the card's diagonal at any portrait ratio, so the
+   rotating square never exposes a corner; the parent clips it to a 2px ring. */
+.new-drop::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--drop-from, #ff4a4e) 70deg,
+    var(--drop-to, #ffb703) 140deg,
+    transparent 220deg
+  );
+  animation: new-drop-spin 3.4s linear infinite;
+}
+
+@keyframes new-drop-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(1turn);
+  }
+}
+
+/* Hero: a slow drift on the active slide so a still image does not feel dead. */
+.hero-kenburns {
+  animation: hero-kenburns 18s ease-in-out infinite alternate;
+}
+
+@keyframes hero-kenburns {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.07) translate3d(-1.2%, -1%, 0);
+  }
+}
+
+/* Hero headline, revealed one word at a time. */
+.hero-word {
+  display: inline-block;
+  animation: hero-word-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hero-word-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Speaker button, so a muted song advertises itself without making noise. */
+.song-pulse {
+  animation: song-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes song-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+}
+
+/* One guard for everything above. Motion here is decoration: without it the page
+   must still be fully readable, so reveals resolve to their final state rather
+   than being left mid-transition. */
+@media (prefers-reduced-motion: reduce) {
+  .fly-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .fly-reveal,
+  .creator-card,
+  .creator-promo-card,
+  .hero-word {
+    animation: none;
+  }
+
+  .new-drop::before,
+  .hero-kenburns,
+  .song-pulse {
+    animation: none;
+  }
+}

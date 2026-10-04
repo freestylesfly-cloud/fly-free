@@ -53,7 +53,11 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
 }
 
 export async function uploadMedia(bucket: string, file: File, folder = ''): Promise<string> {
-  if (!file.type.startsWith('video/')) {
+  // Video and audio both go direct to Supabase with a signed token: they are too
+  // large to survive being base64'd into a JSON body. Everything else takes the
+  // simpler API-proxied path.
+  const isLargeMedia = file.type.startsWith('video/') || file.type.startsWith('audio/');
+  if (!isLargeMedia) {
     return uploadImage(bucket, file, folder);
   }
 
@@ -82,7 +86,7 @@ export async function uploadMedia(bucket: string, file: File, folder = ''): Prom
   });
 
   if (error) {
-    throw new Error(`Video upload failed: ${error.message}`);
+    throw new Error(`${file.type.startsWith('audio/') ? 'Audio' : 'Video'} upload failed: ${error.message}`);
   }
 
   return upload.publicUrl as string;

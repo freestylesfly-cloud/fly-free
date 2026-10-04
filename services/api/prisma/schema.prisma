@@ -110,6 +110,12 @@ model Theme {
   accentColor      String          @default("#4ecdc4")
   fontFamily       String          @default("Inter, Arial, sans-serif")
   animationStyle   String          @default("fade")
+  /// Short clip played on the homepage hero while this theme's slide is showing.
+  /// Starts muted behind a speaker button — browsers block audio that starts on
+  /// its own, and an unannounced song is a reason to close the tab.
+  songUrl          String?
+  /// Shown beside the speaker button so the track is credited.
+  songTitle        String?
   priority         Int             @default(0)
   active           Boolean         @default(false)
   startsAt         DateTime?

@@ -3,9 +3,10 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Edit3, ImageIcon, Search, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Edit3, ImageIcon, Music, Search, Trash2, Upload, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { uploadMedia } from '../lib/supabase';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 
@@ -22,6 +23,8 @@ type ProductTheme = {
   primaryColor?: string;
   secondaryColor?: string;
   accentColor?: string;
+  songUrl?: string;
+  songTitle?: string;
   priority: number;
   active: boolean;
   _count?: { products?: number };
@@ -40,6 +43,8 @@ type ThemeForm = {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  songUrl: string;
+  songTitle: string;
   priority: number;
   active: boolean;
 };
@@ -56,6 +61,8 @@ const emptyForm: ThemeForm = {
   primaryColor: '#111827',
   secondaryColor: '#FF4A4E',
   accentColor: '#FFB703',
+  songUrl: '',
+  songTitle: '',
   priority: 0,
   active: true
 };
@@ -149,6 +156,8 @@ export default function ProductThemesPage() {
       primaryColor: theme.primaryColor || '#111827',
       secondaryColor: theme.secondaryColor || '#FF4A4E',
       accentColor: theme.accentColor || '#FFB703',
+      songUrl: theme.songUrl || '',
+      songTitle: theme.songTitle || '',
       priority: theme.priority || 0,
       active: theme.active !== false
     });
@@ -289,6 +298,14 @@ export default function ProductThemesPage() {
                 alt={`${form.name || 'Theme'} homepage feature`}
               />
 
+              <AudioUploadField
+                value={form.songUrl}
+                title={form.songTitle}
+                onChange={(value) => setForm({ ...form, songUrl: value })}
+                onTitleChange={(value) => setForm({ ...form, songTitle: value })}
+                folder={`themes/${form.slug || slugify(form.name) || 'general'}/song`}
+              />
+
               <div className="grid grid-cols-3 gap-2">
                 <ColorField label="Primary" value={form.primaryColor} onChange={(value) => setForm({ ...form, primaryColor: value })} />
                 <ColorField label="Secondary" value={form.secondaryColor} onChange={(value) => setForm({ ...form, secondaryColor: value })} />
@@ -334,6 +351,115 @@ export default function ProductThemesPage() {
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+/**
+ * The theme's hero clip.
+ *
+ * No crop UI — this mirrors the plain upload + paste field used for Instagram
+ * videos. A short clip is all the hero needs, and the 10MB cap on the API is
+ * sized for that rather than a full track.
+ */
+function AudioUploadField({
+  value,
+  title,
+  onChange,
+  onTitleChange,
+  folder
+}: {
+  value: string;
+  title: string;
+  onChange: (value: string) => void;
+  onTitleChange: (value: string) => void;
+  folder: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function pick(file?: File) {
+    setError('');
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      setError('Choose an audio file (MP3, M4A, OGG or WAV).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Audio must be under 10MB. A 20-30 second clip is plenty.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      onChange(await uploadMedia('product-images', file, folder));
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-black/10 bg-black/[0.02] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="flex items-center gap-2 text-sm font-black">
+            <Music size={15} /> Theme song
+          </span>
+          <p className="mt-1 text-xs font-bold text-black/50">
+            Plays on the homepage hero while this theme is showing — muted until the visitor taps the speaker,
+            because browsers block sound that starts on its own.
+          </p>
+        </div>
+        <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded bg-ink px-3 py-2 text-xs font-black text-white">
+          <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload'}
+          <input
+            hidden
+            type="file"
+            accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,.mp3,.m4a"
+            disabled={uploading}
+            onChange={(event) => {
+              void pick(event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+        </label>
+      </div>
+
+      {value && <audio src={value} controls preload="metadata" className="w-full" />}
+
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Paste an audio URL, or upload above"
+        className="w-full rounded border border-black/10 px-3 py-2 text-sm"
+      />
+      <input
+        value={title}
+        onChange={(event) => onTitleChange(event.target.value)}
+        placeholder="Track name and artist, shown beside the speaker"
+        className="w-full rounded border border-black/10 px-3 py-2 text-sm"
+      />
+
+      {value && (
+        <button
+          type="button"
+          onClick={() => {
+            onChange('');
+            onTitleChange('');
+          }}
+          className="inline-flex items-center gap-2 rounded border border-black/10 px-3 py-1.5 text-xs font-bold"
+        >
+          <Trash2 size={13} /> Remove song
+        </button>
+      )}
+
+      <p className="text-xs text-black/45">
+        Use music you hold the rights to — a licensed or royalty-free track. A claim over a commercial
+        recording lands on the store, not on the uploader.
+      </p>
+      {error && <p className="text-xs font-bold text-red-600">{error}</p>}
+    </div>
   );
 }
 

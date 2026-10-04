@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ProductCard } from './components/ProductCard';
 import { HeroCarousel } from './components/HeroCarousel';
@@ -9,6 +10,7 @@ import { SponsorshipAnnouncement } from './components/SponsorshipAnnouncement';
 import { InfluencerCodeCard } from './components/InfluencerCodeCard';
 import { InfluencerPromotionSection } from './components/InfluencerPromotionSection';
 import { Rail } from './components/Rail';
+import { Reveal } from './components/Reveal';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
 import { IMAGE_WIDTH, storageImage } from './lib/image';
@@ -29,7 +31,7 @@ interface Product {
     price?: number | null;
     inventory?: { stock?: number | null } | null;
   }>;
-  theme?: { name: string };
+  theme?: { name: string; primaryColor?: string | null; accentColor?: string | null };
   category?: { name: string };
   isFeatured?: boolean;
   isTrending?: boolean;
@@ -43,6 +45,8 @@ interface Theme {
   slug: string;
   description: string;
   primaryColor: string;
+  songUrl?: string | null;
+  songTitle?: string | null;
   bannerImageUrl?: string;
   imageUrl?: string;
   products?: Product[];
@@ -218,6 +222,8 @@ export default async function HomePage() {
       subtitle: theme.description,
       ctaLabel: `Shop ${theme.name}`,
       ctaHref: `/themes/${theme.slug}`,
+      songUrl: theme.songUrl,
+      songTitle: theme.songTitle,
     }));
   const heroSlides = [...adminHeroSlide, ...themeHeroSlides];
 
@@ -234,9 +240,17 @@ export default async function HomePage() {
       <HeroCarousel slides={heroSlides} />
 
       {newDrops.length > 0 && (
-        <Rail title="New drops" viewAllHref="/products">
+        <Reveal><Rail title="New drops" viewAllHref="/products">
           {newDrops.map((product) => (
-            <div key={product.id} data-rail-item className={PRODUCT_CARD}>
+            <div
+              key={product.id}
+              data-rail-item
+              className={`${PRODUCT_CARD} ${product.isNewArrival ? 'new-drop rounded-lg' : ''}`}
+              style={product.isNewArrival ? ({
+                '--drop-from': product.theme?.primaryColor || undefined,
+                '--drop-to': product.theme?.accentColor || undefined,
+              } as CSSProperties) : undefined}
+            >
               <ProductCard
                 id={product.id}
                 name={product.name}
@@ -251,11 +265,11 @@ export default async function HomePage() {
               />
             </div>
           ))}
-        </Rail>
+        </Rail></Reveal>
       )}
 
       {bestSellers.length > 0 && (
-        <Rail title="Trending now" viewAllHref="/products?sort=trending">
+        <Reveal><Rail title="Trending now" viewAllHref="/products?sort=trending">
           {bestSellers.map((product) => (
             <div key={product.id} data-rail-item className={PRODUCT_CARD}>
               <ProductCard
@@ -272,13 +286,13 @@ export default async function HomePage() {
               />
             </div>
           ))}
-        </Rail>
+        </Rail></Reveal>
       )}
 
       <InfluencerPromotionSection influencers={featuredInfluencers} />
 
       {themes.length > 0 && (
-        <Rail title="Shop by theme" viewAllHref="/products">
+        <Reveal><Rail title="Shop by theme" viewAllHref="/products">
           {themes.map((theme) => (
             <Link
               key={theme.id}
@@ -307,13 +321,13 @@ export default async function HomePage() {
               </div>
             </Link>
           ))}
-        </Rail>
+        </Rail></Reveal>
       )}
 
       <ThemeFeatureSections themes={themes} />
 
       {recommended.length > 0 && (
-        <Rail title="Recommended for you" viewAllHref="/products">
+        <Reveal><Rail title="Recommended for you" viewAllHref="/products">
           {recommended.map((product) => (
             <div key={product.id} data-rail-item className={PRODUCT_CARD}>
               <ProductCard
@@ -330,11 +344,11 @@ export default async function HomePage() {
               />
             </div>
           ))}
-        </Rail>
+        </Rail></Reveal>
       )}
 
       {hampers.length > 0 && (
-        <Rail title="Hampers" viewAllHref="/products">
+        <Reveal><Rail title="Hampers" viewAllHref="/products">
           {hampers.map((hamper) => {
             const cover = hamper.imageUrl || hamper.images?.[0];
             return (
@@ -365,7 +379,7 @@ export default async function HomePage() {
               </Link>
             );
           })}
-        </Rail>
+        </Rail></Reveal>
       )}
 
       <HomeReviewsSection reviews={reviews} />
@@ -379,7 +393,7 @@ export default async function HomePage() {
 
       <InstagramCommunitySection instagram={instagram} social={social} settings={settings} />
 
-      <AboutStorySection settings={settings} />
+      <Reveal><AboutStorySection settings={settings} /></Reveal>
     </main>
   );
 }
@@ -396,9 +410,9 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
         const products = (theme.products || []).filter((product) => product.images?.[0]?.url).slice(0, 4);
         const mediaUrl = theme.featureImageUrl || theme.bannerImageUrl || theme.imageUrl;
         return (
+          <Reveal key={theme.id}>
           <section
-            key={theme.id}
-            className="fly-reveal relative min-h-screen overflow-hidden border-b"
+            className="relative min-h-screen overflow-hidden border-b"
             style={{ borderColor: 'var(--border-color)', backgroundColor: theme.primaryColor || 'var(--text-primary)' }}
           >
             <img
@@ -435,6 +449,7 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
               )}
             </div>
           </section>
+          </Reveal>
         );
       })}
     </>
@@ -473,13 +488,13 @@ function CreatorsSection({ influencers }: { influencers: Influencer[] }) {
   if (activeInfluencers.length === 0) return null;
 
   return (
-    <Rail title="Shop with the Fly Free crew" viewAllHref="/community" viewAllLabel="View community">
+    <Reveal><Rail title="Shop with the Fly Free crew" viewAllHref="/community" viewAllLabel="View community">
       {activeInfluencers.map((influencer) => (
         <div key={influencer.id} data-rail-item className="mo-slide w-[72vw] flex-shrink-0 sm:w-[280px]">
           <InfluencerCodeCard influencer={influencer} />
         </div>
       ))}
-    </Rail>
+    </Rail></Reveal>
   );
 }
 

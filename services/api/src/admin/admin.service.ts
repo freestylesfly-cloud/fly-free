@@ -15,8 +15,11 @@ import { randomUUID } from "node:crypto";
 const STORAGE_BUCKET = "product-images";
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const VIDEO_MIME_TYPES = ["video/mp4", "video/webm"];
+/** Theme songs. A hero clip is a few seconds, so the cap is deliberately tight. */
+const AUDIO_MIME_TYPES = ["audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/webm"];
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 
 /**
  * Prisma's default interactive-transaction deadline is 5s, which is fine
@@ -1186,6 +1189,8 @@ export class AdminService {
     primaryColor: true,
     secondaryColor: true,
     accentColor: true,
+    songUrl: true,
+    songTitle: true,
     priority: true,
     active: true
   };
@@ -1211,6 +1216,8 @@ export class AdminService {
         primaryColor: data.primaryColor || "#111827",
         secondaryColor: data.secondaryColor || "#FF4A4E",
         accentColor: data.accentColor || "#FFB703",
+        songUrl: data.songUrl || null,
+        songTitle: data.songTitle || null,
         fontFamily: "Inter, Arial, sans-serif",
         animationStyle: "fade",
         priority: data.priority === undefined ? 0 : Number(data.priority),
@@ -1233,7 +1240,9 @@ export class AdminService {
       "featureImageUrl",
       "primaryColor",
       "secondaryColor",
-      "accentColor"
+      "accentColor",
+      "songUrl",
+      "songTitle"
     ]) {
       if (data[key] !== undefined) patch[key] = data[key];
     }
@@ -1459,15 +1468,25 @@ export class AdminService {
 
     const [, mimeType, base64] = match;
     const normalizedMimeType = mimeType.toLowerCase();
-    const allowedTypes = [...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES];
+    const allowedTypes = [...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES, ...AUDIO_MIME_TYPES];
     if (!allowedTypes.includes(normalizedMimeType)) {
       throw new BadRequestException(`Unsupported media type: ${mimeType}`);
     }
 
     const buffer = Buffer.from(base64, "base64");
-    const maxBytes = normalizedMimeType.startsWith("video/") ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+    const maxBytes = normalizedMimeType.startsWith("video/")
+      ? MAX_VIDEO_BYTES
+      : normalizedMimeType.startsWith("audio/")
+        ? MAX_AUDIO_BYTES
+        : MAX_IMAGE_BYTES;
     if (buffer.byteLength > maxBytes) {
-      throw new BadRequestException(normalizedMimeType.startsWith("video/") ? "Video must be under 80MB" : "Image must be under 12MB");
+      throw new BadRequestException(
+        normalizedMimeType.startsWith("video/")
+          ? "Video must be under 80MB"
+          : normalizedMimeType.startsWith("audio/")
+            ? "Audio must be under 10MB"
+            : "Image must be under 12MB"
+      );
     }
 
     return this.uploadBuffer(buffer, normalizedMimeType, folder);
@@ -1480,12 +1499,14 @@ export class AdminService {
    */
   async createMediaUploadUrl(data: { mimeType?: string; size?: number; folder?: string }) {
     const mimeType = String(data?.mimeType || "").toLowerCase();
-    if (!VIDEO_MIME_TYPES.includes(mimeType)) {
-      throw new BadRequestException("Use MP4 or WebM video.");
+    const isAudio = AUDIO_MIME_TYPES.includes(mimeType);
+    if (!VIDEO_MIME_TYPES.includes(mimeType) && !isAudio) {
+      throw new BadRequestException("Use MP4 or WebM video, or MP3/M4A/OGG/WAV audio.");
     }
 
-    if (Number(data?.size || 0) > MAX_VIDEO_BYTES) {
-      throw new BadRequestException("Video must be under 80MB");
+    const maxBytes = isAudio ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
+    if (Number(data?.size || 0) > maxBytes) {
+      throw new BadRequestException(isAudio ? "Audio must be under 10MB" : "Video must be under 80MB");
     }
 
     const storage = this.storageClient();
@@ -1549,8 +1570,25 @@ export class AdminService {
     return createClient(url, serviceKey);
   }
 
+  /**
+   * A MIME subtype is not a file extension. `audio/mpeg` is an .mp3 and
+   * `audio/mp4` is an .m4a — saving them under the raw subtype gives files that
+   * browsers and operating systems refuse to open by name.
+   */
+  private static readonly EXTENSION_BY_SUBTYPE: Record<string, string> = {
+    jpeg: "jpg",
+    mpeg: "mp3",
+    "x-m4a": "m4a",
+    quicktime: "mov"
+  };
+
   private objectPathFor(folder: string, mimeType: string) {
-    const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
+    const [type, rawSubtype = "bin"] = mimeType.split("/");
+    const subtype = rawSubtype.toLowerCase();
+    const extension =
+      type === "audio" && subtype === "mp4"
+        ? "m4a"
+        : AdminService.EXTENSION_BY_SUBTYPE[subtype] || subtype;
     const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, "").replace(/^\/+|\/+$/g, "") || "misc";
     return `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
   }

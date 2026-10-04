@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Volume2, VolumeX } from 'lucide-react';
 import { MEDIA } from '../lib/design';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
@@ -13,6 +14,9 @@ export interface HeroSlide {
   subtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
+  /** The theme's song, from Admin → Product themes. */
+  songUrl?: string | null;
+  songTitle?: string | null;
 }
 
 /**
@@ -32,6 +36,13 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  // Off until the visitor asks: browsers block audio that starts on its own, and
+  // an unannounced song is a reason to close the tab.
+  const [soundOn, setSoundOn] = useState(false);
+
+  const activeSong = slides[active]?.songUrl || null;
+  const hasAnySong = slides.some((slide) => slide.songUrl);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -41,8 +52,24 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Follow the visible slide: each theme plays its own song, a slide without one
+  // is silent, and turning sound off stops playback outright.
   useEffect(() => {
-    if (slides.length <= 1 || paused) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!soundOn || !activeSong) {
+      audio.pause();
+      return;
+    }
+    if (audio.src !== new URL(activeSong, window.location.href).href) {
+      audio.src = activeSong;
+    }
+    audio.play().catch(() => setSoundOn(false));
+  }, [soundOn, activeSong]);
+
+  useEffect(() => {
+    // Don't cut a song off mid-play by sliding to the next theme.
+    if (slides.length <= 1 || paused || soundOn) return;
     const timer = setInterval(() => {
       const el = trackRef.current;
       if (!el) return;
@@ -50,7 +77,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       el.scrollTo({ left: next >= slides.length ? 0 : next * el.clientWidth, behavior: 'smooth' });
     }, 6000);
     return () => clearInterval(timer);
-  }, [slides.length, paused]);
+  }, [slides.length, paused, soundOn]);
 
   const goto = (idx: number) => {
     const el = trackRef.current;
@@ -69,14 +96,19 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       onMouseLeave={() => setPaused(false)}
     >
       <div ref={trackRef} className="mo-slider flex w-full overflow-x-auto" style={{ scrollBehavior: 'smooth' }}>
-        {slides.map((slide) => (
+        {slides.map((slide, idx) => (
           <div
             key={slide.id}
             className="mo-slide relative w-full flex-shrink-0 overflow-hidden"
             style={{ aspectRatio: HERO_ASPECT }}
           >
             {slide.image ? (
-              <img src={storageImage(slide.image, IMAGE_WIDTH.hero)} alt={slide.title || ''} decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+              <img
+                src={storageImage(slide.image, IMAGE_WIDTH.hero)}
+                alt={slide.title || ''}
+                decoding="async"
+                className={`absolute inset-0 h-full w-full object-cover ${idx === active ? 'hero-kenburns' : ''}`}
+              />
             ) : (
               <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-tertiary)' }} />
             )}
@@ -101,7 +133,14 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                     className="max-w-4xl font-black uppercase leading-[0.92] text-white"
                     style={{ fontSize: 'clamp(24px, 7.5vw, 118px)', letterSpacing: '0' }}
                   >
-                    {slide.title}
+                    {/* Keyed on visibility so the words replay each time the slide comes round. */}
+                    <span key={idx === active ? 'on' : 'off'} className="block">
+                      {slide.title.split(/\s+/).map((word, wordIdx) => (
+                        <span key={wordIdx} className="hero-word" style={{ animationDelay: `${wordIdx * 90}ms` }}>
+                          {word}&nbsp;
+                        </span>
+                      ))}
+                    </span>
                   </h1>
                 )}
                 {/* Hidden on phones — the frame is short and the title carries it. */}
@@ -124,6 +163,27 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           </div>
         ))}
       </div>
+
+      {hasAnySong && <audio ref={audioRef} loop preload="none" />}
+
+      {activeSong && (
+        <div className="absolute right-3 top-3 z-20 flex items-center gap-2 sm:right-6 sm:top-6">
+          {soundOn && slides[active]?.songTitle && (
+            <span className="hidden max-w-[220px] truncate rounded bg-black/55 px-2.5 py-1 text-xs font-bold text-white sm:block">
+              ♪ {slides[active].songTitle}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setSoundOn((on) => !on)}
+            aria-pressed={soundOn}
+            aria-label={soundOn ? 'Mute theme song' : 'Play theme song'}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-black/40 text-white transition hover:bg-white hover:text-black sm:h-11 sm:w-11 ${soundOn ? '' : 'song-pulse'}`}
+          >
+            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+        </div>
+      )}
 
       {slides.length > 1 && (
         <>
