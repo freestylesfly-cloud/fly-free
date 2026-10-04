@@ -19,8 +19,6 @@
     "db:copy:verify": "node scripts/migrate-database.mjs --verify",
     "demo:sponsorship": "node scripts/seed-sponsorship-demo.mjs",
     "test:vouchers": "node scripts/test-vouchers.mjs",
-    "storage:cache-audit": "node scripts/fix-storage-cache-headers.mjs",
-    "storage:cache-fix": "node scripts/fix-storage-cache-headers.mjs --apply",
     "db:studio": "prisma studio"
   },
   "prisma": {
