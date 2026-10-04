@@ -1,17 +1,20 @@
 /**
- * Serve Supabase Storage images through the Next image optimizer.
+ * Serve stored images through the Next image optimizer.
  *
- * Supabase bills every read of a public object as egress — including reads that
- * its CDN serves from cache. Pointing `<img src>` straight at the bucket meant
- * each visitor re-downloaded every full-size original on every page view, which
- * is what pushed the project 1,162% over its free egress quota.
+ * Storage hosts bill every read as egress. Pointing `<img src>` straight at
+ * Supabase meant each visitor re-downloaded every full-size original on every
+ * page view, which pushed that project 1,162% over quota until it was
+ * restricted. Media now lives on Cloudinary, whose free plan is metered the
+ * same way.
  *
- * Rewriting the URL through `/_next/image` puts Vercel's CDN in front: Supabase
- * is read once per image, and every later request is served (and resized) by
- * Vercel. Non-Supabase URLs and local `/public` assets are returned untouched.
+ * Rewriting the URL through `/_next/image` puts Vercel's CDN in front: storage
+ * is read once per image and width, and every later request is served (and
+ * resized) by Vercel. Other URLs and local `/public` assets are untouched.
+ * Hosts matched here must also be in `images.remotePatterns` in next.config.ts.
  */
 
-const SUPABASE_PUBLIC_OBJECT = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\//i;
+const STORED_IMAGE =
+  /^https:\/\/(res\.cloudinary\.com\/nkruger4\/image\/upload\/|[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/)/i;
 
 /**
  * Widths the optimizer accepts, mirroring `deviceSizes` + `imageSizes` in
@@ -41,8 +44,8 @@ export function storageImage(
 ): string {
   if (!url) return "";
   // Leave data URIs, blob previews, local assets and third-party hosts alone;
-  // only Supabase objects are both billable and safe to treat as immutable.
-  if (!SUPABASE_PUBLIC_OBJECT.test(url)) return url;
+  // only stored objects are both billable and safe to treat as immutable.
+  if (!STORED_IMAGE.test(url)) return url;
 
   const resolved = ALLOWED_WIDTHS.find((candidate) => candidate >= width) ?? ALLOWED_WIDTHS.at(-1)!;
   return `/_next/image?url=${encodeURIComponent(url)}&w=${resolved}&q=${quality}`;

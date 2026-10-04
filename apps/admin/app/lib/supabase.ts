@@ -1,11 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-
 /**
  * Media storage helpers.
  *
- * Uploads go through the API rather than straight to Supabase: the storage
- * buckets have no INSERT policy, so the browser's anon key is rejected by RLS.
- * The server performs the write with the service-role key.
+ * Files are stored on Cloudinary. Images go through the API; videos and theme
+ * songs are too large for a JSON body, so the API signs an upload and the
+ * browser sends the bytes to Cloudinary directly. The secret never leaves the API.
  */
 
 const API_BASE = typeof window !== 'undefined'
@@ -31,8 +29,7 @@ async function readUploadError(response: Response) {
 }
 
 /**
- * @param _bucket kept for call-site compatibility; the server always writes to
- *                the `product-images` bucket.
+ * @param _bucket kept for call-site compatibility; storage is decided by the API.
  */
 export async function uploadImage(_bucket: string, file: File, folder = ''): Promise<string> {
   const image = await fileToDataUrl(file);
@@ -53,7 +50,7 @@ export async function uploadImage(_bucket: string, file: File, folder = ''): Pro
 }
 
 export async function uploadMedia(bucket: string, file: File, folder = ''): Promise<string> {
-  // Video and audio both go direct to Supabase with a signed token: they are too
+  // Video and audio go direct to Cloudinary with a signed request: they are too
   // large to survive being base64'd into a JSON body. Everything else takes the
   // simpler API-proxied path.
   const isLargeMedia = file.type.startsWith('video/') || file.type.startsWith('audio/');
@@ -72,28 +69,27 @@ export async function uploadMedia(bucket: string, file: File, folder = ''): Prom
     throw new Error(await readUploadError(response));
   }
 
+  // Signed fields from the API; the file itself goes straight to Cloudinary.
   const upload = await response.json();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const form = new FormData();
+  for (const [key, value] of Object.entries(upload.fields as Record<string, string>)) {
+    form.append(key, value);
+  }
+  form.append('file', file);
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase browser upload is not configured on the admin app.');
+  const stored = await fetch(upload.uploadUrl, { method: 'POST', body: form });
+  const result = await stored.json().catch(() => null);
+  if (!stored.ok || !result?.secure_url) {
+    const kind = file.type.startsWith('audio/') ? 'Audio' : 'Video';
+    throw new Error(`${kind} upload failed: ${result?.error?.message || stored.statusText}`);
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey);
-  const { error } = await client.storage.from(bucket).uploadToSignedUrl(upload.path, upload.token, file, {
-    contentType: file.type,
-  });
-
-  if (error) {
-    throw new Error(`${file.type.startsWith('audio/') ? 'Audio' : 'Video'} upload failed: ${error.message}`);
-  }
-
-  return upload.publicUrl as string;
+  return result.secure_url as string;
 }
 
 export async function deleteImage(_bucket: string, urlOrPath: string): Promise<void> {
-  if (!urlOrPath || !urlOrPath.includes('/storage/v1/object/public/')) return;
+  // The API only removes files it stored on Cloudinary; anything else is ignored.
+  if (!urlOrPath || !urlOrPath.includes('res.cloudinary.com/')) return;
 
   const endpoint = typeof window !== 'undefined' ? '/admin/delete-image' : '/api/admin/delete-image';
   await fetch(`${API_BASE}${endpoint}`, {

@@ -173,7 +173,7 @@ export default function SettingsPage() {
             ) : activeTab === 'home' ? (
               <div className="grid gap-6">
                 <p className="rounded border border-black/10 bg-black/[0.02] p-4 text-sm text-black/60">
-                  Custom hero and About images upload to the Supabase <span className="font-bold text-black">banners</span> bucket under <span className="font-bold text-black">home/</span>. The public URLs and text are saved in the database settings row. Theme hero slides still come from Admin &gt; Product Themes.
+                  Custom hero and About images are stored on Cloudinary under <span className="font-bold text-black">home/</span>. The public URLs and text are saved in the database settings row. Theme hero slides still come from Admin &gt; Product Themes.
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Hero Kicker" value={settings.homeHeroKicker} onChange={(value) => update('homeHeroKicker', value)} />
@@ -314,18 +314,17 @@ export default function SettingsPage() {
 }
 
 type StorageStatus = {
+  provider: string;
   bucket: string;
-  supabaseUrl: string | null;
-  hasSupabaseUrl: boolean;
-  hasServiceRoleKey: boolean;
-  bucketReachable: boolean;
-  isPublic: boolean | null;
+  cloudName: string | null;
+  configured: boolean;
+  reachable: boolean;
   ok: boolean;
   error: string | null;
 };
 
 /**
- * Live check of the image bucket. Uploads are performed by the API server, so
+ * Live check of media storage (Cloudinary). Uploads are performed by the API server, so
  * this reports the API's configuration — not this admin app's.
  */
 function StorageStatusCard() {
@@ -386,20 +385,18 @@ function StorageStatusCard() {
           {status.error && <p className="mt-1 text-sm font-bold text-red-700">{status.error}</p>}
 
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            <Check label="SUPABASE_URL set on API" ok={status.hasSupabaseUrl} />
-            <Check label="SUPABASE_SERVICE_ROLE_KEY set on API" ok={status.hasServiceRoleKey} />
-            <Check label={`Bucket "${status.bucket}" reachable`} ok={status.bucketReachable} />
-            <Check label="Bucket is public" ok={status.isPublic === true} />
+            <Check label="CLOUDINARY_URL set on API" ok={status.configured} />
+            <Check label="Cloudinary reachable" ok={status.reachable} />
           </dl>
 
-          {status.supabaseUrl && (
-            <p className="mt-3 break-all text-xs font-bold text-black/45">Project: {status.supabaseUrl}</p>
+          {status.cloudName && (
+            <p className="mt-3 break-all text-xs font-bold text-black/45">Cloudinary account: {status.cloudName}</p>
           )}
 
           {!good && (
             <p className="mt-3 text-xs font-bold text-black/60">
               These variables belong on the server that runs the API, not on the frontend host. The
-              service-role key must never be added as a NEXT_PUBLIC_ variable.
+              Cloudinary secret must never be added as a NEXT_PUBLIC_ variable.
             </p>
           )}
         </>

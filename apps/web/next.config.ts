@@ -9,11 +9,16 @@ const nextConfig: NextConfig = {
     devtoolSegmentExplorer: false
   },
   images: {
-    // Product imagery lives in Supabase Storage. Serving it straight to the
-    // browser meant every page view pulled full-size originals from Supabase and
-    // was billed as egress. Routing it through the Next optimizer instead means
-    // Supabase is read once per image, then Vercel's CDN serves every visitor.
+    // Media lives on Cloudinary. Routing it through the Next optimizer means
+    // Cloudinary is read once per image and width, then Vercel's CDN serves every
+    // visitor — Supabase was restricted for egress when this was skipped.
+    // The Supabase pattern stays only so any link not yet migrated still renders.
     remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/nkruger4/**"
+      },
       {
         protocol: "https",
         hostname: "*.supabase.co",

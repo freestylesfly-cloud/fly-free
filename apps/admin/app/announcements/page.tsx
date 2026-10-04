@@ -226,7 +226,7 @@ export default function AnnouncementsPage() {
               <ImageIcon size={18} /> Image upload
             </div>
             <p className="text-sm leading-6 text-black/60">
-              Paste an image URL or upload from device. Device uploads go to the Supabase banners bucket and the public URL is saved in the database.
+              Paste an image URL or upload from device. Device uploads are stored on Cloudinary and the public URL is saved in the database.
             </p>
           </section>
         </div>

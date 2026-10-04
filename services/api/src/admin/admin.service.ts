@@ -7,12 +7,11 @@ type PdfOp =
   | { kind: "rect"; x: number; y: number; width: number; height: number; color: PdfRgb };
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
-import { createClient } from "@supabase/supabase-js";
+import { deleteMediaByUrl, mediaStorageStatus, signedDirectUpload, uploadMediaBuffer } from "../storage/media-storage";
 import type { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
-const STORAGE_BUCKET = "product-images";
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const VIDEO_MIME_TYPES = ["video/mp4", "video/webm"];
 /** Theme songs. A hero clip is a few seconds, so the cap is deliberately tight. */
@@ -1457,8 +1456,8 @@ export class AdminService {
   }
 
   /**
-   * Store storefront media and return its public URL. Browser-side uploads are
-   * blocked by storage RLS, so the server does it with the service-role key.
+   * Store storefront media and return its public URL. The server does the write
+   * so the storage secret never reaches a browser.
    */
   async uploadImage(image: string, folder = "misc") {
     const match = /^data:([a-z0-9/+-]+);base64,(.+)$/i.exec(image || "");
@@ -1493,9 +1492,9 @@ export class AdminService {
   }
 
   /**
-   * Creates a short-lived upload token for large admin videos. The admin app
-   * sends the real bytes directly to Supabase with this token, avoiding Vercel
-   * and JSON body limits while keeping the service-role key on the API.
+   * Signed parameters for a large admin video or theme song. The admin app sends
+   * the bytes straight to Cloudinary with them, avoiding Vercel and JSON body
+   * limits while the API secret stays on this server.
    */
   async createMediaUploadUrl(data: { mimeType?: string; size?: number; folder?: string }) {
     const mimeType = String(data?.mimeType || "").toLowerCase();
@@ -1509,163 +1508,25 @@ export class AdminService {
       throw new BadRequestException(isAudio ? "Audio must be under 10MB" : "Video must be under 80MB");
     }
 
-    const storage = this.storageClient();
-    const objectPath = this.objectPathFor(data?.folder || "misc", mimeType);
-    const { data: signed, error } = await storage.storage.from(STORAGE_BUCKET).createSignedUploadUrl(objectPath);
-
-    if (error || !signed?.token) {
-      this.logger.error(`Could not create media upload URL: ${error?.message || "missing token"}`);
-      throw new BadRequestException(`Could not prepare media upload: ${error?.message || "missing upload token"}`);
-    }
-
-    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(objectPath);
-    return {
-      path: objectPath,
-      token: signed.token,
-      publicUrl: pub.publicUrl,
-      expiresInSeconds: 7200
-    };
+    return signedDirectUpload(mimeType, data?.folder || "misc");
   }
 
   private async uploadBuffer(buffer: Buffer, mimeType: string, folder = "misc") {
-    const storage = this.storageClient();
-    const objectPath = this.objectPathFor(folder, mimeType);
-
-    const { data, error } = await storage.storage
-      .from(STORAGE_BUCKET)
-      .upload(objectPath, buffer, {
-        contentType: mimeType,
-        // Without this, Supabase serves the object as `no-cache`, so every page
-        // view re-downloads every image and is billed as cached egress. Paths are
-        // timestamped and never reused, so they are safe to cache indefinitely.
-        cacheControl: "31536000",
-        upsert: false
-      });
-
-    if (error) {
-      this.logger.error(`Admin media upload failed: ${error.message}`);
-      throw new BadRequestException(`Failed to upload media: ${error.message}`);
-    }
-
-    const { data: pub } = storage.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
-    return { url: pub.publicUrl };
-  }
-
-  private storageClient() {
-    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !serviceKey) {
-      // Name the missing variable — this runs on the API host (Railway), not on
-      // Vercel, and that distinction is where the setup usually goes wrong.
-      const missing = [
-        !url && "SUPABASE_URL",
-        !serviceKey && "SUPABASE_SERVICE_ROLE_KEY"
-      ].filter(Boolean);
-      this.logger.error(`Media upload blocked: missing ${missing.join(" and ")} on the API server`);
-      throw new BadRequestException(
-        `Media storage is not configured: ${missing.join(" and ")} missing on the API server. Set it where the API is deployed, not on the frontend host.`
-      );
-    }
-
-    return createClient(url, serviceKey);
+    return { url: await uploadMediaBuffer(buffer, mimeType, folder) };
   }
 
   /**
-   * A MIME subtype is not a file extension. `audio/mpeg` is an .mp3 and
-   * `audio/mp4` is an .m4a — saving them under the raw subtype gives files that
-   * browsers and operating systems refuse to open by name.
-   */
-  private static readonly EXTENSION_BY_SUBTYPE: Record<string, string> = {
-    jpeg: "jpg",
-    mpeg: "mp3",
-    "x-m4a": "m4a",
-    quicktime: "mov"
-  };
-
-  private objectPathFor(folder: string, mimeType: string) {
-    const [type, rawSubtype = "bin"] = mimeType.split("/");
-    const subtype = rawSubtype.toLowerCase();
-    const extension =
-      type === "audio" && subtype === "mp4"
-        ? "m4a"
-        : AdminService.EXTENSION_BY_SUBTYPE[subtype] || subtype;
-    const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, "").replace(/^\/+|\/+$/g, "") || "misc";
-    return `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
-  }
-
-  /**
-   * Read-only health check for image storage, so a failing upload can be
-   * diagnosed without uploading anything.
-   *
-   * Uploads are performed by THIS server, so the credentials must exist on the
-   * API host. Setting them on the frontend host has no effect — and the
-   * service-role key must never be shipped to a browser.
+   * Read-only health check for media storage, so a failing upload can be
+   * diagnosed without uploading anything. Credentials must exist on the API
+   * host — setting them on the frontend host has no effect.
    */
   async getStorageStatus() {
-    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    const status: Record<string, any> = {
-      bucket: STORAGE_BUCKET,
-      supabaseUrl: url || null,
-      hasSupabaseUrl: Boolean(url),
-      hasServiceRoleKey: Boolean(serviceKey),
-      bucketReachable: false,
-      isPublic: null as boolean | null,
-      ok: false,
-      error: null as string | null
-    };
-
-    if (!url || !serviceKey) {
-      status.error = `Missing ${[!url && "SUPABASE_URL", !serviceKey && "SUPABASE_SERVICE_ROLE_KEY"]
-        .filter(Boolean)
-        .join(" and ")} on the API server.`;
-      return status;
-    }
-
-    try {
-      const storage = createClient(url, serviceKey);
-      const { data, error } = await storage.storage.getBucket(STORAGE_BUCKET);
-
-      if (error) {
-        status.error = error.message;
-        return status;
-      }
-
-      status.bucketReachable = true;
-      status.isPublic = data?.public ?? null;
-      status.ok = Boolean(data?.public);
-      if (!data?.public) {
-        status.error = `Bucket "${STORAGE_BUCKET}" exists but is not public, so uploaded images will not load.`;
-      }
-    } catch (err) {
-      status.error = err instanceof Error ? err.message : "Could not reach Supabase storage";
-    }
-
-    return status;
+    return mediaStorageStatus();
   }
 
-  /** Best-effort removal of a previously uploaded image. */
+  /** Best-effort removal of a previously uploaded file. */
   async deleteImage(url: string) {
-    const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
-    const index = (url || "").indexOf(marker);
-    if (index === -1) return { removed: false };
-
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) return { removed: false };
-
-    const storage = createClient(supabaseUrl, serviceKey);
-    const { error } = await storage.storage
-      .from(STORAGE_BUCKET)
-      .remove([url.slice(index + marker.length)]);
-
-    if (error) {
-      this.logger.warn(`Could not remove image: ${error.message}`);
-      return { removed: false };
-    }
-
-    return { removed: true };
+    return { removed: await deleteMediaByUrl(url) };
   }
 
   // Public delivery config, used by the cart and checkout to price shipping.

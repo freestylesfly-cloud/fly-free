@@ -1,10 +1,9 @@
 import { Injectable, BadRequestException, NotFoundException, UnauthorizedException, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { uploadMediaBuffer } from "../storage/media-storage";
 import * as jwt from "jsonwebtoken";
 import { requireJwtSecret } from "../auth/jwt-secret";
 
-const REVIEW_BUCKET = "product-images";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGES = 5;
@@ -12,13 +11,8 @@ const MAX_IMAGES = 5;
 @Injectable()
 export class ReviewService {
   private readonly logger = new Logger(ReviewService.name);
-  private readonly storage: SupabaseClient | null;
 
-  constructor(private readonly prisma: PrismaService) {
-    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    this.storage = url && serviceKey ? createClient(url, serviceKey) : null;
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async uploadImages(images: string[], authHeader?: string) {
     this.extractUserId(authHeader);
@@ -28,9 +22,6 @@ export class ReviewService {
     }
     if (images.length > MAX_IMAGES) {
       throw new BadRequestException(`You can upload at most ${MAX_IMAGES} images`);
-    }
-    if (!this.storage) {
-      throw new BadRequestException("Image storage is not configured");
     }
 
     const urls: string[] = [];
@@ -51,27 +42,7 @@ export class ReviewService {
         throw new BadRequestException("Each image must be smaller than 5MB");
       }
 
-      const extension = mimeType.split("/")[1].replace("jpeg", "jpg");
-      const objectPath = `reviews/${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${extension}`;
-
-      const { data, error } = await this.storage.storage
-        .from(REVIEW_BUCKET)
-        .upload(objectPath, buffer, {
-          contentType: mimeType,
-          // Without this, Supabase serves the object as `no-cache`, so every page
-          // view re-downloads every image and is billed as cached egress. Paths are
-          // timestamped and never reused, so they are safe to cache indefinitely.
-          cacheControl: "31536000",
-          upsert: false
-        });
-
-      if (error) {
-        this.logger.error(`Review image upload failed: ${error.message}`);
-        throw new BadRequestException("Failed to upload review image");
-      }
-
-      const { data: pub } = this.storage.storage.from(REVIEW_BUCKET).getPublicUrl(data.path);
-      urls.push(pub.publicUrl);
+      urls.push(await uploadMediaBuffer(buffer, mimeType.toLowerCase(), "reviews"));
     }
 
     return { data: { urls } };
