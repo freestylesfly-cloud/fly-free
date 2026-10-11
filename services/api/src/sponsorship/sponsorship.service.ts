@@ -116,7 +116,7 @@ export class SponsorshipService {
   // ==================== VOUCHERS ====================
 
   async createVoucher(sponsorshipId: string, data: any) {
-    await this.getSponsorship(sponsorshipId);
+    const { data: sponsorship } = await this.getSponsorship(sponsorshipId);
 
     const winnerName = String(data.winnerName || "").trim();
     if (!winnerName) throw new BadRequestException("Winner name is required");
@@ -131,7 +131,7 @@ export class SponsorshipService {
     const voucher = await this.prisma.prizeVoucher.create({
       data: {
         sponsorshipId,
-        code: await this.generateUniqueCode(),
+        code: await this.generateUniqueCode(sponsorship.eventName, winnerName),
         winnerName,
         winnerPhone: String(data.winnerPhone || "").trim() || null,
         winnerEmail: String(data.winnerEmail || "").trim() || null,
@@ -442,18 +442,35 @@ export class SponsorshipService {
   // ==================== HELPERS ====================
 
   /**
-   * A 10-character code in two hyphenated blocks, e.g. FF7K2M-9QBX4T.
+   * A readable code naming the brand, the event and the winner, e.g.
+   * FLYFREE-HANGEUL-MUNJA-7K2QX, so the team can tell whose code is whose.
    *
-   * Retried against the unique index rather than trusted blindly: 32^10 makes a
-   * collision vanishingly unlikely, but a duplicate here would hand two winners
-   * the same prize.
+   * The random tail is not decoration. Winners' names are published on the
+   * homepage and a voucher locks to whoever spends it first, so a code made of
+   * the name alone could be guessed and claimed before the winner gets to it.
+   * Five characters from a 32-symbol alphabet leave 33 million possibilities per
+   * name, and lookups need a signed-in account.
+   *
+   * Retried against the unique index rather than trusted blindly: a duplicate
+   * here would hand two winners the same prize.
    */
-  private async generateUniqueCode(): Promise<string> {
+  static codePart(value: string, fallback: string) {
+    const word = String(value || "")
+      .normalize("NFKD")
+      .toUpperCase()
+      .split(/[^A-Z0-9]+/)
+      // "Hangeul Day Celebration 2026" -> HANGEUL: the first meaningful word.
+      .find((part) => part.length >= 2 && !/^\d+$/.test(part));
+    return (word || fallback).slice(0, 10);
+  }
+
+  async generateUniqueCode(eventName: string, winnerName: string): Promise<string> {
+    const prefix = `FLYFREE-${SponsorshipService.codePart(eventName, "EVENT")}-${SponsorshipService.codePart(winnerName, "WINNER")}`;
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const raw = Array.from({ length: 12 }, () =>
+      const tail = Array.from({ length: 5 }, () =>
         SponsorshipService.CODE_ALPHABET[randomInt(SponsorshipService.CODE_ALPHABET.length)]
       ).join("");
-      const code = `${raw.slice(0, 6)}-${raw.slice(6)}`;
+      const code = `${prefix}-${tail}`;
       const clash = await this.prisma.prizeVoucher.findUnique({ where: { code }, select: { id: true } });
       if (!clash) return code;
     }

@@ -183,7 +183,8 @@ export default function CheckoutPage() {
    * lookup to try FIRST — never to rule a code out, because a code that fails
    * this test is still tried as a voucher before the shopper is turned away.
    */
-  const VOUCHER_CODE_SHAPE = /^[A-Z0-9]{6}-[A-Z0-9]{6}$/;
+  // FLYFREE-HANGEUL-MUNJA-7K2QX today; ABC123-DEF456 for vouchers issued before.
+  const VOUCHER_CODE_SHAPE = /^(FLYFREE(-[A-Z0-9]+){3}|[A-Z0-9]{6}-[A-Z0-9]{6})$/i;
 
   /**
    * Looks a prize voucher up for this account.
