@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Gift, Handshake, MapPin, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Camera, Gift, Handshake, MapPin, Trophy } from 'lucide-react';
+import { Confetti } from '../../components/Confetti';
+import { EventGallery } from '../../components/EventGallery';
 import { getApiBaseUrl } from '../../lib/api';
 import { MEDIA } from '../../lib/design';
+import { formatEventDates } from '../../lib/eventDates';
 import { IMAGE_WIDTH, storageImage } from '../../lib/image';
 
 const API_BASE = getApiBaseUrl();
@@ -13,6 +16,8 @@ export const revalidate = 60;
 type Winner = {
   id: string;
   name: string;
+  /** The competition they won. Every winner is an equal winner — never ranked. */
+  award?: string | null;
   position?: number | null;
   prizeValue: number;
   imageUrl?: string | null;
@@ -25,9 +30,13 @@ type Sponsorship = {
   partnerUrl?: string | null;
   eventName: string;
   eventDate?: string | null;
+  eventEndDate?: string | null;
   location?: string | null;
   headline?: string | null;
   blurb?: string | null;
+  /** Long write-up; paragraphs separated by blank lines. */
+  story?: string | null;
+  galleryUrls?: string[];
   bannerImageUrl?: string | null;
   partnerLogoUrl?: string | null;
   winners: Winner[];
@@ -75,11 +84,20 @@ export default async function SponsorshipPage({ params }: { params: Promise<{ id
   const [sponsorship, copy] = await Promise.all([getSponsorship(id), getCopy()]);
   if (!sponsorship) notFound();
 
-  const eventDate = sponsorship.eventDate ? new Date(sponsorship.eventDate) : null;
+  const eventDates = formatEventDates(sponsorship.eventDate, sponsorship.eventEndDate, 'long');
   const hasWinners = sponsorship.winners.length > 0;
+  const story = (sponsorship.story || '')
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  const gallery = sponsorship.galleryUrls || [];
+  const prizeValues = sponsorship.winners.map((w) => w.prizeValue);
+  const equalPrize = prizeValues.length > 0 && prizeValues.every((v) => v === prizeValues[0]) ? prizeValues[0] : 0;
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      {/* A results page is a celebration — one burst when it opens. */}
+      <Confetti fire={hasWinners} />
       {/* HERO — the banner art with the title laid over it, matching the theme pages. */}
       <section className="relative w-full overflow-hidden" style={{ aspectRatio: MEDIA.sponsorBanner.css, backgroundColor: 'var(--color-primary)' }}>
         {sponsorship.bannerImageUrl && (
@@ -112,10 +130,10 @@ export default async function SponsorshipPage({ params }: { params: Promise<{ id
                   <MapPin size={13} /> {sponsorship.location}
                 </span>
               )}
-              {eventDate && (
+              {eventDates && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 backdrop-blur">
                   <CalendarDays size={13} />
-                  {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {eventDates}
                 </span>
               )}
             </div>
@@ -170,6 +188,16 @@ export default async function SponsorshipPage({ params }: { params: Promise<{ id
               </p>
             )}
 
+            {story.length > 0 && (
+              <div className="mt-6 max-w-2xl space-y-4 border-l-4 pl-5" style={{ borderColor: 'var(--color-primary)' }}>
+                {story.map((paragraph, index) => (
+                  <p key={index} className="text-[15px] leading-7" style={{ color: 'var(--text-secondary)' }}>
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            )}
+
             {sponsorship.partnerUrl && (
               <a
                 href={sponsorship.partnerUrl}
@@ -195,9 +223,11 @@ export default async function SponsorshipPage({ params }: { params: Promise<{ id
               <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
                 <Gift size={15} /> {copy.sponsorPrizeTitle || 'What we are giving'}
               </p>
-              <p className="mt-4 text-4xl font-black leading-none">{rupees(sponsorship.prizeTotal)}</p>
+              <p className="mt-4 text-4xl font-black leading-none">{rupees(equalPrize || sponsorship.prizeTotal)}</p>
               <p className="mt-2 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
-                across {sponsorship.prizeCount} winner{sponsorship.prizeCount === 1 ? '' : 's'}.
+                {equalPrize
+                  ? `in Fly Free credit for each of the ${sponsorship.prizeCount} winners.`
+                  : `across ${sponsorship.prizeCount} winner${sponsorship.prizeCount === 1 ? '' : 's'}.`}
               </p>
               {copy.sponsorPrizeNote && (
                 <p className="mt-4 text-xs font-bold leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -227,11 +257,22 @@ export default async function SponsorshipPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {sponsorship.winners.map((winner, index) => (
                 <WinnerCard key={winner.id} winner={winner} index={index} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* GALLERY */}
+        {gallery.length > 0 && (
+          <section className="mt-14">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+              <Camera size={15} /> {gallery.length} photo{gallery.length === 1 ? '' : 's'}
+            </p>
+            <h2 className="mb-6 mt-2 text-3xl font-black uppercase sm:text-4xl">From the event</h2>
+            <EventGallery photos={gallery} title={sponsorship.eventName} />
           </section>
         )}
       </div>
@@ -273,29 +314,25 @@ function WinnerCard({ winner, index }: { winner: Winner; index: number }) {
           </span>
         )}
 
-        {winner.position ? (
-          <span
-            className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase text-white shadow-lg"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            {ordinal(winner.position)} place
-          </span>
-        ) : null}
+        <span
+          className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase text-white shadow-lg"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+        >
+          <Trophy size={11} /> Winner
+        </span>
       </div>
 
       <div className="p-4">
         <h3 className="truncate text-base font-black">{winner.name}</h3>
+        {winner.award && (
+          <p className="mt-0.5 truncate text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+            {winner.award}
+          </p>
+        )}
         <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-primary)' }}>
           {rupees(winner.prizeValue)} prize voucher
         </p>
       </div>
     </article>
   );
-}
-
-/** 1 -> "1st", 2 -> "2nd", 11 -> "11th". */
-function ordinal(position: number) {
-  const remainder = position % 100;
-  if (remainder >= 11 && remainder <= 13) return `${position}th`;
-  return `${position}${['th', 'st', 'nd', 'rd'][position % 10] || 'th'}`;
 }

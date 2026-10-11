@@ -134,6 +134,9 @@ export class SponsorshipService {
         code: await this.generateUniqueCode(),
         winnerName,
         winnerPhone: String(data.winnerPhone || "").trim() || null,
+        winnerEmail: String(data.winnerEmail || "").trim() || null,
+        winnerInstagramUrl: String(data.winnerInstagramUrl || "").trim() || null,
+        award: String(data.award || "").trim() || null,
         position: data.position ? Number(data.position) : null,
         value: Math.round(value),
         // A new voucher starts with its full value available.
@@ -177,6 +180,11 @@ export class SponsorshipService {
       data: {
         ...(data.winnerName !== undefined && { winnerName: String(data.winnerName).trim() }),
         ...(data.winnerPhone !== undefined && { winnerPhone: String(data.winnerPhone || "").trim() || null }),
+        ...(data.winnerEmail !== undefined && { winnerEmail: String(data.winnerEmail || "").trim() || null }),
+        ...(data.winnerInstagramUrl !== undefined && {
+          winnerInstagramUrl: String(data.winnerInstagramUrl || "").trim() || null,
+        }),
+        ...(data.award !== undefined && { award: String(data.award || "").trim() || null }),
         ...(data.position !== undefined && { position: data.position ? Number(data.position) : null }),
         ...(maxRedemptions !== undefined && { maxRedemptions: Math.round(maxRedemptions) }),
         ...(data.expiresAt !== undefined && { expiresAt: data.expiresAt ? new Date(data.expiresAt) : null }),
@@ -257,6 +265,8 @@ export class SponsorshipService {
   /** Never show more than this many sponsorships, or winners within one. */
   private static readonly PUBLIC_LIMIT = 6;
   private static readonly WINNERS_LIMIT = 12;
+  /** Photos per sponsorship gallery. */
+  static readonly GALLERY_LIMIT = 40;
 
   async getActiveSponsorships() {
     const now = new Date();
@@ -281,6 +291,7 @@ export class SponsorshipService {
         partnerUrl: true,
         eventName: true,
         eventDate: true,
+        eventEndDate: true,
         location: true,
         headline: true,
         blurb: true,
@@ -303,7 +314,14 @@ export class SponsorshipService {
 
     const winnersBySponsorship = new Map<
       string,
-      Array<{ id: string; name: string; position: number | null; prizeValue: number; imageUrl: string | null }>
+      Array<{
+        id: string;
+        name: string;
+        award: string | null;
+        position: number | null;
+        prizeValue: number;
+        imageUrl: string | null;
+      }>
     >();
 
     if (revealing.length > 0) {
@@ -313,7 +331,15 @@ export class SponsorshipService {
         take: SponsorshipService.WINNERS_LIMIT * revealing.length,
         // `value` rides along on the query already being made — the prize total
         // is what makes the announcement worth reading.
-        select: { id: true, sponsorshipId: true, winnerName: true, position: true, value: true, winnerImageUrl: true },
+        select: {
+          id: true,
+          sponsorshipId: true,
+          winnerName: true,
+          award: true,
+          position: true,
+          value: true,
+          winnerImageUrl: true,
+        },
       });
 
       for (const winner of winners) {
@@ -322,6 +348,7 @@ export class SponsorshipService {
         list.push({
           id: winner.id,
           name: winner.winnerName,
+          award: winner.award,
           position: winner.position,
           prizeValue: winner.value,
           imageUrl: winner.winnerImageUrl,
@@ -344,8 +371,8 @@ export class SponsorshipService {
    * One sponsorship for its public details page.
    *
    * Same rules as the list: it must be live right now, and the columns are
-   * selected explicitly so a code or a phone number cannot slip into a public
-   * response. Winners carry the prize value here — it is a prize announcement,
+   * selected explicitly so a code, phone number, email or Instagram link cannot
+   * slip into a public response. Winners carry the prize value here — it is a prize announcement,
    * so what was won is the point — but never the code that claims it.
    */
   async getPublicSponsorship(id: string) {
@@ -366,9 +393,12 @@ export class SponsorshipService {
         partnerUrl: true,
         eventName: true,
         eventDate: true,
+        eventEndDate: true,
         location: true,
         headline: true,
         blurb: true,
+        story: true,
+        galleryUrls: true,
         bannerImageUrl: true,
         partnerLogoUrl: true,
         showWinners: true,
@@ -387,7 +417,7 @@ export class SponsorshipService {
           where: { sponsorshipId: id },
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           take: SponsorshipService.WINNERS_LIMIT,
-          select: { id: true, winnerName: true, position: true, value: true, winnerImageUrl: true },
+          select: { id: true, winnerName: true, award: true, position: true, value: true, winnerImageUrl: true },
         })
       : [];
 
@@ -398,6 +428,7 @@ export class SponsorshipService {
       winners: winners.map((w) => ({
         id: w.id,
         name: w.winnerName,
+        award: w.award,
         position: w.position,
         prizeValue: w.value,
         imageUrl: w.winnerImageUrl,
@@ -460,6 +491,17 @@ export class SponsorshipService {
     };
     const text = (value: any) => (value === undefined ? undefined : String(value || "").trim() || null);
     const date = (value: any) => (value ? new Date(value) : value === null || value === "" ? null : undefined);
+    // Trimmed, de-duplicated and capped: the gallery is one public payload, so
+    // it cannot be allowed to grow without limit.
+    const galleryUrls = (value: any) =>
+      value === undefined
+        ? undefined
+        : Array.isArray(value)
+          ? [...new Set(value.map((url: any) => String(url || "").trim()).filter(Boolean))].slice(
+              0,
+              SponsorshipService.GALLERY_LIMIT
+            )
+          : [];
 
     set("partnerName", data.partnerName === undefined ? undefined : String(data.partnerName || "").trim());
     set("eventName", data.eventName === undefined ? undefined : String(data.eventName || "").trim());
@@ -468,9 +510,12 @@ export class SponsorshipService {
     set("location", text(data.location));
     set("headline", text(data.headline));
     set("blurb", text(data.blurb));
+    set("story", text(data.story));
+    set("galleryUrls", galleryUrls(data.galleryUrls));
     set("bannerImageUrl", text(data.bannerImageUrl));
     set("partnerLogoUrl", text(data.partnerLogoUrl));
     set("eventDate", date(data.eventDate));
+    set("eventEndDate", date(data.eventEndDate));
     set("startsAt", date(data.startsAt));
     set("endsAt", date(data.endsAt));
     set("priority", data.priority === undefined ? undefined : Number(data.priority) || 0);

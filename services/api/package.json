@@ -17,7 +17,6 @@
     "db:copy": "node scripts/migrate-database.mjs --apply",
     "db:copy:resume": "node scripts/migrate-database.mjs --apply --resume",
     "db:copy:verify": "node scripts/migrate-database.mjs --verify",
-    "demo:sponsorship": "node scripts/seed-sponsorship-demo.mjs",
     "test:vouchers": "node scripts/test-vouchers.mjs",
     "db:studio": "prisma studio"
   },

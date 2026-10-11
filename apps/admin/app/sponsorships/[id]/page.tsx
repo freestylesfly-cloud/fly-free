@@ -27,6 +27,9 @@ interface Voucher {
   code: string;
   winnerName: string;
   winnerPhone?: string | null;
+  winnerEmail?: string | null;
+  winnerInstagramUrl?: string | null;
+  award?: string | null;
   position?: number | null;
   value: number;
   balance: number;
@@ -43,6 +46,9 @@ interface Voucher {
 const emptyForm = {
   winnerName: '',
   winnerPhone: '',
+  winnerEmail: '',
+  winnerInstagramUrl: '',
+  award: '',
   position: '',
   value: '999',
   maxRedemptions: '2',
@@ -71,7 +77,18 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustNote, setAdjustNote] = useState('');
   const [editFor, setEditFor] = useState<Voucher | null>(null);
-  const [editForm, setEditForm] = useState({ winnerName: '', winnerPhone: '', position: '', maxRedemptions: '', expiresAt: '', lockToFirstUser: true, winnerImageUrl: '' });
+  const [editForm, setEditForm] = useState({
+    winnerName: '',
+    winnerPhone: '',
+    winnerEmail: '',
+    winnerInstagramUrl: '',
+    award: '',
+    position: '',
+    maxRedemptions: '',
+    expiresAt: '',
+    lockToFirstUser: true,
+    winnerImageUrl: ''
+  });
 
   async function createVoucher(event: React.FormEvent) {
     event.preventDefault();
@@ -83,6 +100,9 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
       const response: any = await apiService.createPrizeVoucher(id, {
         winnerName: form.winnerName,
         winnerPhone: form.winnerPhone,
+        winnerEmail: form.winnerEmail,
+        winnerInstagramUrl: form.winnerInstagramUrl,
+        award: form.award,
         position: form.position ? Number(form.position) : null,
         value: Number(form.value),
         maxRedemptions: Number(form.maxRedemptions),
@@ -154,6 +174,9 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
     setEditForm({
       winnerName: voucher.winnerName || '',
       winnerPhone: voucher.winnerPhone || '',
+      winnerEmail: voucher.winnerEmail || '',
+      winnerInstagramUrl: voucher.winnerInstagramUrl || '',
+      award: voucher.award || '',
       position: voucher.position ? String(voucher.position) : '',
       maxRedemptions: String(voucher.maxRedemptions),
       expiresAt: toInputDate(voucher.expiresAt),
@@ -171,6 +194,9 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
       await apiService.updatePrizeVoucher(editFor.id, {
         winnerName: editForm.winnerName,
         winnerPhone: editForm.winnerPhone,
+        winnerEmail: editForm.winnerEmail,
+        winnerInstagramUrl: editForm.winnerInstagramUrl,
+        award: editForm.award,
         position: editForm.position ? Number(editForm.position) : null,
         maxRedemptions: Number(editForm.maxRedemptions),
         expiresAt: editForm.expiresAt ? new Date(editForm.expiresAt).toISOString() : null,
@@ -240,9 +266,9 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              {voucher.position ? (
+                              {voucher.award ? (
                                 <span className="inline-flex rounded-full bg-mint px-2 py-1 text-[10px] font-black uppercase text-black">
-                                  {ordinal(voucher.position)} place
+                                  {voucher.award}
                                 </span>
                               ) : null}
                               <span className="text-base font-black">{voucher.winnerName}</span>
@@ -255,8 +281,16 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
                               </span>
                             </div>
 
-                            {voucher.winnerPhone && (
-                              <p className="mt-1 text-xs font-bold text-black/55">{voucher.winnerPhone}</p>
+                            {(voucher.winnerPhone || voucher.winnerEmail || voucher.winnerInstagramUrl) && (
+                              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-black/55">
+                                {voucher.winnerPhone && <a href={`tel:${voucher.winnerPhone}`}>{voucher.winnerPhone}</a>}
+                                {voucher.winnerEmail && <a href={`mailto:${voucher.winnerEmail}`}>{voucher.winnerEmail}</a>}
+                                {voucher.winnerInstagramUrl && (
+                                  <a href={voucher.winnerInstagramUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                                    Instagram
+                                  </a>
+                                )}
+                              </p>
                             )}
 
                             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -398,7 +432,10 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <Input label="Winner name" value={editForm.winnerName} onChange={(v) => setEditForm({ ...editForm, winnerName: v })} required />
                               <Input label="Phone" value={editForm.winnerPhone} onChange={(v) => setEditForm({ ...editForm, winnerPhone: v })} />
-                              <Input label="Position" value={editForm.position} onChange={(v) => setEditForm({ ...editForm, position: v })} type="number" />
+                              <Input label="Email" value={editForm.winnerEmail} onChange={(v) => setEditForm({ ...editForm, winnerEmail: v })} type="email" />
+                              <Input label="Instagram link" value={editForm.winnerInstagramUrl} onChange={(v) => setEditForm({ ...editForm, winnerInstagramUrl: v })} type="url" />
+                              <Input label="Award (public)" value={editForm.award} onChange={(v) => setEditForm({ ...editForm, award: v })} placeholder="Dance competition" />
+                              <Input label="Display order" value={editForm.position} onChange={(v) => setEditForm({ ...editForm, position: v })} type="number" />
                               <Input label="Maximum uses" value={editForm.maxRedemptions} onChange={(v) => setEditForm({ ...editForm, maxRedemptions: v })} type="number" required />
                             </div>
                             <div className="mt-3">
@@ -501,9 +538,15 @@ export default function SponsorshipVouchersPage({ params }: { params: Promise<{ 
               <form onSubmit={createVoucher} className="mt-4 space-y-4">
                 <Input label="Winner name" value={form.winnerName} onChange={(v) => setForm({ ...form, winnerName: v })} required />
                 <Input label="Phone" value={form.winnerPhone} onChange={(v) => setForm({ ...form, winnerPhone: v })} placeholder="For sending the code" />
+                <Input label="Email" value={form.winnerEmail} onChange={(v) => setForm({ ...form, winnerEmail: v })} type="email" placeholder="Private — never shown on the website" />
+                <Input label="Instagram link" value={form.winnerInstagramUrl} onChange={(v) => setForm({ ...form, winnerInstagramUrl: v })} type="url" placeholder="Private — for your reference" />
+                <Input label="Award (public)" value={form.award} onChange={(v) => setForm({ ...form, award: v })} placeholder="e.g. Calligraphy competition" />
+                <p className="-mt-2 text-xs text-black/50">
+                  Shown on the winner&apos;s card. Every winner appears as an equal winner of their own competition — there is no 1st or 2nd.
+                </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Input label="Position" value={form.position} onChange={(v) => setForm({ ...form, position: v })} type="number" placeholder="1" />
+                  <Input label="Display order" value={form.position} onChange={(v) => setForm({ ...form, position: v })} type="number" placeholder="1" />
                   <Input label="Value (Rs)" value={form.value} onChange={(v) => setForm({ ...form, value: v })} type="number" required />
                 </div>
 
@@ -611,14 +654,6 @@ function describeKind(entry: Redemption) {
   if (entry.kind === 'REVERSAL') return entry.note ? `Returned — ${entry.note}` : 'Returned to the winner';
   if (entry.kind === 'ADJUSTMENT') return `Admin ${direction} credit${entry.note ? ` — ${entry.note}` : ''}`;
   return 'Spent on order';
-}
-
-/** 1 -> "1st", 2 -> "2nd", 11 -> "11th". */
-function ordinal(position: number) {
-  const remainder = position % 100;
-  if (remainder >= 11 && remainder <= 13) return `${position}th`;
-  const suffix = ['th', 'st', 'nd', 'rd'][position % 10] || 'th';
-  return `${position}${suffix}`;
 }
 
 function Input({

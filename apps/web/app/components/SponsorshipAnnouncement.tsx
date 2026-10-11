@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, CalendarDays, Gift, Instagram, MapPin, Sparkles, Trophy, X } from 'lucide-react';
+import { formatEventDates } from '../lib/eventDates';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
+import { Confetti } from './Confetti';
 import type { Sponsorship, SponsorshipCopy } from './SponsorshipSection';
 
 /**
@@ -12,6 +14,9 @@ import type { Sponsorship, SponsorshipCopy } from './SponsorshipSection';
  *
  * Shown once per sponsorship per browser: dismissing it records that id, so a
  * returning visitor is left alone but a NEW collaboration still gets its moment.
+ * Publishing the winners is a second moment of its own — it has a separate key,
+ * so someone who closed the "we are sponsoring" version still sees the result,
+ * with confetti.
  * The flag lives in localStorage, which can throw or come back empty in private
  * windows — every access is guarded and failure simply means the modal shows.
  */
@@ -23,13 +28,14 @@ export function SponsorshipAnnouncement({
   copy?: SponsorshipCopy;
 }) {
   const [open, setOpen] = useState(false);
+  const hasWinners = (sponsorship?.winners?.length || 0) > 0;
+  const seenKey = sponsorship ? `flyfree_sponsorship_seen_${sponsorship.id}${hasWinners ? '_winners' : ''}` : '';
 
   useEffect(() => {
     if (!sponsorship) return;
 
-    const key = `flyfree_sponsorship_seen_${sponsorship.id}`;
     try {
-      if (localStorage.getItem(key)) return;
+      if (localStorage.getItem(seenKey)) return;
     } catch {
       // Storage blocked. Showing the modal is the friendlier failure.
     }
@@ -38,13 +44,13 @@ export function SponsorshipAnnouncement({
     // rather than an interruption.
     const timer = setTimeout(() => setOpen(true), 1200);
     return () => clearTimeout(timer);
-  }, [sponsorship]);
+  }, [sponsorship, seenKey]);
 
   function dismiss() {
     setOpen(false);
     if (!sponsorship) return;
     try {
-      localStorage.setItem(`flyfree_sponsorship_seen_${sponsorship.id}`, String(Date.now()));
+      localStorage.setItem(seenKey, String(Date.now()));
     } catch {
       // Not remembering is acceptable; showing it twice is not worth an error.
     }
@@ -68,10 +74,19 @@ export function SponsorshipAnnouncement({
   if (!sponsorship) return null;
 
   const winners = sponsorship.winners || [];
-  const countdown = describeCountdown(sponsorship.eventDate);
+  const countdown = hasWinners
+    ? copy.sponsorWinnersLabel || 'Winners announced'
+    : describeCountdown(sponsorship.eventDate, sponsorship.eventEndDate);
   const prizeTotal = sponsorship.prizeTotal || 0;
+  // When every winner received the same prize, say so per person — "each wins
+  // ₹999" reads as a prize; a pooled total does not.
+  const prizeValues = winners.map((w) => w.prizeValue || 0);
+  const equalPrize = prizeValues.length > 0 && prizeValues.every((v) => v === prizeValues[0]) ? prizeValues[0] : 0;
+  const eventDates = formatEventDates(sponsorship.eventDate, sponsorship.eventEndDate);
 
   return (
+    <>
+    <Confetti fire={open && hasWinners} />
     <AnimatePresence>
       {open && (
         <motion.div
@@ -126,14 +141,14 @@ export function SponsorshipAnnouncement({
                   className="absolute bottom-3 left-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white shadow-lg"
                   style={{ backgroundColor: 'var(--color-primary)' }}
                 >
-                  <Sparkles size={13} /> {countdown}
+                  {hasWinners ? <Trophy size={13} /> : <Sparkles size={13} />} {countdown}
                 </motion.span>
               )}
             </div>
 
             <div className="p-5 sm:p-6">
               <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary)' }}>
-                {copy.sponsorKicker || 'Proudly sponsoring'}
+                {hasWinners ? copy.sponsorWinnersTitle || 'Congratulations' : copy.sponsorKicker || 'Proudly sponsoring'}
               </p>
               <h2 className="mt-2 text-2xl font-black uppercase leading-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
                 {sponsorship.headline || `${sponsorship.partnerName} × Fly Free`}
@@ -148,22 +163,23 @@ export function SponsorshipAnnouncement({
                     <MapPin size={12} /> {sponsorship.location}
                   </span>
                 )}
-                {sponsorship.eventDate && (
+                {eventDates && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1" style={{ borderColor: 'var(--border-color)' }}>
                     <CalendarDays size={12} />
-                    {new Date(sponsorship.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {eventDates}
                   </span>
                 )}
               </div>
 
-              {sponsorship.blurb && (
+              {/* Once winners are out they are the news; the pitch can wait for the details page. */}
+              {sponsorship.blurb && !hasWinners && (
                 <p className="mt-4 text-sm font-bold leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                   {sponsorship.blurb}
                 </p>
               )}
 
-              {/* Before the event this is the prize pool; after it, the roll of honour. */}
-              {(prizeTotal > 0 || winners.length > 0) && (
+              {/* After the event: every winner, as equals — no 1st or 2nd. Before it: the prize pool. */}
+              {hasWinners ? (
                 <div
                   className="mt-5 rounded-xl border p-4"
                   style={{
@@ -172,20 +188,74 @@ export function SponsorshipAnnouncement({
                   }}
                 >
                   <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-                    {winners.length > 0 ? <Trophy size={13} /> : <Gift size={13} />}
-                    {winners.length > 0 ? copy.sponsorWinnersLabel || 'Prize winners' : copy.sponsorPrizeTitle || 'What we are giving'}
+                    <Trophy size={13} /> {copy.sponsorWinnersLabel || 'Prize winners'}
                   </p>
-                  {prizeTotal > 0 && (
-                    <p className="mt-2 text-2xl font-black leading-none" style={{ color: 'var(--text-primary)' }}>
-                      ₹{prizeTotal.toLocaleString('en-IN')}
-                    </p>
-                  )}
-                  {winners.length > 0 && (
-                    <p className="mt-2 line-clamp-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                      {winners.map((w) => w.name).join(' · ')}
+                  <ul className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 sm:gap-3">
+                    {winners.map((winner, index) => (
+                      <motion.li
+                        key={winner.id}
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ delay: 0.35 + index * 0.12, type: 'spring', stiffness: 300, damping: 22 }}
+                        className="flex min-w-0 items-center gap-2.5"
+                      >
+                        {winner.imageUrl ? (
+                          <img
+                            src={storageImage(winner.imageUrl, IMAGE_WIDTH.small)}
+                            alt={winner.name}
+                            decoding="async"
+                            className="h-9 w-9 shrink-0 rounded-full border-2 object-cover sm:h-11 sm:w-11"
+                            style={{ borderColor: 'var(--color-primary)' }}
+                          />
+                        ) : (
+                          <span
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white sm:h-11 sm:w-11 sm:text-base"
+                            style={{ backgroundColor: 'var(--color-primary)' }}
+                          >
+                            {winner.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="min-w-0">
+                          {/* Wraps rather than truncates: a winner's name is the one thing that must be read in full. */}
+                          <span className="block break-words text-[13px] font-black leading-tight sm:text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {winner.name}
+                          </span>
+                          {winner.award && (
+                            <span className="mt-0.5 block text-[11px] font-bold leading-tight" style={{ color: 'var(--text-secondary)' }}>
+                              {winner.award}
+                            </span>
+                          )}
+                        </span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                  {(equalPrize > 0 || prizeTotal > 0) && (
+                    <p className="mt-4 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      {equalPrize > 0 ? 'Each wins ' : ''}
+                      <span className="font-black" style={{ color: 'var(--text-primary)' }}>
+                        ₹{(equalPrize || prizeTotal).toLocaleString('en-IN')}
+                      </span>{' '}
+                      in Fly Free credit.
                     </p>
                   )}
                 </div>
+              ) : (
+                prizeTotal > 0 && (
+                  <div
+                    className="mt-5 rounded-xl border p-4"
+                    style={{
+                      borderColor: 'var(--color-primary)',
+                      background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, white), white)',
+                    }}
+                  >
+                    <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                      <Gift size={13} /> {copy.sponsorPrizeTitle || 'What we are giving'}
+                    </p>
+                    <p className="mt-2 text-2xl font-black leading-none" style={{ color: 'var(--text-primary)' }}>
+                      ₹{prizeTotal.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                )
               )}
 
               <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -224,6 +294,7 @@ export function SponsorshipAnnouncement({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 }
 
@@ -233,11 +304,14 @@ export function SponsorshipAnnouncement({
  * Compared at day granularity rather than by elapsed milliseconds, so an event
  * later today reads "Happening today" instead of "in 0 days".
  */
-function describeCountdown(eventDate?: string | null) {
+function describeCountdown(eventDate?: string | null, eventEndDate?: string | null) {
   if (!eventDate) return '';
 
   const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const days = Math.round((startOfDay(new Date(eventDate)) - startOfDay(new Date())) / 86_400_000);
+  const today = startOfDay(new Date());
+  const days = Math.round((startOfDay(new Date(eventDate)) - today) / 86_400_000);
+  // A multi-day event is on for every one of its days, not just the first.
+  if (days < 0 && eventEndDate && startOfDay(new Date(eventEndDate)) >= today) return 'Happening now';
 
   if (days > 30) return 'Coming soon';
   if (days > 1) return `${days} days to go`;

@@ -638,10 +638,17 @@ model Sponsorship {
   partnerUrl     String?
   eventName      String
   eventDate      DateTime?
+  /// Last day of a multi-day event, e.g. 8–9 Oct. Null for a one-day event.
+  eventEndDate   DateTime?
   location       String?
   /// Banner copy. Falls back to the partner and event names when blank.
   headline       String?
   blurb          String?
+  /// The full write-up for the details page: what happened, who took part.
+  /// Paragraphs are separated by blank lines.
+  story          String?
+  /// Event photos for the details page gallery, in display order.
+  galleryUrls    String[]       @default([])
   bannerImageUrl String?
   partnerLogoUrl String?
   isActive       Boolean        @default(false)
@@ -672,38 +679,45 @@ model Sponsorship {
 /// Amounts are WHOLE RUPEES, matching Order.total and every other figure
 /// downstream of priceCheckout. The catalog stores paise; this does not.
 model PrizeVoucher {
-  id              String              @id @default(cuid())
-  sponsorshipId   String
+  id                 String              @id @default(cuid())
+  sponsorshipId      String
   /// Secret. Shared with the winner privately and never served by a public
   /// endpoint — the storefront banner selects columns explicitly to keep it out.
-  code            String              @unique
-  winnerName      String
-  winnerPhone     String?
-  /// 1 = first place. Orders the published winners list.
-  position        Int?
+  code               String              @unique
+  winnerName         String
+  winnerPhone        String?
+  /// Private, like the phone: for contacting the winner, never published.
+  winnerEmail        String?
+  /// Private: the winner's Instagram profile or winning entry, for the admin.
+  winnerInstagramUrl String?
+  /// Public: what they won, e.g. "Calligraphy competition". Every winner is
+  /// shown as an equal winner of their own competition, never as a ranking.
+  award              String?
+  /// Display order of the published winners list. Not shown as a placing.
+  position           Int?
   /// Rupees the voucher was issued for. Never changes; `balance` is what moves.
-  value           Int
-  balance         Int
-  maxRedemptions  Int                 @default(2)
-  redemptionsUsed Int                 @default(0)
-  expiresAt       DateTime?
-  isActive        Boolean             @default(true)
+  value              Int
+  balance            Int
+  maxRedemptions     Int                 @default(2)
+  redemptionsUsed    Int                 @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean             @default(true)
   /// Whether the code belongs to one person. On by default: a prize is awarded
   /// to a named winner. Turn it off for a code meant to be shared publicly, and
   /// `maxRedemptions` becomes a pool everyone draws from rather than one
   /// person's allowance.
-  lockToFirstUser Boolean             @default(true)
+  lockToFirstUser    Boolean             @default(true)
   /// Winner's photo for the public card. Optional — the card falls back to
   /// their initial.
-  winnerImageUrl  String?
+  winnerImageUrl     String?
   /// Recorded on first redemption whatever the lock setting, because knowing who
   /// spent first is useful either way. Only enforced when lockToFirstUser is on.
-  claimedByUserId String?
-  sponsorship     Sponsorship         @relation(fields: [sponsorshipId], references: [id], onDelete: Cascade)
-  claimedBy       User?               @relation(fields: [claimedByUserId], references: [id])
-  redemptions     VoucherRedemption[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  claimedByUserId    String?
+  sponsorship        Sponsorship         @relation(fields: [sponsorshipId], references: [id], onDelete: Cascade)
+  claimedBy          User?               @relation(fields: [claimedByUserId], references: [id])
+  redemptions        VoucherRedemption[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([sponsorshipId])
   @@index([claimedByUserId])

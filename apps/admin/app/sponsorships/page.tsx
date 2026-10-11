@@ -6,6 +6,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Handshake, Plus, Save, Trash2, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { GalleryUploadField } from '../components/GalleryUploadField';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
@@ -18,9 +19,12 @@ interface Sponsorship {
   partnerUrl?: string | null;
   eventName: string;
   eventDate?: string | null;
+  eventEndDate?: string | null;
   location?: string | null;
   headline?: string | null;
   blurb?: string | null;
+  story?: string | null;
+  galleryUrls?: string[];
   bannerImageUrl?: string | null;
   partnerLogoUrl?: string | null;
   isActive: boolean;
@@ -41,9 +45,12 @@ const emptyForm = {
   partnerUrl: '',
   eventName: '',
   eventDate: '',
+  eventEndDate: '',
   location: '',
   headline: '',
   blurb: '',
+  story: '',
+  galleryUrls: [] as string[],
   bannerImageUrl: '',
   partnerLogoUrl: '',
   isActive: false,
@@ -74,6 +81,7 @@ export default function SponsorshipsPage() {
       ...form,
       priority: Number(form.priority) || 0,
       eventDate: form.eventDate ? new Date(form.eventDate).toISOString() : null,
+      eventEndDate: form.eventEndDate ? new Date(form.eventEndDate).toISOString() : null,
       startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null,
       endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
       winnersUntil: form.winnersUntil ? new Date(form.winnersUntil).toISOString() : null
@@ -100,9 +108,12 @@ export default function SponsorshipsPage() {
       partnerUrl: sponsorship.partnerUrl || '',
       eventName: sponsorship.eventName || '',
       eventDate: toInputDate(sponsorship.eventDate),
+      eventEndDate: toInputDate(sponsorship.eventEndDate),
       location: sponsorship.location || '',
       headline: sponsorship.headline || '',
       blurb: sponsorship.blurb || '',
+      story: sponsorship.story || '',
+      galleryUrls: sponsorship.galleryUrls || [],
       bannerImageUrl: sponsorship.bannerImageUrl || '',
       partnerLogoUrl: sponsorship.partnerLogoUrl || '',
       isActive: sponsorship.isActive,
@@ -258,10 +269,20 @@ export default function SponsorshipsPage() {
                 </div>
 
                 <Input label="Partner link" value={form.partnerUrl} onChange={(v) => setForm({ ...form, partnerUrl: v })} type="url" placeholder="https://instagram.com/..." />
-                <Input label="Event date" value={form.eventDate} onChange={(v) => setForm({ ...form, eventDate: v })} type="datetime-local" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input label="Event date" value={form.eventDate} onChange={(v) => setForm({ ...form, eventDate: v })} type="datetime-local" />
+                  <Input label="Last day (multi-day events)" value={form.eventEndDate} onChange={(v) => setForm({ ...form, eventEndDate: v })} type="datetime-local" />
+                </div>
 
                 <Input label="Banner headline" value={form.headline} onChange={(v) => setForm({ ...form, headline: v })} placeholder="Falls back to the partner and event names" />
                 <Textarea label="Banner text" value={form.blurb} onChange={(v) => setForm({ ...form, blurb: v })} placeholder="One or two lines about the collaboration." />
+                <Textarea
+                  label="Event story (details page)"
+                  value={form.story}
+                  onChange={(v) => setForm({ ...form, story: v })}
+                  rows={8}
+                  placeholder="What happened, who took part, who else supported it. Leave a blank line between paragraphs."
+                />
 
                 <ImageUploadField
                   label="Banner image"
@@ -285,6 +306,14 @@ export default function SponsorshipsPage() {
                   targetWidth={600}
                   alt={form.partnerName}
                   hint="Square mark shown beside the partner name."
+                />
+
+                <GalleryUploadField
+                  label="Event photos"
+                  value={form.galleryUrls}
+                  onChange={(urls) => setForm((current) => ({ ...current, galleryUrls: urls }))}
+                  folder="sponsorships/gallery"
+                  hint="Shown as a gallery on the details page. Select several at once; each is resized before upload."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -367,18 +396,20 @@ function Textarea({
   label,
   value,
   onChange,
-  placeholder
+  placeholder,
+  rows = 4
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  rows?: number;
 }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-bold uppercase text-black/45">{label}</span>
       <textarea
-        rows={4}
+        rows={rows}
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}

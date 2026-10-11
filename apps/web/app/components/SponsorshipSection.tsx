@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { ArrowRight, ArrowUpRight, Handshake, Trophy } from 'lucide-react';
 import { MEDIA } from '../lib/design';
+import { formatEventDates } from '../lib/eventDates';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
 export interface SponsorshipWinner {
   id: string;
   name: string;
+  /** The competition they won. Winners are equals, never ranked. */
+  award?: string | null;
   position?: number | null;
   prizeValue?: number;
   imageUrl?: string | null;
@@ -18,6 +21,7 @@ export interface Sponsorship {
   partnerUrl?: string | null;
   eventName: string;
   eventDate?: string | null;
+  eventEndDate?: string | null;
   location?: string | null;
   headline?: string | null;
   blurb?: string | null;
@@ -33,7 +37,9 @@ export interface Sponsorship {
  * Runs from the moment a sponsorship is published, long before there are any
  * winners — that is the point, it promotes the collaboration while the event is
  * still ahead. Winners appear only once an admin turns them on, and only ever as
- * a name and a placing; the prize voucher codes live in the admin portal.
+ * a name and the competition they won — each is an equal winner of their own
+ * event, never a 1st or 2nd. Voucher codes and contact details stay in the
+ * admin portal.
  *
  * Everything here comes from Admin → Sponsorships, so there is no copy to edit
  * in this file.
@@ -90,7 +96,7 @@ function SponsorshipCard({
   copy?: SponsorshipCopy;
 }) {
   const winners = sponsorship.winners || [];
-  const eventDate = sponsorship.eventDate ? new Date(sponsorship.eventDate) : null;
+  const eventDates = formatEventDates(sponsorship.eventDate, sponsorship.eventEndDate);
 
   return (
     <article
@@ -137,7 +143,7 @@ function SponsorshipCard({
             <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               {sponsorship.eventName}
               {sponsorship.location ? ` · ${sponsorship.location}` : ''}
-              {eventDate ? ` · ${eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+              {eventDates ? ` · ${eventDates}` : ''}
             </p>
           </div>
         </div>
@@ -162,17 +168,20 @@ function SponsorshipCard({
             <ul className="mt-3 space-y-2">
               {winners.map((winner) => (
                 <li key={winner.id} className="flex items-center gap-3 text-sm font-black" style={{ color: 'var(--text-primary)' }}>
-                  {winner.position ? (
-                    <span
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] text-white"
-                      style={{ backgroundColor: 'var(--color-primary)' }}
-                    >
-                      {winner.position}
-                    </span>
-                  ) : (
-                    <span className="h-6 w-6 shrink-0" />
-                  )}
-                  {winner.name}
+                  <span
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-white"
+                    style={{ backgroundColor: 'var(--color-primary)' }}
+                  >
+                    <Trophy size={12} />
+                  </span>
+                  <span className="min-w-0">
+                    {winner.name}
+                    {winner.award && (
+                      <span className="block text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                        {winner.award}
+                      </span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
