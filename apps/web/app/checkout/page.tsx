@@ -307,9 +307,11 @@ export default function CheckoutPage() {
   const shipping = getShippingFee();
   const toFreeDelivery = getAmountToFreeDelivery();
   const total = getTotal() - baseDiscount;
-  // Voucher credit is spent against the finished total, delivery included, and
-  // never for more than the order is worth — the rest stays on the voucher.
-  const voucherApplied = appliedVoucher ? Math.min(Number(appliedVoucher.balance || 0), total) : 0;
+  // Voucher credit pays for the products only — delivery is always paid by the
+  // customer, matching the server's quote. It never covers more than the
+  // products are worth; the rest stays on the voucher.
+  const productsTotal = Math.max(total - shipping, 0);
+  const voucherApplied = appliedVoucher ? Math.min(Number(appliedVoucher.balance || 0), productsTotal) : 0;
   const amountDue = Math.max(total - voucherApplied, 0);
   const voucherRemaining = appliedVoucher ? Number(appliedVoucher.balance || 0) - voucherApplied : 0;
   // On the final permitted use any leftover credit is gone for good, so the
@@ -900,6 +902,20 @@ export default function CheckoutPage() {
                     <span>-&#8377;{formatMoney(baseDiscount)}</span>
                   </motion.div>
                 )}
+                {/* The voucher comes off the products, so it sits under the
+                    subtotal and above delivery — delivery is always paid. */}
+                {voucherApplied > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -8 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -8 }}
+                    className="flex justify-between rounded-lg px-3 py-2 text-sm font-black"
+                    style={{ color: '#15803d', backgroundColor: '#f0fdf4' }}
+                  >
+                    <span>Prize voucher</span>
+                    <span>-&#8377;{formatMoney(voucherApplied)}</span>
+                  </motion.div>
+                )}
               </AnimatePresence>
               <div className="flex justify-between text-sm">
                 <span style={{ color: 'var(--text-secondary)' }}>Delivery</span>
@@ -913,21 +929,18 @@ export default function CheckoutPage() {
                 </p>
               )}
               <div className={`flex justify-between rounded-lg pt-3 text-lg font-black transition duration-500 ${pricePulse ? 'px-3 pb-3 ring-2 ring-green-200' : ''}`} style={{ borderTopColor: 'var(--border-color)', borderTopWidth: '1px', backgroundColor: pricePulse ? '#f0fdf4' : 'transparent' }}>
-                <span style={{ color: 'var(--text-primary)' }}>Total</span>
-                <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(total)}</span>
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {voucherApplied > 0 ? (amountDue > 0 ? 'Total to pay' : 'Nothing to pay') : 'Total'}
+                </span>
+                <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(voucherApplied > 0 ? amountDue : total)}</span>
               </div>
-              {/* Shown below the total rather than as a discount, because the
-                  voucher pays the total rather than reducing it. */}
               {voucherApplied > 0 && (
                 <>
-                  <div className="flex justify-between text-sm font-black" style={{ color: '#15803d' }}>
-                    <span>Prize voucher</span>
-                    <span>-&#8377;{formatMoney(voucherApplied)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-black">
-                    <span style={{ color: 'var(--text-primary)' }}>{amountDue > 0 ? 'To pay now' : 'Nothing to pay'}</span>
-                    <span style={{ color: 'var(--color-primary)' }}>&#8377;{formatMoney(amountDue)}</span>
-                  </div>
+                  {shipping > 0 && (
+                    <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
+                      Your voucher covers the products. Delivery (&#8377;{formatMoney(shipping)}) is paid online.
+                    </p>
+                  )}
                   {appliedVoucher.expiresAt && (
                     <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                       Valid until {new Date(appliedVoucher.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.

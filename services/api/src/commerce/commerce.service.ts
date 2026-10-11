@@ -751,9 +751,10 @@ export class CommerceService {
     const tax = 0;
     const total = payable + shippingFee;
 
-    // Applied to the finished total, so it covers delivery too and never spends
-    // more credit than the order is actually worth.
-    const voucherApplied = voucher ? Math.min(voucher.balance, total) : 0;
+    // A prize voucher pays for the products only — delivery is always paid by the
+    // customer. It never spends more credit than the products are worth, and
+    // whatever it does not cover stays on the voucher for the next order.
+    const voucherApplied = voucher ? Math.min(voucher.balance, payable) : 0;
     const amountDue = total - voucherApplied;
 
     const quote: CheckoutQuote = {

@@ -115,15 +115,21 @@ async function main() {
 
   const unit = Math.round(Number(variant.price ?? variant.product.price) / 100);
   const { deliveryFee, freeDeliveryAbove } = await deliverySettings();
-  const totalFor = (qty) => (unit * qty >= freeDeliveryAbove ? unit * qty : unit * qty + deliveryFee);
+  const shippingFor = (qty) => (unit * qty >= freeDeliveryAbove ? 0 : deliveryFee);
+  const totalFor = (qty) => unit * qty + shippingFor(qty);
   const cart = (qty) => [{ productId: variant.product.id, variantId: variant.id, quantity: qty }];
   const address = { name: "Voucher Test", phone: "9999900000", street: "1 Test Lane", city: "Dibrugarh", state: "Assam", pincode: "786001" };
 
+  // A voucher pays for products only, so an order is free only once delivery is
+  // free too: the smallest quantity that crosses the free-delivery line.
+  const freeQty = Math.max(1, Math.ceil(freeDeliveryAbove / unit));
+  if (freeQty > 10) throw new Error(`Fixture product is too cheap: ${freeQty} units needed for free delivery.`);
+
   console.log(`\nFixture: ${variant.product.name} @ Rs ${unit}, delivery Rs ${deliveryFee} under Rs ${freeDeliveryAbove}\n`);
 
-  // Sized so one voucher more than covers a single unit and another falls short.
-  const fullCover = totalFor(1) + 200;
-  const partial = Math.max(totalFor(1) - 150, 50);
+  // Sized so one voucher more than covers the free-delivery cart and another falls short.
+  const fullCover = unit * freeQty + 200;
+  const partial = Math.max(unit - 150, 50);
 
   const sponsorship = await prisma.sponsorship.create({
     data: {
@@ -160,13 +166,22 @@ async function main() {
   r = await call("GET", "/ecommerce/voucher/TESTV1-AAAAAA", token);
   check("valid voucher reports balance and uses left", r.body?.valid === true && r.body.balance === fullCover && r.body.usesLeft === 2, `Rs ${r.body?.balance}, ${r.body?.usesLeft} uses`);
 
+  // ---------- delivery is never paid by the voucher ----------
+  console.log("\nVoucher pays the products, the customer pays delivery");
+  if (shippingFor(1) > 0) {
+    r = await call("POST", "/commerce/checkout", token, { items: cart(1), address, voucherCode: "TESTV1-AAAAAA" });
+    const single = r.body?.data;
+    check("voucher covers only the product price", single?.voucherApplied === unit, `voucher Rs ${single?.voucherApplied}, product Rs ${unit}`);
+    check("delivery goes to the gateway", single?.mode === "RAZORPAY" && single?.amount === deliveryFee, `due Rs ${single?.amount}, delivery Rs ${deliveryFee}`);
+  }
+
   // ---------- zero-payment order ----------
-  console.log("\nVoucher covers the whole order");
-  const expected = totalFor(1);
-  r = await call("POST", "/commerce/checkout", token, { items: cart(1), address, voucherCode: "TESTV1-AAAAAA" });
+  console.log("\nVoucher covers the whole order (free delivery)");
+  const expected = totalFor(freeQty);
+  r = await call("POST", "/commerce/checkout", token, { items: cart(freeQty), address, voucherCode: "TESTV1-AAAAAA" });
   const checkout = r.body?.data;
   check("checkout reports nothing to pay", checkout?.mode === "VOUCHER_FULL" && checkout?.amount === 0, `mode=${checkout?.mode} due=Rs ${checkout?.amount}`);
-  check("delivery is charged on the real cart value", checkout?.total === expected, `total=Rs ${checkout?.total}, expected Rs ${expected}`);
+  check("delivery is free on the real cart value", checkout?.total === expected && shippingFor(freeQty) === 0, `total=Rs ${checkout?.total}, expected Rs ${expected}`);
   check("no gateway key is issued", checkout?.razorpayKeyId === null);
 
   r = await call("POST", "/commerce/checkout/voucher-complete", token, { quoteToken: checkout.quoteToken, reference: checkout.razorpayOrderId });
@@ -203,7 +218,7 @@ async function main() {
   const coupon = await prisma.coupon.findFirst({ where: { isActive: true, discountPercent: { not: null } } });
   if (coupon) {
     r = await call("POST", "/commerce/checkout", token, { items: cart(1), address, voucherCode: "TESTV2-BBBBBB", couponCode: coupon.code });
-    check("a voucher overrides a coupon sent with it", r.body?.data?.total === expected && r.body?.data?.voucherApplied > 0, `no discount applied, total Rs ${r.body?.data?.total}`);
+    check("a voucher overrides a coupon sent with it", r.body?.data?.total === totalFor(1) && r.body?.data?.voucherApplied > 0, `no discount applied, total Rs ${r.body?.data?.total}`);
   }
 
   // ---------- cancellation ----------
