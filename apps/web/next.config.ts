@@ -12,17 +12,11 @@ const nextConfig: NextConfig = {
     // Media lives on Cloudinary. Routing it through the Next optimizer means
     // Cloudinary is read once per image and width, then Vercel's CDN serves every
     // visitor — Supabase was restricted for egress when this was skipped.
-    // The Supabase pattern stays only so any link not yet migrated still renders.
     remotePatterns: [
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
         pathname: "/nkruger4/**"
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-        pathname: "/storage/v1/object/public/**"
       }
     ],
     formats: ["image/webp"],

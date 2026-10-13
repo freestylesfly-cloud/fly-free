@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/app/stores/authStore';
 import { AuthDrawerShell } from '../components/AuthDrawerShell';
-import { signInWithGoogle } from '../../lib/supabase';
+import { startGoogleSignIn } from '../../lib/googleSignIn';
 
 function LoginContent() {
   const router = useRouter();
@@ -77,12 +77,11 @@ function LoginContent() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setGoogleLoading(true);
     setError(null);
     try {
-      const { error } = await signInWithGoogle(nextPath);
-      if (error) throw error;
+      startGoogleSignIn(nextPath);
     } catch (err) {
       setGoogleLoading(false);
       setError(err instanceof Error ? err.message : 'Google sign-in failed');

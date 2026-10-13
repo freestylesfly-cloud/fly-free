@@ -13,8 +13,7 @@
  * Hosts matched here must also be in `images.remotePatterns` in next.config.ts.
  */
 
-const STORED_IMAGE =
-  /^https:\/\/(res\.cloudinary\.com\/nkruger4\/image\/upload\/|[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/)/i;
+const STORED_IMAGE = /^https:\/\/res\.cloudinary\.com\/nkruger4\/image\/upload\//i;
 
 /**
  * Widths the optimizer accepts, mirroring `deviceSizes` + `imageSizes` in

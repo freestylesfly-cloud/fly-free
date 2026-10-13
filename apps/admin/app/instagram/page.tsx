@@ -8,7 +8,7 @@ import { ImageUploadField } from '../components/ImageUploadField';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useFetch } from '../hooks/useFetch';
 import { apiService } from '../services/api';
-import { uploadMedia } from '../lib/supabase';
+import { uploadMedia } from '../lib/storage';
 
 interface InstagramPost {
   id: string;

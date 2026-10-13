@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ImagePlus, Trash2 } from 'lucide-react';
-import { deleteImage, uploadImage } from '../lib/supabase';
+import { deleteImage, uploadImage } from '../lib/storage';
 
 /**
  * An ordered list of photos, uploaded several at a time.

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, ImageIcon, Link as LinkIcon, Trash2, Upload, X, ZoomIn } from 'lucide-react';
-import { deleteImage, uploadImage } from '../lib/supabase';
+import { deleteImage, uploadImage } from '../lib/storage';
 
 type ImageUploadFieldProps = {
   label: string;

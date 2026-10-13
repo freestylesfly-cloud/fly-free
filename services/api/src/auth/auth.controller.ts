@@ -1,6 +1,8 @@
-import { Controller, Post, Body, Get, Headers, HttpException, HttpStatus, Put } from "@nestjs/common";
+import { Controller, Post, Body, Get, Headers, HttpException, HttpStatus, Put, Query, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import type { FastifyReply } from "fastify";
 import { AuthService } from "./auth.service";
+import { buildGoogleAuthorizeUrl, exchangeCodeForProfile, fallbackOrigin, readSignInState } from "./google-oauth";
 
 @ApiTags("🔐 Authentication")
 @Controller("auth")
@@ -230,16 +232,64 @@ export class AuthController {
   }
 
   // ==================== SOCIAL LOGIN ====================
-  @Post("supabase/login")
-  async supabaseLogin(@Body() body: { accessToken: string }) {
+  /**
+   * Starts "Continue with Google". The browser arrives here through the
+   * website's /api proxy and leaves for Google. See google-oauth.ts.
+   */
+  @Get("google")
+  startGoogleSignIn(
+    @Query("origin") origin: string,
+    @Query("next") next: string,
+    @Query("nonce") nonce: string,
+    @Res() reply: FastifyReply
+  ) {
     try {
-      return await this.authService.loginWithSupabase(body.accessToken);
+      const url = buildGoogleAuthorizeUrl({ origin, next, nonce }, this.authService.jwtSecret());
+      return this.redirect(reply, url);
     } catch (error: any) {
-      throw new HttpException(
-        { error: error?.message || "Supabase login failed" },
-        error?.status || HttpStatus.UNAUTHORIZED
-      );
+      return this.redirect(reply, this.signInErrorUrl(fallbackOrigin(), error));
     }
+  }
+
+  /** Google sends the browser back here with a one-time code. */
+  @Get("google/callback")
+  async finishGoogleSignIn(
+    @Query("code") code: string,
+    @Query("state") stateParam: string,
+    @Query("error") googleError: string,
+    @Res() reply: FastifyReply
+  ) {
+    let origin = fallbackOrigin();
+    try {
+      const state = readSignInState(stateParam, this.authService.jwtSecret());
+      origin = state.origin;
+      if (googleError) {
+        // "access_denied" is the customer pressing Cancel — not a fault.
+        throw new Error(googleError === "access_denied" ? "Google sign-in was cancelled." : "Google sign-in failed.");
+      }
+
+      const profile = await exchangeCodeForProfile(code, state.origin);
+      const { token } = await this.authService.loginWithGoogleProfile(profile);
+      const fragment = new URLSearchParams({ token, nonce: state.nonce, next: state.next });
+      return this.redirect(reply, `${state.origin}/auth/callback#${fragment}`);
+    } catch (error: any) {
+      return this.redirect(reply, this.signInErrorUrl(origin, error));
+    }
+  }
+
+  private signInErrorUrl(origin: string, error: any) {
+    const message = error?.response?.message || error?.message || "Google sign-in failed.";
+    return `${origin}/auth/callback#${new URLSearchParams({ error: String(message) })}`;
+  }
+
+  private redirect(reply: FastifyReply, url: string) {
+    // A sign-in response must never be cached or leak the token via Referer.
+    return reply
+      .status(302)
+      .header("Location", url)
+      .header("Cache-Control", "no-store")
+      .header("Referrer-Policy", "no-referrer")
+      .send();
   }
 
   @Post("github/login")

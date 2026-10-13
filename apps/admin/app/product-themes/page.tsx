@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Edit3, ImageIcon, Music, Search, Trash2, Upload, X } from 'lucide-react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ImageUploadField } from '../components/ImageUploadField';
-import { uploadMedia } from '../lib/supabase';
+import { uploadMedia } from '../lib/storage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { apiService } from '../services/api';
 

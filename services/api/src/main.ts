@@ -13,6 +13,7 @@ function shouldRateLimit(pathname: string) {
   return [
     /^\/api\/auth\/user\/login$/,
     /^\/api\/auth\/admin\/login$/,
+    /^\/api\/auth\/google(\/callback)?$/,
     /^\/api\/auth\/user\/signup$/,
     /^\/api\/auth\/user\/verify-email$/,
     /^\/api\/auth\/user\/resend-email$/,
