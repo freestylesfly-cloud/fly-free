@@ -221,6 +221,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
 
   return (
     <article
+      data-canny="product-card"
       className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-white shadow-sm transition duration-300 hover:shadow-[0_16px_38px_rgba(15,23,42,0.13)]"
       style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-secondary)' }}
     >

@@ -815,6 +815,7 @@ export default function CheckoutPage() {
               )}
               <div className="flex gap-2 mb-2">
                 <input
+                  data-canny="coupon"
                   type="text"
                   placeholder="Enter coupon or voucher code"
                   value={couponCode}

@@ -37,6 +37,13 @@ const RECENT_KEY = 'flyfree_recent_products';
 
 export function StyleAssistant() {
   const [open, setOpen] = useState(false);
+
+  // Canny's "Ask me anything" opens this chat.
+  useEffect(() => {
+    const openFromCanny = () => setOpen(true);
+    window.addEventListener('flyfree:open-assistant', openFromCanny);
+    return () => window.removeEventListener('flyfree:open-assistant', openFromCanny);
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [recent, setRecent] = useState<RecentProduct[]>([]);
   const [input, setInput] = useState('');

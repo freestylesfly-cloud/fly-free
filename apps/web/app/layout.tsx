@@ -10,6 +10,7 @@ import { Toaster } from "sonner";
 import { BRAND, designTokensCss } from "./lib/design";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./lib/site";
 import "./globals.css";
+import { FlyFreeCanny } from "./components/canny/FlyFreeCanny";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Header />
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
           <StyleAssistant />
+          <FlyFreeCanny />
           <Footer />
           <Toaster richColors position="top-right" closeButton duration={2800} />
           <Analytics />

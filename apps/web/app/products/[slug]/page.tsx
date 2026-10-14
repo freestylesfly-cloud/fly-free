@@ -2,6 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { CannyOutfit } from '../../components/canny/CannyOutfit';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -390,6 +391,9 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
   return (
     <main className="min-h-screen px-4 py-6 pb-36 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {product.theme?.name && (
+        <CannyOutfit color={product.theme.primaryColor || '#2563EB'} label={product.theme.name} />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, activeImage?.url, productUrl, totalPrice, averageRating, reviewCount, stock)) }}
@@ -694,7 +698,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
               <button onClick={handleBuyNow} disabled={!canAdd} className="flex min-h-14 items-center justify-center gap-2 rounded px-5 py-4 text-base font-black text-white transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
                 Buy now <ArrowRight size={19} />
               </button>
-              <button onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded border px-5 font-black transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50" style={{ borderColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)', color: canAdd ? 'var(--color-primary)' : 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}>
+              <button data-canny="add-to-cart" onClick={handleAddToCart} disabled={!canAdd} className="flex min-h-12 items-center justify-center gap-2 rounded border px-5 font-black transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50" style={{ borderColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)', color: canAdd ? 'var(--color-primary)' : 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}>
                 <ShoppingCart size={19} /> Add to cart
               </button>
             </div>
@@ -710,6 +714,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       </section>
 
       <div
+        data-canny-floor
         className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(26,26,26,0.08)] lg:hidden"
         style={{ borderColor: 'var(--border-color)' }}
       >
@@ -722,7 +727,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           <button onClick={handleBuyNow} disabled={!canAdd} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--color-primary)' : 'var(--border-color)' }}>
             Buy now
           </button>
-          <button onClick={handleAddToCart} disabled={!canAdd} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-black disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--bg-tertiary)' : 'var(--border-color)', color: canAdd ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+          <button data-canny="add-to-cart" onClick={handleAddToCart} disabled={!canAdd} className="flex h-12 min-w-0 items-center justify-center gap-1 rounded-lg px-2 text-sm font-black disabled:opacity-50" style={{ backgroundColor: canAdd ? 'var(--bg-tertiary)' : 'var(--border-color)', color: canAdd ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
             <ShoppingCart size={17} /> Add
           </button>
         </div>

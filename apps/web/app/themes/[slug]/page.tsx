@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "../../lib/api";
 import { MEDIA } from "../../lib/design";
 import { ThemeProductGrid } from "./ThemeProductGrid";
+import { CannyOutfit } from "../../components/canny/CannyOutfit";
 import { IMAGE_WIDTH, storageImage } from '../../lib/image';
 
 const API_BASE = getApiBaseUrl();
@@ -28,6 +29,7 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)" }}>
+      <CannyOutfit color={theme.primaryColor || "#2563EB"} label={theme.name} />
       {/* THEME BANNER — identical treatment to the homepage hero: full-bleed
           16:9, copy overlaid at the top on every breakpoint. */}
       <section

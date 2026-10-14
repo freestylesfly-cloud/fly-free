@@ -222,7 +222,7 @@ export default function CartPage() {
               <span style={{ color: 'var(--color-primary)' }}>{formatCurrency(total)}</span>
             </div>
 
-            <Link href="/checkout" className="flex w-full items-center justify-center gap-2 rounded py-3 text-center font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg" style={{ backgroundColor: 'var(--color-primary)' }}>
+            <Link data-canny="checkout" href="/checkout" className="flex w-full items-center justify-center gap-2 rounded py-3 text-center font-bold text-white transition hover:-translate-y-0.5 hover:shadow-lg" style={{ backgroundColor: 'var(--color-primary)' }}>
               Proceed to checkout
               <ArrowRight size={18} />
             </Link>
@@ -237,6 +237,7 @@ export default function CartPage() {
       </div>
 
       <div
+        data-canny-floor
         className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-40 border-t bg-white px-3 py-2 shadow-[0_-8px_24px_rgba(26,26,26,0.08)] lg:hidden"
         style={{ borderColor: 'var(--border-color)' }}
       >
@@ -245,7 +246,7 @@ export default function CartPage() {
             <p className="text-[11px] font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Total</p>
             <p className="text-lg font-black" style={{ color: 'var(--color-primary)' }}>{formatCurrency(total)}</p>
           </div>
-          <Link href="/checkout" className="flex h-12 items-center justify-center gap-2 rounded-lg px-4 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+          <Link data-canny="checkout" href="/checkout" className="flex h-12 items-center justify-center gap-2 rounded-lg px-4 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
             Checkout <ShoppingBag size={17} />
           </Link>
         </div>
