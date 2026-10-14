@@ -5,6 +5,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { CannyBird, type CannyOutfitStyle, type CannyPose } from './CannyBird';
 import { CannyGame } from './CannyGame';
 import { getCannyOutfit, onCannyOutfit, onCannySay } from './bus';
+import { blip, chirp, setSoundEnabled, soundEnabled, speak } from './sound';
 
 /**
  * Canny — an on-page companion in the spirit of Shimeji desktop pets.
@@ -136,6 +137,8 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
   const [hidden, setHidden] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [outfit, setOutfit] = useState<CannyOutfitStyle>(config.defaultOutfit);
+  const [soundOn, setSoundOn] = useState(true);
+  const [following, setFollowing] = useState(false);
 
   const sizeRef = useRef(size);
   sizeRef.current = size;
@@ -218,11 +221,17 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     }
   }, []);
 
+  /**
+   * Shows a line with a chirp. `voice` also reads it aloud — kept for the lines
+   * that matter (hello, a guide tip, a score) so Canny is never chatty out loud.
+   */
   const say = useCallback(
-    (text: string, ms?: number) => {
+    (text: string, ms?: number, voice = false) => {
       if (!text || hiddenRef.current) return;
       window.clearTimeout(bubbleTimer.current);
       setBubble(text);
+      chirp();
+      if (voice) window.setTimeout(() => speak(text), 350);
       setPoseState((current) => (current === 'idle' ? 'talk' : current));
       const duration = ms ?? clamp(2600 + text.length * 45, 3000, 7000);
       bubbleTimer.current = window.setTimeout(() => {
@@ -259,6 +268,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     const measure = () => setSize(window.innerWidth < 768 ? 72 : 96);
     measure();
     setHidden(storage(`${K}:hidden`) === '1');
+    setSoundOn(soundEnabled());
     setOutfit(getCannyOutfit() || config.defaultOutfit);
     setReady(true);
     const onResize = () => {
@@ -297,7 +307,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
       const returning = storage(`${K}:visited`) === '1';
       storage(`${K}:visited`, '1');
       setPose('happy', 1600);
-      say(pick(returning ? lines.welcomeBack : lines.greeting));
+      say(pick(returning ? lines.welcomeBack : lines.greeting), undefined, true);
     };
     if (!sessionSet(`${K}:session`).has('greeted')) {
       sessionAdd(`${K}:session`, 'greeted');
@@ -468,7 +478,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
       if (cancelled) return;
       setFacing(face);
       setPose('point');
-      say(tip.text, 6500);
+      say(tip.text, 6500, true);
       const endGuide = () => {
         window.removeEventListener('scroll', endGuide);
         if (modeRef.current !== 'guide') return;
@@ -669,6 +679,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
 
   const stopFollow = () => {
     cancelAnimationFrame(followFrame.current);
+    setFollowing(false);
     modeRef.current = 'roam';
     say(pick(lines.followEnd));
     const x = posRef.current.x;
@@ -677,6 +688,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
 
   const startFollow = () => {
     setMenuOpen(false);
+    setFollowing(true);
     modeRef.current = 'follow';
     followUntil.current = Date.now() + 15000;
     say(pick(lines.followStart));
@@ -704,28 +716,33 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     followFrame.current = requestAnimationFrame(step);
   };
 
+  // Esc ends follow mode, as does the "Stop" pill and tapping Canny.
+  useEffect(() => {
+    if (!following) return;
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && modeRef.current === 'follow' && stopFollow();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following]);
+
   // ---------- menu actions ----------
   const startGame = () => {
     setMenuOpen(false);
+    setBubble(null);
     modeRef.current = 'game';
+    // The game draws its own Canny, holding the basket.
     setPlaying(true);
-    const s = sizeRef.current;
-    void moveTo(window.innerWidth / 2 - s / 2, floorY(), 'fly', 0.6);
-    say(pick(lines.gameStart), 2600);
   };
 
   const endGame = useCallback(
     (score: number) => {
       setPlaying(false);
       modeRef.current = 'roam';
+      if (score <= 0) return;
       const best = Math.max(score, Number(storage(`${K}:best`) || 0));
       storage(`${K}:best`, String(best));
       setPose('happy', 2200);
-      say(fill(pick(lines.gameEnd), { score, best }), 5000);
-      later(() => {
-        const home = homePosition();
-        void moveTo(home.x, home.y, 'fly', 0.45);
-      }, 2500);
+      say(fill(pick(lines.gameEnd), { score, best }), 5000, true);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [K]
@@ -746,7 +763,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     storage(`${K}:hidden`, null);
     later(() => {
       setPose('happy', 1400);
-      say(pick(lines.hi));
+      say(pick(lines.hi), undefined, true);
     }, 200);
   };
 
@@ -778,7 +795,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
       run: () => {
         setMenuOpen(false);
         setPose('happy', 1400);
-        say(pick(lines.hi));
+        say(pick(lines.hi), undefined, true);
       }
     },
     ...(config.onAsk ? [{ label: config.askLabel || '💬 Ask me anything', run: () => { setMenuOpen(false); config.onAsk?.(); } }] : []),
@@ -797,19 +814,39 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
         }, 1800);
       }
     },
+    {
+      label: soundOn ? '🔇 Mute my sounds' : '🔊 Turn my sounds on',
+      run: () => {
+        const next = !soundOn;
+        setSoundEnabled(next);
+        setSoundOn(next);
+        setMenuOpen(false);
+        if (next) say(pick(lines.hi), undefined, true);
+      }
+    },
     { label: '🙈 Hide', run: hide }
   ];
 
   return (
     <>
-      {playing && <CannyGame onEnd={endGame} onCatch={() => setPose('happy', 500)} />}
+      {following && (
+        <button
+          type="button"
+          className="canny-follow-stop"
+          style={{ bottom: (mobile ? config.bottomOffset.mobile : config.bottomOffset.desktop) + 8 }}
+          onClick={() => modeRef.current === 'follow' && stopFollow()}
+        >
+          🐾 {config.name} is following you · <strong>Stop</strong>
+        </button>
+      )}
+      {playing && <CannyGame outfit={outfit} best={Number(storage(`${K}:best`) || 0)} onCatch={() => blip()} onEnd={endGame} />}
       <div
         ref={rootRef}
         className="canny-root"
         style={{
           width: size,
           height: size,
-          zIndex: playing ? 1260 : undefined,
+          visibility: playing ? 'hidden' : undefined,
           transform: `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`
         }}
       >
