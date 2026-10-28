@@ -5,7 +5,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { CannyBird, type CannyOutfitStyle, type CannyPose } from './CannyBird';
 import { CannyGame } from './CannyGame';
 import { getCannyOutfit, onCannyOutfit, onCannySay } from './bus';
-import { blip, chirp, setSoundEnabled, soundEnabled, speak } from './sound';
+import { blip, sayAloud, setSoundEnabled, setWordsEnabled, soundEnabled, wordsEnabled } from './sound';
 
 /**
  * Canny — an on-page companion in the spirit of Shimeji desktop pets.
@@ -138,6 +138,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
   const [playing, setPlaying] = useState(false);
   const [outfit, setOutfit] = useState<CannyOutfitStyle>(config.defaultOutfit);
   const [soundOn, setSoundOn] = useState(true);
+  const [wordsOn, setWordsOn] = useState(false);
   const [following, setFollowing] = useState(false);
 
   const sizeRef = useRef(size);
@@ -175,6 +176,13 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
   const maxX = () =>
     window.innerWidth - sizeRef.current - (isMobile() ? config.rightReserve.mobile : config.rightReserve.desktop);
 
+  /** Where to wander: the right side on desktop (clear of banner copy), anywhere on phones. */
+  const roamX = () => {
+    const right = maxX();
+    const left = isMobile() ? 12 : Math.max(12, right - window.innerWidth * 0.35);
+    return left + Math.random() * Math.max(right - left, 20);
+  };
+
   const applyTransform = () => {
     const el = rootRef.current;
     if (!el) return;
@@ -207,7 +215,10 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     } catch {
       // fall through
     }
-    return { x: 16, y: floorY() };
+    // Desktop: bottom-right, beside the chat button — the bottom-left is where
+    // full-width banners put their headline and button. Phones: bottom-left,
+    // above the tab bar, where nothing tappable sits.
+    return { x: isMobile() ? 16 : maxX(), y: floorY() };
   };
 
   // ---------- pose, speech ----------
@@ -222,16 +233,18 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
   }, []);
 
   /**
-   * Shows a line with a chirp. `voice` also reads it aloud — kept for the lines
-   * that matter (hello, a guide tip, a score) so Canny is never chatty out loud.
+   * Shows a line and says it: in Canny's recorded voice when the line has a
+   * recording (and the visitor hasn't chosen bird chirps), otherwise as cute
+   * bird talk. Never the device's robotic voice. `key` is the line as written
+   * in the config, for lines whose shown text has a blank filled in.
    */
   const say = useCallback(
-    (text: string, ms?: number, voice = false) => {
+    (text: string, ms?: number, _voice = false, key?: string) => {
       if (!text || hiddenRef.current) return;
       window.clearTimeout(bubbleTimer.current);
       setBubble(text);
-      chirp();
-      if (voice) window.setTimeout(() => speak(text), 350);
+      const line = key || text;
+      void sayAloud(line, text);
       setPoseState((current) => (current === 'idle' ? 'talk' : current));
       const duration = ms ?? clamp(2600 + text.length * 45, 3000, 7000);
       bubbleTimer.current = window.setTimeout(() => {
@@ -269,6 +282,7 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
     measure();
     setHidden(storage(`${K}:hidden`) === '1');
     setSoundOn(soundEnabled());
+    setWordsOn(wordsEnabled());
     setOutfit(getCannyOutfit() || config.defaultOutfit);
     setReady(true);
     const onResize = () => {
@@ -327,7 +341,8 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
         later(() => {
           if (modeRef.current !== 'roam' || bubbleRef.current) return;
           setPose('happy', 1400);
-          say(fill(pick(lines.newOutfit), { label: next.label }));
+          const template = pick(lines.newOutfit);
+          say(fill(template, { label: next.label }), undefined, true, template);
         }, 1400);
       }
     });
@@ -406,10 +421,10 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
       if (!busy) {
         const roll = Math.random();
         if (roll < 0.42) {
-          await moveTo(12 + Math.random() * Math.max(maxX() - 12, 20), floorY(), 'run', 0.16);
+          await moveTo(roamX(), floorY(), 'run', 0.16);
         } else if (roll < 0.6) {
           const y = window.innerHeight * (0.3 + Math.random() * 0.35);
-          await moveTo(12 + Math.random() * Math.max(maxX() - 12, 20), y, 'fly', 0.45);
+          await moveTo(roamX(), y, 'fly', 0.45);
           await new Promise((resolve) => later(() => resolve(null), 1800));
           if (modeRef.current === 'roam') {
             const home = homePosition();
@@ -742,7 +757,8 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
       const best = Math.max(score, Number(storage(`${K}:best`) || 0));
       storage(`${K}:best`, String(best));
       setPose('happy', 2200);
-      say(fill(pick(lines.gameEnd), { score, best }), 5000, true);
+      const template = pick(lines.gameEnd);
+      say(fill(template, { score, best }), 5000, true, template);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [K]
@@ -824,6 +840,20 @@ export function CannyAssistant({ config, path }: { config: CannyConfig; path: st
         if (next) say(pick(lines.hi), undefined, true);
       }
     },
+    ...(soundOn
+      ? [
+          {
+            label: wordsOn ? '🐦 Talk in bird chirps' : '🗣️ Speak real words',
+            run: () => {
+              const next = !wordsOn;
+              setWordsEnabled(next);
+              setWordsOn(next);
+              setMenuOpen(false);
+              say(pick(lines.hi), undefined, true);
+            }
+          }
+        ]
+      : []),
     { label: '🙈 Hide', run: hide }
   ];
 

@@ -6,6 +6,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getApiBaseUrl } from '../lib/api';
 import { formatCurrency } from '../lib/utils';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
+import { speakText, stopSpeaking } from './canny/voice';
+import { hasVoice, loadVoices, playVoice, sayAloud } from './canny/sound';
+import { CHAT_LINES } from './canny/voiceLines';
 
 type Product = {
   id: string;
@@ -66,20 +69,18 @@ export function StyleAssistant() {
 
   useEffect(() => {
     if (!open || messages.length) return;
-    setMessages([{ role: 'assistant', text: recent.length
-      ? 'Welcome back. Want something similar to what you viewed, or are you shopping for a different mood?'
-      : 'Hi, I am your Fly Free style assistant. Tell me what you want to wear and I will find a few options.' }]);
+    setMessages([{ role: 'assistant', text: recent.length ? CHAT_LINES.welcomeBack : CHAT_LINES.welcome }]);
   }, [open, messages.length, recent.length]);
 
   useEffect(() => {
     if (!open) {
       welcomedRef.current = false;
-      window.speechSynthesis?.cancel();
+      stopSpeaking();
       return;
     }
     if (messages.length !== 1 || welcomedRef.current) return;
     welcomedRef.current = true;
-    const timer = window.setTimeout(() => speak(messages[0].text), 250);
+    const timer = window.setTimeout(() => chatter(messages[0].text), 250);
     return () => window.clearTimeout(timer);
   }, [open, messages]);
 
@@ -133,50 +134,65 @@ export function StyleAssistant() {
     if (query.includes('new') || query.includes('collection') || query.includes('latest')) {
       const newProducts = products.filter((product) => product.isNewArrival || product.isFeatured).slice(0, 3);
       setAnswerProducts(newProducts.length ? newProducts : picks);
-      text = newProducts.length ? 'Here are the newest Fly Free picks.' : 'I do not see a new-drop flag yet, but these are the strongest current picks.';
+      text = newProducts.length ? CHAT_LINES.newPicks : CHAT_LINES.newFallback;
       nextQuestions = ['Show me oversized styles', 'What goes well with this?', 'Help me choose a colour'];
     }
     if (!text && (query.includes('size') || query.includes('fit'))) {
       setAnswerProducts([]);
-      text = 'For the best fit, open the product you like and check its size guide before adding it to your cart. If you are between sizes, choose the larger size for a relaxed fit.';
+      text = CHAT_LINES.sizeHelp;
       nextQuestions = ['Show oversized styles', 'Help me choose a colour'];
     } else if (!text && (query.includes('support') || query.includes('help') || query.includes('order') || query.includes('delivery') || query.includes('return'))) {
       setAnswerProducts([]);
-      text = 'I can help with products here. For order status, delivery, or returns, open Help & FAQs and we will take you to the right support details.';
+      text = CHAT_LINES.supportHelp;
       nextQuestions = ['Show me products', 'Open support'];
     } else if (picks.length) {
       setAnswerProducts(picks);
-      text = `I found ${picks.length} option${picks.length === 1 ? '' : 's'} that fit that search. I have highlighted them below.`;
+      text = CHAT_LINES.found;
       nextQuestions = ['Show more like this', 'Check out the new collection'];
     } else {
       setAnswerProducts([]);
-      text = 'Tell me a theme, fit, colour, or mood, like oversized black, anime, racing, or something relaxed.';
+      text = CHAT_LINES.askMore;
       nextQuestions = ['Show oversized styles', 'Show racing styles'];
     }
     setFollowUps(nextQuestions);
     window.setTimeout(() => {
       setMessages((current) => [...current, { role: 'user', text: question }, { role: 'assistant', text }]);
       setThinking(false);
-      speak(text);
+      chatter(text);
     }, 450);
   }
 
+  // Same voice as Canny's speech bubbles: the device's best female English voice.
+  /** Shows "Speaking your answer" for as long as a sound lasts. */
+  function speakingFor(ms: number) {
+    if (ms <= 0) return;
+    setSpeaking(true);
+    window.setTimeout(() => setSpeaking(false), ms);
+  }
+
+  // The 🔊 button: Canny's recorded voice when the answer has a recording; the
+  // device's own voice only for text that doesn't.
   function speak(text: string) {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[*#]/g, ''));
-    utterance.lang = 'en-IN';
-    utterance.rate = 0.96;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+    void (async () => {
+      await loadVoices();
+      if (hasVoice(text)) {
+        const ms = await playVoice(text);
+        if (ms > 0) return speakingFor(ms);
+      }
+      speakText(text, { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+    })();
+  }
+
+  // A new answer: Canny's recorded voice, or cute bird talk if there is no
+  // recording or the visitor chose chirps in Canny's menu.
+  function chatter(text: string) {
+    void sayAloud(text).then(speakingFor);
   }
 
   function startVoice() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setMessages((current) => [...current, { role: 'assistant', text: 'Voice input is not available in this browser. You can type your request below.' }]);
+      setMessages((current) => [...current, { role: 'assistant', text: CHAT_LINES.noMic }]);
       return;
     }
     const recognition = new SpeechRecognition();
