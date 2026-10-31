@@ -174,17 +174,34 @@ export class ReviewService {
 
   // Latest approved reviews for homepage
   async getLatestReviews(limit: number = 8) {
+    // Public: only what a review card shows. Order and user ids stay private;
+    // `verified` says the review came from a real order.
     const reviews = await this.prisma.review.findMany({
       where: { status: "APPROVED" },
-      include: {
-        user: { select: { id: true, name: true, image: true } },
-        product: { select: { id: true, name: true, slug: true } },
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        body: true,
+        mediaUrls: true,
+        createdAt: true,
+        orderId: true,
+        user: { select: { name: true, image: true } },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            images: { select: { url: true }, orderBy: { priority: "asc" }, take: 1 },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
-    return { data: reviews, total: reviews.length };
+    const data = reviews.map(({ orderId, ...review }) => ({ ...review, verified: Boolean(orderId) }));
+    return { data, total: data.length };
   }
 
   // Update review

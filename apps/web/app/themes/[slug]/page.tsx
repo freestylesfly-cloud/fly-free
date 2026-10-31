@@ -29,7 +29,7 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
 
   return (
     <main style={{ backgroundColor: "var(--bg-primary)" }}>
-      <CannyOutfit color={theme.primaryColor || "#2563EB"} label={theme.name} />
+      <CannyOutfit color={theme.primaryColor || "#121212"} label={theme.name} />
       {/* THEME BANNER — identical treatment to the homepage hero: full-bleed
           16:9, copy overlaid at the top on every breakpoint. */}
       <section

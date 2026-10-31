@@ -6,6 +6,7 @@ import { Heart, ShoppingBag, Trash2 } from 'lucide-react';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
+import { formatCurrency } from '../lib/utils';
 
 const API_BASE = getApiBaseUrl();
 
@@ -177,7 +178,7 @@ export default function WishlistPage() {
 
                     <div className="flex items-center justify-between">
                       <p className="font-black" style={unavailable ? { color: 'var(--text-muted)' } : undefined}>
-                        Rs {Math.round(product.price / 100)}
+                        {formatCurrency(Math.round(product.price / 100))}
                       </p>
                       <button onClick={() => removeItem(product.id)} className="rounded border p-2 transition hover:bg-black/5" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }} aria-label="Remove from wishlist">
                         <Trash2 size={16} />

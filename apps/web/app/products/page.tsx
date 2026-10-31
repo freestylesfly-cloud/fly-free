@@ -15,7 +15,9 @@ const PRODUCT_PAGE_SIZE = 20;
 const PRODUCT_CACHE_TTL = 5 * 60 * 1000;
 
 type FilterData = {
-  // categories are fits (regular, oversized, jersey, polo, hoodie)
+  // productTypes = what we sell (T-Shirts, Hoodies…) each with its styles;
+  // categories = every style, kept for older API responses.
+  productTypes?: any[];
   categories: any[];
   themes: any[];
 };
@@ -32,6 +34,7 @@ function ProductsBrowser() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [filters, setFilters] = useState<FilterData>({ categories: [], themes: [] });
+  const [productType, setProductType] = useState('');
   const [category, setCategory] = useState('');
   const [theme, setTheme] = useState('');
   const [query, setQuery] = useState('');
@@ -44,6 +47,7 @@ function ProductsBrowser() {
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
 
   useEffect(() => {
+    setProductType(searchParams.get('type') || '');
     setCategory(searchParams.get('category') || '');
     setTheme(searchParams.get('theme') || '');
     setQuery(searchParams.get('q') || '');
@@ -58,6 +62,7 @@ function ProductsBrowser() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
+        if (productType) params.set('type', productType);
         if (category) params.set('category', category);
         if (theme) params.set('theme', theme);
         if (query) params.set('q', query);
@@ -96,11 +101,11 @@ function ProductsBrowser() {
 
     const timer = window.setTimeout(fetchData, 220);
     return () => window.clearTimeout(timer);
-  }, [category, theme, query, minPrice, maxPrice, rating, sort]);
+  }, [productType, category, theme, query, minPrice, maxPrice, rating, sort]);
 
   useEffect(() => {
     setVisibleCount(PRODUCT_PAGE_SIZE);
-  }, [category, theme, query, minPrice, maxPrice, rating, sort]);
+  }, [productType, category, theme, query, minPrice, maxPrice, rating, sort]);
 
   useEffect(() => {
     if (loading || visibleCount >= products.length) return;
@@ -117,14 +122,18 @@ function ProductsBrowser() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [loading, products.length, visibleCount]);
 
+  // The type only counts when the Product group is on screen (more than one
+  // type in the shop); otherwise "Filters 1" would show with nothing visibly set.
+  const typeIsChoosable = (filters.productTypes || []).length > 1;
   const activeCount = useMemo(
-    () => [category, theme, query, minPrice, maxPrice, rating].filter(Boolean).length,
-    [category, theme, query, minPrice, maxPrice, rating]
+    () => [typeIsChoosable && productType, category, theme, query, minPrice || maxPrice, rating].filter(Boolean).length,
+    [typeIsChoosable, productType, category, theme, query, minPrice, maxPrice, rating]
   );
 
   const activeLabels = useMemo(() => {
     const labelFor = (items: any[], slug: string) => items.find((item) => item.slug === slug)?.name || slug;
     return [
+      typeIsChoosable && productType && labelFor(filters.productTypes || [], productType),
       category && labelFor(filters.categories, category),
       theme && labelFor(filters.themes, theme),
       query && `"${query}"`,
@@ -132,10 +141,14 @@ function ProductsBrowser() {
       maxPrice && `To ${formatCurrency(Number(maxPrice))}`,
       rating && `${rating}+ stars`,
     ].filter(Boolean) as string[];
-  }, [category, filters, maxPrice, minPrice, query, rating, theme]);
+  }, [typeIsChoosable, productType, category, filters, maxPrice, minPrice, query, rating, theme]);
   const visibleProducts = products.slice(0, visibleCount);
+  // Follows the chosen type (or the only one in the shop) so the heading never says T-shirts on a hoodies page.
+  const titleType = (filters.productTypes || []).find((type: any) => type.slug === productType) || ((filters.productTypes || []).length === 1 ? filters.productTypes![0] : null);
+  const pageTitle = titleType ? `${titleType.name} for every mood` : 'Shop everything';
 
   function clearFilters() {
+    setProductType('');
     setCategory('');
     setTheme('');
     setQuery('');
@@ -148,6 +161,12 @@ function ProductsBrowser() {
   const filterPanel = (
     <FilterPanel
       filters={filters}
+      productType={productType}
+      setProductType={(value) => {
+        // A style belongs to one type, so switching type clears it.
+        setProductType(value);
+        setCategory('');
+      }}
       category={category}
       setCategory={setCategory}
       theme={theme}
@@ -174,13 +193,10 @@ function ProductsBrowser() {
                 <span>/</span>
                 <span>Shop</span>
               </div>
-              <h1 className="mt-3 text-2xl font-black md:text-4xl">T-shirts for every mood</h1>
+              <h1 className="mt-3 text-2xl font-black md:text-4xl">{pageTitle}</h1>
               <p className="mt-2 text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
                 {loading ? 'Finding fresh drops...' : `${products.length} product${products.length === 1 ? '' : 's'} found`}
               </p>
-            </div>
-            <div className="hidden items-center gap-2 lg:flex">
-              <SortSelect sort={sort} setSort={setSort} />
             </div>
           </div>
 
@@ -211,7 +227,7 @@ function ProductsBrowser() {
           floating above the bottom navigation. */}
       <div
         className="sticky z-30 grid grid-cols-2 border-y lg:hidden"
-        style={{ top: '55px', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+        style={{ top: 'var(--header-h, 57px)', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
       >
         <button
           type="button"
@@ -247,7 +263,7 @@ function ProductsBrowser() {
             <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               {loading ? 'Loading...' : `Showing ${products.length} item${products.length === 1 ? '' : 's'}`}
             </p>
-            <p className="text-xs font-black uppercase" style={{ color: 'var(--text-tertiary)' }}>Fresh fits, cleaner browsing</p>
+            <SortSelect sort={sort} setSort={setSort} />
           </div>
 
           {loading ? (
@@ -304,7 +320,7 @@ function ProductsBrowser() {
             <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-4" style={{ borderColor: 'var(--border-color)' }}>
               <div>
                 <h2 className="text-lg font-black">Filter products</h2>
-                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{activeCount} active filters</p>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>{activeCount ? `${activeCount} selected` : 'Nothing selected yet'}</p>
               </div>
               <button type="button" onClick={() => setFilterOpen(false)} className="flex h-10 w-10 items-center justify-center rounded-full border" style={{ borderColor: 'var(--border-color)' }} aria-label="Close filters">
                 <X size={18} />
@@ -315,8 +331,8 @@ function ProductsBrowser() {
               {filterPanel}
             </div>
             <div className="sticky bottom-0 grid grid-cols-[1fr_1.5fr] gap-3 border-t bg-white p-4" style={{ borderColor: 'var(--border-color)' }}>
-              <button type="button" onClick={clearFilters} className="rounded border px-4 py-3 text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>Clear</button>
-              <button type="button" onClick={() => setFilterOpen(false)} className="rounded px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>Show products</button>
+              <button type="button" onClick={clearFilters} className="rounded-full border px-4 py-3 text-sm font-black" style={{ borderColor: 'var(--border-color)' }}>Clear</button>
+              <button type="button" onClick={() => setFilterOpen(false)} className="rounded-full px-4 py-3 text-sm font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{loading ? 'Show products' : `Show ${products.length} product${products.length === 1 ? '' : 's'}`}</button>
             </div>
           </div>
         </div>
@@ -327,6 +343,8 @@ function ProductsBrowser() {
 
 function FilterPanel(props: {
   filters: FilterData;
+  productType: string;
+  setProductType: (value: string) => void;
   category: string;
   setCategory: (value: string) => void;
   theme: string;
@@ -343,12 +361,25 @@ function FilterPanel(props: {
   return (
     <div className="space-y-5">
       <div className="hidden items-center justify-between lg:flex">
-        <div className="flex items-center gap-2 font-black"><SlidersHorizontal size={18} /> Filters</div>
-        {props.activeCount > 0 && <span className="rounded-full px-2 py-1 text-xs font-black text-white" style={{ backgroundColor: 'var(--color-primary)' }}>{props.activeCount}</span>}
+        <div className="flex items-center gap-2 text-base font-black">
+          <SlidersHorizontal size={18} /> Filters
+          {props.activeCount > 0 && <span className="filter-count">{props.activeCount}</span>}
+        </div>
+        {props.activeCount > 0 && (
+          <button type="button" onClick={props.clearFilters} className="text-sm font-bold underline underline-offset-4" style={{ color: 'var(--text-secondary)' }}>
+            Clear all
+          </button>
+        )}
       </div>
 
-      <FilterGroup label="Fit / Type">
-        <RadioRows value={props.category} onChange={props.setCategory} options={props.filters.categories} emptyLabel="All fits" />
+      {(props.filters.productTypes || []).length > 1 && (
+        <FilterGroup label="Product">
+          <RadioRows value={props.productType} onChange={props.setProductType} options={props.filters.productTypes || []} emptyLabel="Everything" />
+        </FilterGroup>
+      )}
+
+      <FilterGroup label="Style">
+        <RadioRows value={props.category} onChange={props.setCategory} options={stylesFor(props.filters, props.productType)} emptyLabel="All styles" />
       </FilterGroup>
 
       <FilterGroup label="Shop theme">
@@ -366,16 +397,12 @@ function FilterPanel(props: {
 
       <FilterGroup label="Rating">
         {[
-          { slug: '', name: 'All ratings' },
-          { slug: '4', name: '4 stars and up' },
-          { slug: '3', name: '3 stars and up' },
-          { slug: '2', name: '2 stars and up' },
-        ].map((item) => <CheckRow key={item.name} label={item.name} active={props.rating === item.slug} onClick={() => props.setRating(item.slug)} />)}
+          { slug: '', name: 'Any' },
+          { slug: '4', name: '4★ & up' },
+          { slug: '3', name: '3★ & up' },
+          { slug: '2', name: '2★ & up' },
+        ].map((item) => <Chip key={item.name} label={item.name} active={props.rating === item.slug} onClick={() => props.setRating(item.slug)} />)}
       </FilterGroup>
-
-      <button type="button" onClick={props.clearFilters} className="hidden w-full rounded border px-4 py-3 text-sm font-black lg:block" style={{ borderColor: 'var(--border-color)' }}>
-        Clear all filters
-      </button>
     </div>
   );
 }
@@ -401,7 +428,7 @@ function PriceRangeSlider({
   const percent = (value: number) => ((value - PRICE_FLOOR) / (PRICE_CEILING - PRICE_FLOOR)) * 100;
 
   return (
-    <div className="px-1">
+    <div className="w-full px-1">
       <div className="mb-3 flex items-center justify-between text-sm font-black">
         <span>{formatCurrency(low)}</span>
         <span style={{ color: 'var(--text-secondary)' }}>
@@ -521,31 +548,45 @@ function FilterGroup({ label, children }: { label: string; children: React.React
   const [open, setOpen] = useState(true);
   return (
     <section className="border-b pb-4 last:border-b-0" style={{ borderColor: 'var(--border-color)' }}>
-      <button type="button" onClick={() => setOpen(!open)} className="mb-3 flex w-full items-center justify-between text-left text-sm font-black uppercase">
+      <button type="button" onClick={() => setOpen(!open)} className="mb-3 flex w-full items-center justify-between text-left text-sm font-black" aria-expanded={open}>
         {label}
         <ChevronDown className={open ? 'rotate-180 transition' : 'transition'} size={16} />
       </button>
-      {open && <div className="scrollbar-clean max-h-52 space-y-2 overflow-y-auto pr-1">{children}</div>}
+      {open && <div className="flex flex-wrap gap-2">{children}</div>}
     </section>
   );
 }
 
+/**
+ * Styles to offer: those of the chosen type, or — with only one type in the
+ * shop — that type's styles, or every style labelled with its type.
+ */
+function stylesFor(filters: FilterData, productType: string) {
+  const types = filters.productTypes || [];
+  const chosen = types.find((type: any) => type.slug === productType) || (types.length === 1 ? types[0] : null);
+  if (chosen) return chosen.styles;
+  if (!types.length) return filters.categories;
+  return types.flatMap((type: any) => type.styles.map((style: any) => ({ ...style, name: `${style.name} ${type.name}` })));
+}
+
+/** One choice per group, shown as chips: "All" plus each option. */
 function RadioRows({ value, onChange, options, emptyLabel }: { value: string; onChange: (value: string) => void; options: any[]; emptyLabel: string }) {
   return (
     <>
-      <CheckRow label={emptyLabel} active={!value} onClick={() => onChange('')} />
-      {options.map((item) => <CheckRow key={item.id || item.slug} label={item.name} active={value === item.slug} onClick={() => onChange(item.slug)} />)}
+      <Chip label={emptyLabel} active={!value} onClick={() => onChange('')} />
+      {options.map((item) => (
+        <Chip key={item.id || item.slug} label={item.name} count={item.productCount} active={value === item.slug} onClick={() => onChange(item.slug)} />
+      ))}
     </>
   );
 }
 
-function CheckRow({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function Chip({ label, count, active, onClick }: { label: string; count?: number; active: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm font-bold transition hover:bg-black/5">
-      <span>{label}</span>
-      <span className="flex h-4 w-4 items-center justify-center rounded border" style={{ borderColor: active ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: active ? 'var(--color-primary)' : 'transparent' }}>
-        {active && <Check size={12} color="white" />}
-      </span>
+    <button type="button" onClick={onClick} className="filter-chip" data-active={active || undefined} aria-pressed={active}>
+      {active && <Check size={13} strokeWidth={3} />}
+      {label}
+      {typeof count === 'number' && <span className="filter-chip-count">{count}</span>}
     </button>
   );
 }

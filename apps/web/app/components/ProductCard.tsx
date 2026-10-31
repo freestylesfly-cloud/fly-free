@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, sortSizes } from '../lib/utils';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
 import { getApiBaseUrl, readApiResponse } from '../lib/api';
 import { trackEvent } from '../lib/analytics';
@@ -61,7 +61,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
     [variants]
   );
   const sizeOptions = useMemo(
-    () => uniqueValues(variants.map((variant) => variant.size || '').filter(Boolean)),
+    () => sortSizes(uniqueValues(variants.map((variant) => variant.size || '').filter(Boolean))),
     [variants]
   );
   const colorOptions = useMemo(
@@ -249,7 +249,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
             {discountPercent > 0 && (
               <span
                 className="px-2 py-1 text-[9px] font-black uppercase tracking-wide text-white shadow-sm"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                style={{ backgroundColor: 'var(--color-secondary)' }}
               >
                 {discountPercent}% off
               </span>
@@ -305,7 +305,7 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
         )}
 
         <Link href={`/products/${slug}`}>
-          <h3 className="min-h-9 text-[13px] font-black uppercase leading-tight line-clamp-2 sm:min-h-10 sm:text-sm" style={{ color: 'var(--text-primary)' }}>{name}</h3>
+          <h3 className="min-h-9 text-[13px] font-bold leading-snug line-clamp-2 transition-colors group-hover:text-[color:var(--color-primary)] sm:min-h-10 sm:text-[15px]" style={{ color: 'var(--text-primary)' }}>{name}</h3>
         </Link>
 
         <div className="mt-2 flex items-start justify-between gap-2">
@@ -314,8 +314,8 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
             {hasDiscount && <p className="text-[11px] font-bold line-through" style={{ color: 'var(--text-tertiary)' }}>{formatCurrency(originalPrice!)}</p>}
           </div>
           {sizeOptions.length > 0 && (
-            <p className="max-w-20 truncate border px-1.5 py-1 text-right text-[9px] font-black uppercase sm:max-w-24" style={{ borderColor: 'var(--border-light)', color: 'var(--text-tertiary)' }}>
-              {sizeOptions.slice(0, 3).join(' / ')}
+            <p className="max-w-24 truncate rounded-full px-2 py-1 text-right text-[10px] font-bold" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
+              {sizeRange(sizeOptions)}
             </p>
           )}
         </div>
@@ -324,8 +324,8 @@ export function ProductCard({ id, name, price, image, hoverImage, images = [], v
           type="button"
           onClick={handleOpenQuickAdd}
           disabled={isAdding || soldOut}
-          className="mt-auto flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white transition hover:opacity-90 disabled:opacity-80 sm:py-2.5 sm:text-xs"
-          style={{ backgroundColor: soldOut ? 'var(--text-tertiary)' : 'var(--color-primary)' }}
+          className="card-add mt-auto flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-wide transition disabled:opacity-80 sm:py-2.5 sm:text-xs"
+          data-sold-out={soldOut || undefined}
         >
           {isAdding ? <CheckCircle2 size={15} /> : <ShoppingCart size={15} />}
           {soldOut ? 'Sold out' : isAdding ? 'Added' : 'Add'}
@@ -561,6 +561,12 @@ function OptionGroup({ title, value, children }: { title: string; value: string;
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
+}
+
+/** "S – XXL" for a run of sizes; short lists are written out. */
+function sizeRange(sizes: string[]) {
+  if (sizes.length <= 2) return sizes.join(' / ');
+  return `${sizes[0]} – ${sizes[sizes.length - 1]}`;
 }
 
 function uniqueValues(values: string[]) {

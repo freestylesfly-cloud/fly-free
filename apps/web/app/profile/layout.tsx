@@ -122,7 +122,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                     style={{
                       backgroundColor: active ? 'var(--color-primary)' : 'transparent',
                       color: active ? 'white' : 'var(--text-secondary)',
-                      boxShadow: active ? '0 4px 12px rgba(37,99,235,0.18)' : 'none'
+                      boxShadow: active ? '0 4px 12px color-mix(in srgb, var(--color-primary) 18%, transparent)' : 'none'
                     }}
                   >
                     <Icon size={18} />

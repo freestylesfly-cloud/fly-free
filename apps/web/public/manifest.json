@@ -6,7 +6,7 @@
   "scope": "/",
   "display": "standalone",
   "background_color": "#111827",
-  "theme_color": "#2563EB",
+  "theme_color": "#121212",
   "icons": [
     {
       "src": "/favicon_io/favicon.ico",

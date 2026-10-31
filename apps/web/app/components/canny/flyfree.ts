@@ -10,7 +10,7 @@ import type { CannyConfig } from './CannyAssistant';
 export const FLYFREE_CANNY: CannyConfig = {
   name: 'Canny',
   storageKey: 'flyfree_canny',
-  defaultOutfit: { color: '#2563EB', label: 'FLY FREE', textColor: '#ffffff' },
+  defaultOutfit: { color: '#121212', label: 'FLY FREE', textColor: '#ffffff' },
   hoverTarget: '[data-canny="product-card"]',
   // Clear of the mobile tab bar, and of the chat button on the right.
   bottomOffset: { mobile: 92, desktop: 18 },

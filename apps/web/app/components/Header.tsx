@@ -22,9 +22,10 @@ export function Header() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loginPrompt, setLoginPrompt] = useState('');
   const [hoveredMenuItem, setHoveredMenuItem] = useState<string | null>(null);
-  // themes = design drops, fits = product types (regular, oversized, jersey, ...)
+  // themes = design drops; productTypes = what we sell (T-Shirts, Hoodies…),
+  // each with its styles. Types appear here once they have visible products.
   const [themes, setThemes] = useState<any[]>([]);
-  const [fits, setFits] = useState<any[]>([]);
+  const [productTypes, setProductTypes] = useState<any[]>([]);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -81,11 +82,11 @@ export function Header() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         setThemes(data?.themes ?? []);
-        setFits(data?.categories ?? []);
+        setProductTypes(data?.productTypes ?? []);
       })
       .catch(() => {
         setThemes([]);
-        setFits([]);
+        setProductTypes([]);
       });
   }, []);
 
@@ -112,20 +113,14 @@ export function Header() {
       )}
 
       {/* Main Header */}
-      <header
-        className="sticky top-0 z-40 transition"
-        style={{
-          borderColor: 'var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-          borderBottomWidth: '2px'
-        }}
-      >
+      {/* Frosted bar: content scrolls softly underneath instead of hard-cutting. */}
+      <header className="site-header sticky top-0 z-40">
         {/* Mobile Header - Logo Centered */}
         <div className="md:hidden px-3 py-1.5 flex items-center justify-between gap-2">
           {/* Left: Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 transition hover:opacity-70"
+            className="icon-btn"
             aria-label="Toggle menu"
           >
             {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -138,43 +133,25 @@ export function Header() {
 
           {/* Right: Search & Cart */}
           <div className="flex items-center gap-1">
-            <Link
-              href="/products"
-              className="p-2 transition hover:opacity-70"
-              title="Search"
-              aria-label="Search products"
-            >
+            <Link href="/products" className="icon-btn" title="Search" aria-label="Search products">
               <Search size={20} />
             </Link>
-            <Link
-              href="/cart"
-              className="relative p-2 transition hover:opacity-70"
-              title="Cart"
-              aria-label="Shopping cart"
-            >
+            <Link href="/cart" className="icon-btn relative" title="Cart" aria-label="Shopping cart">
               <ShoppingBag size={20} />
-              <span
-                className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-black text-white"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  display: displayedCartCount > 0 ? 'flex' : 'none'
-                }}
-              >
-                {displayedCartCount > 0 && displayedCartCount}
-              </span>
+              {displayedCartCount > 0 && <span className="count-badge">{displayedCartCount}</span>}
             </Link>
           </div>
         </div>
 
         {/* Desktop Header - Professional Layout */}
-        <div className="hidden md:flex items-center justify-between px-6 py-2 max-w-7xl mx-auto gap-8">
+        <div className="hidden md:flex h-16 items-center justify-between px-6 max-w-7xl mx-auto gap-8">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center justify-center hover:opacity-80 whitespace-nowrap flex-shrink-0">
             <Logo size="md" showText={false} />
           </Link>
 
           {/* Center: Navigation Menu */}
-          <nav className="flex gap-8 text-sm font-semibold flex-1 justify-center">
+          <nav className="flex gap-7 text-sm font-semibold flex-1 justify-center">
             <DesktopNavLink href="/" label="Home" active={isActive('/')} />
             <DesktopNavLink href="/products" label="Shop" active={isActive('/products')} />
 
@@ -195,21 +172,27 @@ export function Header() {
               emptyLabel="No themes yet"
             />
 
-            <MegaMenu
-              label="Fit"
-              href="/products"
-              active={false}
-              isOpen={hoveredMenuItem === 'fits'}
-              onOpen={() => setHoveredMenuItem('fits')}
-              onClose={() => setHoveredMenuItem(null)}
-              items={fits.map((fit) => ({
-                key: fit.id,
-                label: fit.name,
-                href: `/products?category=${fit.slug}`,
-                imageUrl: fit.imageUrl,
-              }))}
-              emptyLabel="No fits yet"
-            />
+            {productTypes.map((type) => (
+              <MegaMenu
+                key={type.id}
+                label={type.name}
+                href={`/products?type=${type.slug}`}
+                active={false}
+                isOpen={hoveredMenuItem === `type-${type.slug}`}
+                onOpen={() => setHoveredMenuItem(`type-${type.slug}`)}
+                onClose={() => setHoveredMenuItem(null)}
+                items={[
+                  { key: `all-${type.id}`, label: `All ${type.name}`, href: `/products?type=${type.slug}`, imageUrl: type.imageUrl },
+                  ...type.styles.map((style: any) => ({
+                    key: style.id,
+                    label: style.name,
+                    href: `/products?type=${type.slug}&category=${style.slug}`,
+                    imageUrl: style.imageUrl,
+                  })),
+                ]}
+                emptyLabel="Coming soon"
+              />
+            ))}
 
             <DesktopNavLink href="/about" label="About" active={isActive('/about')} />
           </nav>
@@ -217,23 +200,12 @@ export function Header() {
           {/* Right: Actions */}
           <div className="flex items-center gap-2 whitespace-nowrap flex-shrink-0">
             {/* Search */}
-            <Link
-              href="/products"
-              className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
-              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
-              title="Search products"
-              aria-label="Search products"
-            >
+            <Link href="/products" className="icon-btn" title="Search products" aria-label="Search products">
               <Search size={18} />
             </Link>
 
             {/* Wishlist */}
-            <Link
-              href={user ? '/profile/wishlist' : '/auth/login'}
-              className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
-              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
-              aria-label="Open wishlist"
-            >
+            <Link href={user ? '/profile/wishlist' : '/auth/login'} className="icon-btn" title="Wishlist" aria-label="Open wishlist">
               <Heart size={18} />
             </Link>
 
@@ -242,18 +214,16 @@ export function Header() {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
-                  style={{
-                    borderColor: isProfileOpen ? 'var(--color-primary)' : 'var(--border-color)',
-                    backgroundColor: isProfileOpen ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'var(--bg-secondary)'
-                  }}
+                  className="icon-btn"
+                  data-open={isProfileOpen || undefined}
                   aria-label="Open profile menu"
+                  aria-expanded={isProfileOpen}
                 >
-                  <User size={18} style={{ color: isProfileOpen ? 'var(--color-primary)' : 'var(--text-primary)' }} />
+                  <User size={18} />
                 </button>
                 {isProfileOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border-2 shadow-xl z-50"
+                    className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border shadow-xl z-50"
                     style={{
                       borderColor: 'var(--border-color)',
                       backgroundColor: 'var(--bg-secondary)'
@@ -314,30 +284,15 @@ export function Header() {
                 )}
               </div>
             ) : (
-              <Link
-                href="/auth/login"
-                className="px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition hover:opacity-90"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-                title="Login or Register"
-              >
-                Login
+              <Link href="/auth/login" className="signin-btn" title="Sign in or create an account">
+                <LogIn size={16} /> Sign in
               </Link>
             )}
 
             {/* Cart */}
-            <Link
-              href="/cart"
-              className="relative grid h-11 w-11 place-items-center rounded-lg border-2 transition hover:shadow-sm"
-              style={{ borderColor: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}
-              aria-label="Open cart"
-            >
+            <Link href="/cart" className="icon-btn relative" title="Cart" aria-label="Open cart">
               <ShoppingBag size={18} />
-              <span
-                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-black text-white"
-                style={{ backgroundColor: 'var(--color-primary)', display: displayedCartCount > 0 ? 'flex' : 'none' }}
-              >
-                {displayedCartCount > 0 && displayedCartCount}
-              </span>
+              {displayedCartCount > 0 && <span className="count-badge">{displayedCartCount}</span>}
             </Link>
           </div>
         </div>
@@ -346,7 +301,7 @@ export function Header() {
         {isOpen && (
           <div
             onClick={() => setIsOpen(false)}
-            className="md:hidden fixed inset-0 z-40 bg-black/40"
+            className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
           />
         )}
 
@@ -354,30 +309,34 @@ export function Header() {
         <div
           className="md:hidden fixed inset-y-0 left-0 flex flex-col overflow-hidden z-50"
           style={{
-            width: '280px',
-            maxWidth: '85vw',
+            width: '312px',
+            maxWidth: '86vw',
             backgroundColor: 'var(--bg-secondary)',
             transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
             transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             boxShadow: isOpen ? '4px 0 12px rgba(0, 0, 0, 0.15)' : 'none',
           }}
         >
-          {/* Close Button - Top Right */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-3 right-3 p-2 z-50"
-            aria-label="Close menu"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-light)' }}>
+            <Link href="/" onClick={() => setIsOpen(false)} aria-label="Fly Free home">
+              <Logo size="sm" showText={false} />
+            </Link>
+            <button onClick={() => setIsOpen(false)} className="icon-btn" aria-label="Close menu">
+              <X size={22} />
+            </button>
+          </div>
 
-          <nav className="flex-1 overflow-y-scroll pb-20 pt-2 scrollbar-hide">
-              {/* Main Navigation Section */}
-              <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
-                  Navigation
-                </p>
+          <nav className="flex-1 overflow-y-auto pb-24 scrollbar-hide">
+              {!user && (
+                <div className="m-4 rounded-xl p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                  <p className="text-base font-black" style={{ color: 'var(--text-primary)' }}>Welcome to Fly Free</p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Sign in to track orders and save favourites.</p>
+                  <Link href="/auth/login" onClick={() => setIsOpen(false)} className="signin-btn mt-3 w-full justify-center">
+                    <LogIn size={16} /> Sign in
+                  </Link>
+                </div>
+              )}
+              <div className="py-1">
                 <MobileDrawerLink href="/" label="Home" active={isActive('/')} onClick={() => setIsOpen(false)} icon={<Home size={16} />} />
                 <MobileDrawerLink href="/products" label="Shop" active={isActive('/products')} onClick={() => setIsOpen(false)} icon={<Store size={16} />} />
 
@@ -394,26 +353,33 @@ export function Header() {
                   onNavigate={() => setIsOpen(false)}
                 />
 
-                <MobileDrawerGroup
-                  label="Fit"
-                  icon={<Shirt size={16} />}
-                  isOpen={openMobileGroup === 'fits'}
-                  onToggle={() => setOpenMobileGroup(openMobileGroup === 'fits' ? null : 'fits')}
-                  items={fits.map((fit) => ({
-                    key: fit.id,
-                    label: fit.name,
-                    href: `/products?category=${fit.slug}`,
-                  }))}
-                  onNavigate={() => setIsOpen(false)}
-                />
+                {productTypes.map((type) => (
+                  <MobileDrawerGroup
+                    key={type.id}
+                    label={type.name}
+                    icon={<Shirt size={16} />}
+                    isOpen={openMobileGroup === `type-${type.slug}`}
+                    onToggle={() => setOpenMobileGroup(openMobileGroup === `type-${type.slug}` ? null : `type-${type.slug}`)}
+                    items={[
+                      { key: `all-${type.id}`, label: `All ${type.name}`, href: `/products?type=${type.slug}` },
+                      ...type.styles.map((style: any) => ({
+                        key: style.id,
+                        label: style.name,
+                        href: `/products?type=${type.slug}&category=${style.slug}`,
+                      })),
+                    ]}
+                    onNavigate={() => setIsOpen(false)}
+                  />
+                ))}
 
                 <MobileDrawerLink href="/about" label="About" active={isActive('/about')} onClick={() => setIsOpen(false)} icon={<Info size={16} />} />
               </div>
 
               {/* Account Section */}
-              <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <p className="px-5 py-3 text-xs font-bold uppercase" style={{ color: 'var(--text-secondary)' }}>
-                  Account
+              {user && (
+              <div className="border-t py-1" style={{ borderColor: 'var(--border-light)' }}>
+                <p className="px-5 pb-1 pt-3 text-xs font-bold" style={{ color: 'var(--text-tertiary)' }}>
+                  Your account
                 </p>
                 {user ? (
                   <>
@@ -449,13 +415,14 @@ export function Header() {
                   />
                 )}
               </div>
+              )}
 
               {/* Logout Button - Only for logged-in users */}
               {user && (
-                <div className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="border-t" style={{ borderColor: 'var(--border-light)' }}>
                   <button
                     onClick={handleLogout}
-                    className="w-full px-5 py-3 font-semibold uppercase tracking-wide text-sm flex items-center gap-3 transition"
+                    className="w-full px-5 py-3.5 font-semibold text-sm flex items-center gap-3 transition"
                     style={{
                       color: 'var(--text-primary)',
                       borderBottom: `1px solid var(--border-light)`,
@@ -476,22 +443,12 @@ export function Header() {
       {/* Mobile Bottom Navigation Bar */}
       <div
         data-canny-floor
-        className="fixed inset-x-0 bottom-0 z-50 border-t bg-white md:hidden"
-        style={{
-          borderColor: 'var(--border-color)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          boxShadow: '0 -8px 24px rgba(26, 26, 26, 0.08)',
-        }}
+        className="bottom-bar fixed inset-x-0 bottom-0 z-50 md:hidden"
+        // Slides away while the side menu is open so it never covers the menu.
+        data-hidden={isOpen || undefined}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <nav
-          className="grid h-[64px] grid-cols-5 gap-1 px-2 py-2"
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.96)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-          }}
-          aria-label="Mobile primary navigation"
-        >
+        <nav className="grid h-[62px] grid-cols-5 px-1" aria-label="Mobile primary navigation">
           <MobileTab href="/" label="Home" active={isActive('/')} icon="home" />
           <MobileTab href="/products" label="Shop" active={isActive('/products')} icon="shop" />
           <MobileTab
@@ -509,7 +466,7 @@ export function Header() {
           />
           <MobileTab
             href={user ? '/profile' : '/auth/login'}
-            label={user ? 'Profile' : 'Login'}
+            label={user ? 'Profile' : 'Sign in'}
             active={isActive(user ? '/profile' : '/auth')}
             icon={user ? 'user' : 'login'}
           />
@@ -605,8 +562,8 @@ function MobileTab({
 }) {
   const getIcon = () => {
     const props = {
-      size: 21,
-      strokeWidth: active ? 2.7 : 2.1,
+      size: 20,
+      strokeWidth: active ? 2.4 : 1.9,
       fill: 'none',
     };
 
@@ -633,44 +590,15 @@ function MobileTab({
         if (href === '#') event.preventDefault();
         onClick?.();
       }}
-      className="group relative flex min-h-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-black uppercase transition"
-      style={{
-        color: active ? 'white' : 'var(--text-secondary)',
-        backgroundColor: active ? 'var(--color-primary)' : 'var(--bg-tertiary)',
-      }}
-      onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--text-primary) 8%, white)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = active ? 'var(--color-primary)' : 'var(--bg-tertiary)';
-      }}
+      className="bottom-tab"
+      data-active={active || undefined}
+      aria-current={active ? 'page' : undefined}
     >
-      <div
-        className="relative flex h-6 w-8 items-center justify-center"
-        style={{
-          opacity: active ? 1 : 0.82,
-        }}
-      >
+      <span className="bottom-tab-icon">
         {getIcon()}
-        {href === '/cart' && cartCount && cartCount > 0 && (
-          <span
-            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white"
-            style={{
-              backgroundColor: active ? 'white' : 'var(--color-primary)',
-              color: active ? 'var(--color-primary)' : 'white',
-              boxShadow: '0 4px 10px rgba(26,26,26,0.18)',
-            }}
-          >
-            {cartCount}
-          </span>
-        )}
-      </div>
-      <span
-        className="relative max-w-full truncate px-1 leading-none tracking-normal"
-        style={{ color: active ? 'white' : 'var(--text-secondary)' }}
-      >
-        {label}
+        {href === '/cart' && cartCount && cartCount > 0 ? <span className="count-badge">{cartCount}</span> : null}
       </span>
+      <span className="max-w-full truncate px-1 leading-none">{label}</span>
     </Link>
   );
 }
@@ -679,11 +607,8 @@ function DesktopNavLink({ href, label, active }: { href: string; label: string; 
   return (
     <Link
       href={href}
-      className="relative px-1 py-2 text-xs font-bold uppercase tracking-wide transition hover:opacity-70"
-      style={{
-        color: active ? 'var(--color-primary)' : 'var(--text-primary)',
-        borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent'
-      }}
+      className="nav-link"
+      data-active={active || undefined}
     >
       {label}
     </Link>
@@ -722,11 +647,9 @@ function MegaMenu({
     <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
       <Link
         href={href}
-        className="relative flex items-center gap-1 px-1 py-2 text-xs font-bold uppercase tracking-wide transition hover:opacity-70"
-        style={{
-          color: active || isOpen ? 'var(--color-primary)' : 'var(--text-primary)',
-          borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent'
-        }}
+        className="nav-link flex items-center gap-1"
+        data-active={active || undefined}
+        data-open={isOpen || undefined}
       >
         {label}
         <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
@@ -738,7 +661,7 @@ function MegaMenu({
           style={{ minWidth: items.length > 0 ? '640px' : '220px' }}
         >
           <div
-            className="rounded-lg border-2 p-4 shadow-xl"
+            className="mega-panel rounded-2xl border p-4 shadow-2xl"
             style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
           >
             {items.length === 0 ? (
@@ -806,11 +729,11 @@ function MobileDrawerGroup({
     <div className="border-b" style={{ borderColor: 'var(--border-light)' }}>
       <button
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-5 py-3 text-sm font-semibold uppercase tracking-wide"
-        style={{ color: 'var(--text-primary)', borderLeft: '4px solid transparent' }}
+        className="flex w-full items-center gap-3 px-5 py-3.5 text-[15px] font-bold"
+        style={{ color: 'var(--text-primary)' }}
         aria-expanded={isOpen}
       >
-        <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
         <span className="flex-1 text-left">{label}</span>
         <ChevronDown
           size={16}
@@ -819,7 +742,7 @@ function MobileDrawerGroup({
       </button>
 
       {isOpen && (
-        <div style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+        <div className="pb-2">
           {items.length === 0 ? (
             <p className="px-12 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
               Nothing here yet
@@ -830,8 +753,8 @@ function MobileDrawerGroup({
                 key={item.key}
                 href={item.href}
                 onClick={onNavigate}
-                className="block px-12 py-3 text-sm font-bold"
-                style={{ color: 'var(--text-primary)' }}
+                className="mx-3 block rounded-lg py-2.5 pl-11 pr-3 text-sm font-semibold transition hover:bg-[color:var(--bg-primary)]"
+                style={{ color: 'var(--text-secondary)' }}
               >
                 {item.label}
               </Link>
@@ -864,15 +787,14 @@ function MobileDrawerLink({
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="px-5 py-3 font-semibold uppercase tracking-wide text-sm border-b transition flex items-center gap-3"
+      className="mx-2 flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] font-bold transition"
       style={{
-        borderColor: 'var(--border-light)',
-        borderLeft: active ? '4px solid var(--color-primary)' : '4px solid transparent',
-        color: active ? 'var(--color-primary)' : 'var(--text-primary)',
-        backgroundColor: isHovered ? 'var(--bg-tertiary)' : 'transparent',
+        color: 'var(--text-primary)',
+        backgroundColor: active ? 'var(--bg-primary)' : isHovered ? 'var(--bg-primary)' : 'transparent',
+        boxShadow: active ? 'inset 3px 0 0 var(--color-accent)' : 'none',
       }}
     >
-      {icon && <span style={{ color: 'var(--color-primary)' }}>{icon}</span>}
+      {icon && <span style={{ color: active ? 'var(--color-accent)' : 'var(--text-secondary)' }}>{icon}</span>}
       {label}
     </Link>
   );

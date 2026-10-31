@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { liveMediaUrl } from "../storage/media-storage";
 
 @Injectable()
 export class CatalogService {
@@ -9,6 +10,8 @@ export class CatalogService {
   // There is no gender or seasonal-collection filtering: the catalogue is unisex.
   async listProducts(filters: {
     category?: string;
+    /// Product type slug, e.g. "hoodies".
+    type?: string;
     theme?: string;
     q?: string;
     minPrice?: string;
@@ -36,7 +39,14 @@ export class CatalogService {
     const products = await this.prisma.product.findMany({
       where: {
         isVisible: true,
-        category: filters.category ? { slug: filters.category } : undefined,
+        // A style (category) slug, a product type slug, or both.
+        category:
+          filters.category || filters.type
+            ? {
+                ...(filters.category ? { slug: filters.category } : {}),
+                ...(filters.type ? { productType: { slug: filters.type } } : {})
+              }
+            : undefined,
         theme: filters.theme ? { slug: filters.theme } : undefined,
         price: minPrice || maxPrice ? {
           gte: minPrice,
@@ -48,6 +58,7 @@ export class CatalogService {
           { description: { contains: filters.q, mode: "insensitive" } },
           { tags: { has: filters.q } },
           { category: { name: { contains: filters.q, mode: "insensitive" } } },
+          { category: { productType: { name: { contains: filters.q, mode: "insensitive" } } } },
           { theme: { name: { contains: filters.q, mode: "insensitive" } } }
         ] : undefined
       },
@@ -73,7 +84,7 @@ export class CatalogService {
           select: { id: true, url: true, alt: true, color: true, priority: true },
           orderBy: { priority: "asc" }
         },
-        category: { select: { name: true, slug: true } },
+        category: { select: { name: true, slug: true, productType: { select: { name: true, slug: true } } } },
         // Colours feed the homepage "new drop" ring, so it matches the theme.
         theme: { select: { name: true, slug: true, primaryColor: true, accentColor: true } },
         // `price` is required: quick-add prices from the variant when it has one.
@@ -107,7 +118,9 @@ export class CatalogService {
         ]
       },
       include: {
-        category: true,
+        // The type carries the size list (display order) and the shop label.
+        // Sibling styles let the size guide offer tabs for this product's type only.
+        category: { include: { productType: { include: { categories: { select: { name: true, slug: true }, orderBy: [{ priority: "asc" }, { name: "asc" }] } } } } },
         theme: true,
         images: { orderBy: { priority: "asc" } },
         variants: { include: { inventory: true } },
@@ -156,15 +169,69 @@ export class CatalogService {
     return { ...product, hampers };
   }
 
+  /**
+   * Navigation and filter data. `productTypes` lists only active types that
+   * have visible products, each with its styles that do — an empty Hoodies
+   * type stays off the menu until its first hoodie is published.
+   * `categories` (every style, flat) is kept for older clients.
+   */
   async listFilters() {
-    const [categories, themes] = await Promise.all([
-      this.prisma.category.findMany({ orderBy: { priority: "asc" } }),
+    const [categories, themes, types, counts] = await Promise.all([
+      this.prisma.category.findMany({
+        orderBy: { priority: "asc" },
+        include: { productType: { select: { name: true, slug: true } } }
+      }),
       this.prisma.theme.findMany({
         where: { active: true },
         orderBy: [{ priority: "asc" }, { name: "asc" }]
-      })
+      }),
+      this.prisma.productType.findMany({
+        where: { isActive: true },
+        orderBy: [{ priority: "asc" }, { name: "asc" }],
+        include: { categories: { orderBy: [{ priority: "asc" }, { name: "asc" }] } }
+      }),
+      this.prisma.product.groupBy({ by: ["categoryId"], where: { isVisible: true }, _count: { _all: true } })
     ]);
 
-    return { categories, themes };
+    // A style without a usable image borrows the first photo of its newest product.
+    const missing = types.flatMap((type) => type.categories).filter((style) => !liveMediaUrl(style.imageUrl));
+    const covers = new Map<string, string>();
+    await Promise.all(
+      missing.map(async (style) => {
+        const image = await this.prisma.productImage.findFirst({
+          where: { product: { categoryId: style.id, isVisible: true } },
+          orderBy: [{ product: { createdAt: "desc" } }, { priority: "asc" }],
+          select: { url: true }
+        });
+        if (image?.url) covers.set(style.id, image.url);
+      })
+    );
+
+    const perStyle = new Map(counts.map((row) => [row.categoryId, row._count._all]));
+    const productTypes = types
+      .map((type) => {
+        const styles = type.categories
+          .map((style) => ({
+            id: style.id,
+            name: style.name,
+            slug: style.slug,
+            imageUrl: liveMediaUrl(style.imageUrl) || covers.get(style.id) || null,
+            productCount: perStyle.get(style.id) || 0
+          }))
+          .filter((style) => style.productCount > 0);
+        return {
+          id: type.id,
+          name: type.name,
+          slug: type.slug,
+          description: type.description,
+          imageUrl: type.imageUrl,
+          sizes: type.sizes,
+          productCount: styles.reduce((sum, style) => sum + style.productCount, 0),
+          styles
+        };
+      })
+      .filter((type) => type.productCount > 0);
+
+    return { productTypes, categories, themes };
   }
 }

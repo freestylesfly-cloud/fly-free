@@ -13,6 +13,7 @@ export class CatalogController {
   @Get("products")
   listProducts(
     @Query("category") category?: string,
+    @Query("type") type?: string,
     @Query("theme") theme?: string,
     @Query("q") q?: string,
     @Query("minPrice") minPrice?: string,
@@ -21,7 +22,7 @@ export class CatalogController {
     @Query("tag") tag?: string,
     @Query("sort") sort?: string
   ) {
-    return this.catalogService.listProducts({ category, theme, q, minPrice, maxPrice, rating, tag, sort });
+    return this.catalogService.listProducts({ category, type, theme, q, minPrice, maxPrice, rating, tag, sort });
   }
 
   @Get("products/:slug")

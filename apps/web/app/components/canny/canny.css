@@ -234,7 +234,7 @@
   cursor: grabbing;
 }
 .canny-hit:focus-visible {
-  outline: 3px solid var(--color-primary, #2563eb);
+  outline: 3px solid var(--color-primary, #121212);
   outline-offset: 2px;
   border-radius: 50%;
 }
@@ -299,7 +299,7 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #121212);
 }
 
 .canny-menu {
@@ -481,8 +481,8 @@
   cursor: pointer;
 }
 .canny-game-actions .canny-game-primary {
-  background: var(--color-primary, #2563eb);
-  border-color: var(--color-primary, #2563eb);
+  background: var(--color-primary, #121212);
+  border-color: var(--color-primary, #121212);
   color: #fff;
 }
 .canny-catcher {
@@ -541,5 +541,5 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 .canny-follow-stop strong {
-  color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #121212);
 }

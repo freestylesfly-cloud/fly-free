@@ -28,7 +28,7 @@ import {
   Mail
 } from 'lucide-react';
 import SizeGuideDrawer from '../../components/SizeGuideDrawer';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, sortSizes } from '../../lib/utils';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getApiBaseUrl } from '../../lib/api';
@@ -101,7 +101,12 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
     }));
   }, [product]);
 
-  const sizes = useMemo(() => uniqueValues(variants.map((v) => v.size)), [variants]);
+  // Sizes follow the type's order (S, M, L… or UK 6-8, UK 9-11); unknown sizes go last.
+  const sizes = useMemo(() => {
+    const order: string[] = product?.category?.productType?.sizes || [];
+    const rank = (size: string) => (order.includes(size) ? order.indexOf(size) : order.length);
+    return sortSizes(uniqueValues(variants.map((v) => v.size))).sort((a, b) => rank(a) - rank(b));
+  }, [variants, product]);
   const images = useMemo(() => product ? normalizeImages(product.images, product.name) : [], [product]);
   const selectedHamper = useMemo(() => hampers.find((hamper: any) => hamper.id === selectedHamperId), [hampers, selectedHamperId]);
   const taggedMedia = useMemo(() => (product?.instagramPosts || []).filter((post: any) => post.videoUrl || post.imageUrl), [product]);
@@ -392,7 +397,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
   return (
     <main className="min-h-screen px-4 py-6 pb-36 md:pb-10" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {product.theme?.name && (
-        <CannyOutfit color={product.theme.primaryColor || '#2563EB'} label={product.theme.name} />
+        <CannyOutfit color={product.theme.primaryColor || '#121212'} label={product.theme.name} />
       )}
       <script
         type="application/ld+json"
@@ -664,7 +669,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           {hampers.length > 0 && (
             <ChoiceBlock title="Hamper Options" subtitle="Tap a hamper to preview its image and add it to the total.">
               <div className="grid gap-3">
-                <OptionButton active={!selectedHamperId} onClick={() => setSelectedHamperId(null)} title="Just the Tee" text="Ship as a regular order." />
+                <OptionButton active={!selectedHamperId} onClick={() => setSelectedHamperId(null)} title={`Just the ${productNoun(product)}`} text="Ship as a regular order." />
                 {hampers.map((hamper: any) => (
                   <HamperOption
                     key={hamper.id}
@@ -705,7 +710,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-            <TrustPill icon={<Truck size={15} />} text="Delivery calculated at checkout" />
+            <TrustPill icon={<Truck size={15} />} text="Ships by India Post · tracked" />
             <TrustPill icon={<PackageCheck size={15} />} text="7-day exchange" />
             <TrustPill icon={<Heart size={15} />} text="Wishlist after login" />
             <TrustPill icon={<Share2 size={15} />} text="Shareable product link" />
@@ -742,14 +747,14 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
               <h2 className="mt-1 text-2xl font-black">Product Details</h2>
             </div>
             <span className="rounded-full border px-3 py-1 text-xs font-black" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-              {product.category?.name || 'Regular'}
+              {styleLabel(product)}
             </span>
           </div>
           {product.description && <p className="mt-5 leading-7" style={{ color: 'var(--text-secondary)' }}>{product.description}</p>}
           <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <SpecTile label="Brand" value={product.brand || 'Fly Free'} />
             <SpecTile label="Material" value={product.material || 'Premium cotton blend'} />
-            <SpecTile label="Fit / Type" value={product.category?.name || 'Regular'} />
+            <SpecTile label="Style" value={styleLabel(product)} />
             <SpecTile label="Wearer" value="Unisex" />
             <SpecTile label="Theme" value={product.theme?.name || 'Fly Free'} />
             <SpecTile label="Wash care" value={product.washCare || 'Gentle machine wash. Do not bleach.'} />
@@ -846,7 +851,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
       )}
 
       {/* Modals */}
-      <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} defaultFit={sizeGuideFit(product)} />
+      <SizeGuideDrawer open={showSizeChart} onClose={() => setShowSizeChart(false)} defaultFit={product.category?.slug || ''} styles={product.category?.productType?.categories || []} />
 
       {showZoom && activeImage?.url && (
         <Modal
@@ -1430,9 +1435,14 @@ function productJsonLd(product: any, image: string | undefined, url: string, tot
   };
 }
 
-function sizeGuideFit(product: any) {
-  const value = `${product?.category?.slug || ''} ${product?.category?.name || ''} ${product?.fitType || ''}`.toLowerCase();
-  if (value.includes('polo')) return 'polo';
-  if (value.includes('oversized') || value.includes('over-size')) return 'oversized';
-  return 'regular';
+/** "Oversized T-Shirt", "Pullover Hoodie" — style plus singular type name. */
+function styleLabel(product: any) {
+  const style = product?.category?.name;
+  const noun = product?.category?.productType ? productNoun(product) : '';
+  return [style, noun].filter(Boolean).join(' ') || 'Fly Free original';
+}
+
+function productNoun(product: any) {
+  const name = String(product?.category?.productType?.name || 'Tee');
+  return name.endsWith('s') ? name.slice(0, -1) : name;
 }

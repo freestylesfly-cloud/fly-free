@@ -12,7 +12,7 @@ const menuItems = [
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutGrid },
       { label: 'Products', href: '/products', icon: Package },
-      { label: 'Categories', href: '/categories', icon: Tags },
+      { label: 'Types & Styles', href: '/categories', icon: Tags },
       { label: 'Product Themes', href: '/product-themes', icon: Sparkles },
       { label: 'Hampers', href: '/hampers', icon: Gift },
       { label: 'Size Guides', href: '/size-guides', icon: Ruler },

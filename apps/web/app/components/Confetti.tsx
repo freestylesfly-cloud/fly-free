@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 // Module-level so the default keeps one identity: an inline array would be a new
 // dependency every render and restart the burst.
-const DEFAULT_COLORS = ['#ff4a4e', '#ffb703', '#2563eb', '#22c55e', '#ffffff'];
+const DEFAULT_COLORS = ['#121212', '#FF4D1A', '#E11D48', '#FFB020', '#ffffff'];
 
 /**
  * A one-shot confetti burst over the whole viewport.

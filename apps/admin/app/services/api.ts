@@ -134,6 +134,23 @@ class ApiService {
     };
   }
 
+  // ============ PRODUCT TYPES ============
+  async getProductTypes() {
+    return this.request('/api/admin/product-types');
+  }
+
+  async createProductType(data: any) {
+    return this.request('/api/admin/product-types', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateProductType(id: string, data: any) {
+    return this.request(`/api/admin/product-types/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deleteProductType(id: string) {
+    return this.request(`/api/admin/product-types/${id}`, { method: 'DELETE' });
+  }
+
   // ============ PRODUCTS ============
   async getCategories() {
     return this.request('/api/admin/categories');
@@ -159,11 +176,14 @@ class ApiService {
     });
   }
 
-  async getProducts(params?: PaginationParams) {
+  async getProducts(params?: PaginationParams & Partial<Record<'type' | 'category' | 'theme' | 'status' | 'stock' | 'flag' | 'sort', string>>) {
     const query = new URLSearchParams();
     if (params?.page) query.append('page', params.page.toString());
     if (params?.limit) query.append('limit', params.limit.toString());
     if (params?.search) query.append('search', params.search);
+    for (const key of ['type', 'category', 'theme', 'status', 'stock', 'flag', 'sort'] as const) {
+      if (params?.[key]) query.append(key, params[key] as string);
+    }
 
     return this.request(`/api/admin/products?${query.toString()}`);
   }

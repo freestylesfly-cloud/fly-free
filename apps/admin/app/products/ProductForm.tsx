@@ -7,7 +7,8 @@ import { apiService } from '../services/api';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { toPaise, toRupees } from '../lib/money';
 
-type Category = { id: string; name: string; slug: string };
+type Category = { id: string; name: string; slug: string; productTypeId?: string | null };
+type ProductTypeOption = { id: string; name: string; slug: string; sizes: string[]; categories: Category[] };
 type Theme = { id: string; name: string; slug: string; active?: boolean };
 type ProductFormData = {
   name: string;
@@ -79,7 +80,7 @@ const emptyForm: ProductFormData = {
 const emptyImage: ImageRow = { color: '', url: '', alt: '', priority: 0 };
 const emptyVariant: VariantRow = {
   sku: '',
-  size: 'M',
+  size: '',
   price: '',
   stock: 0,
   lowStockAlert: 5,
@@ -90,10 +91,12 @@ const emptyVariant: VariantRow = {
 export function ProductForm({ productId }: { productId?: string }) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductTypeOption[]>([]);
+  const [typeId, setTypeId] = useState('');
   const [themes, setThemes] = useState<Theme[]>([]);
   const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [images, setImages] = useState<ImageRow[]>([{ ...emptyImage }]);
-  const [variants, setVariants] = useState<VariantRow[]>([{ ...emptyVariant }]);
+  const [variants, setVariants] = useState<VariantRow[]>([]);
   const [hampers, setHampers] = useState<HamperRow[]>([]);
   const [loading, setLoading] = useState(Boolean(productId));
   const [saving, setSaving] = useState(false);
@@ -106,16 +109,24 @@ export function ProductForm({ productId }: { productId?: string }) {
   async function loadBaseData() {
     try {
       setLoading(true);
-      const [categoryResult, themeResult]: any[] = await Promise.all([
+      const [categoryResult, themeResult, typeResult]: any[] = await Promise.all([
         apiService.getCategories(),
-        apiService.getThemes()
+        apiService.getThemes(),
+        apiService.getProductTypes()
       ]);
-      setCategories(Array.isArray(categoryResult) ? categoryResult : categoryResult.data || []);
+      const categoryList: Category[] = Array.isArray(categoryResult) ? categoryResult : categoryResult.data || [];
+      const typeList: ProductTypeOption[] = Array.isArray(typeResult) ? typeResult : typeResult?.data || [];
+      setCategories(categoryList);
+      setProductTypes(typeList);
+      // New products start on the first type (T-Shirts), so its sizes show at once.
+      if (!productId && typeList[0]) setTypeId(typeList[0].id);
       setThemes(Array.isArray(themeResult) ? themeResult : themeResult.data || []);
 
       if (!productId) return;
 
       const product: any = await apiService.getProduct(productId);
+      const style = categoryList.find((category) => category.id === product.categoryId);
+      setTypeId(style?.productTypeId || typeList[0]?.id || '');
       setForm({
         name: product.name || '',
         slug: product.slug || '',
@@ -187,9 +198,11 @@ export function ProductForm({ productId }: { productId?: string }) {
         tags: form.tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
         images: images.filter((image) => image.url.trim()).map((image, index) => ({ ...image, color: 'Default', priority: image.priority || index })),
         variants: variants
-          .filter((variant) => variant.sku && variant.size)
+          .filter((variant) => variant.size)
           .map((variant) => ({
             ...variant,
+            // A size row without its own SKU gets the product SKU plus the size.
+            sku: variant.sku || `${form.sku}-${variant.size}`.toUpperCase().replace(/[^A-Z0-9-]+/g, '-'),
             color: 'Default',
             price: variant.price === '' ? null : toPaise(variant.price)
           }))
@@ -209,6 +222,26 @@ export function ProductForm({ productId }: { productId?: string }) {
     }
   }
 
+  const currentType = productTypes.find((type) => type.id === typeId) || null;
+  const typeSizes = currentType?.sizes || [];
+  // Rows in the type's size order; sizes outside the list (older products) last.
+  const orderedVariants = variants
+    .map((variant, index) => ({ variant, index }))
+    .sort((a, b) => {
+      const rank = (size: string) => (typeSizes.includes(size) ? typeSizes.indexOf(size) : typeSizes.length + 1);
+      return rank(a.variant.size) - rank(b.variant.size);
+    });
+
+  function toggleSize(size: string) {
+    const existing = variants.find((variant) => variant.size === size);
+    if (existing) {
+      if (existing.stock > 0 && !window.confirm(`Remove size ${size}? It has ${existing.stock} in stock.`)) return;
+      setVariants(variants.filter((variant) => variant.size !== size));
+      return;
+    }
+    setVariants([...variants.filter((variant) => variant.size || variant.sku), { ...emptyVariant, size }]);
+  }
+
   if (loading) {
     return <div className="rounded border border-black/10 bg-white p-6 font-bold">Loading product...</div>;
   }
@@ -223,18 +256,43 @@ export function ProductForm({ productId }: { productId?: string }) {
           <Field label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
           <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} placeholder="auto-generated if empty" />
           <Field label="SKU" value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} required />
-          <SearchableSelect
-            label="Product fit / type"
-            value={form.categoryId}
-            placeholder="Search Regular, Oversized, Jerseys..."
-            emptyLabel="Auto / Uncategorized"
-            options={categories.map((category) => ({ value: category.id, label: category.name, hint: category.slug }))}
-            onChange={(value) => setForm({ ...form, categoryId: value })}
-          />
-          <div className="rounded border border-black/10 bg-black/[0.03] px-3 py-2 text-sm">
-            <p className="font-black">Wearer</p>
-            <p className="mt-1 text-black/55">All storefront products are treated as unisex. Use fit/type for Regular, Oversized, Jerseys, Polos, Hoodies, and Combo.</p>
-          </div>
+          <label className="grid gap-2 text-sm font-bold">
+            Product type
+            <select
+              value={typeId}
+              onChange={(event) => {
+                setTypeId(event.target.value);
+                // The style must belong to the type; pick again after switching.
+                setForm({ ...form, categoryId: '' });
+              }}
+              className="rounded border border-black/10 px-3 py-2"
+            >
+              {productTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-bold">
+            Style
+            <select
+              value={form.categoryId}
+              onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
+              required
+              className="rounded border border-black/10 px-3 py-2"
+            >
+              <option value="">Choose a style…</option>
+              {(currentType?.categories || []).map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.name}
+                </option>
+              ))}
+            </select>
+            {currentType && currentType.categories.length === 0 && (
+              <span className="text-xs font-bold text-red-600">This type has no styles yet. Add one in Types &amp; Styles.</span>
+            )}
+          </label>
           <SearchableSelect
             label="Shop-by-theme campaign"
             value={form.themeId}
@@ -290,15 +348,54 @@ export function ProductForm({ productId }: { productId?: string }) {
       </section>
 
       <section className="rounded border border-black/10 bg-white p-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-black">Variants, Sizes, Stock</h3>
-          <button type="button" onClick={() => setVariants([...variants, { ...emptyVariant }])} className="inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-bold text-white"><Plus size={16} /> Add variant</button>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black">Sizes &amp; stock</h3>
+            <p className="text-sm text-black/55">
+              {typeSizes.length
+                ? `Tick the sizes this ${currentType?.name.replace(/s$/, '').toLowerCase() || 'product'} comes in. Sizes come from Types & Styles.`
+                : 'This type has no size list yet — add sizes in Types & Styles, or add rows by hand.'}
+            </p>
+          </div>
+          {typeSizes.length === 0 && (
+            <button type="button" onClick={() => setVariants([...variants, { ...emptyVariant, size: '' }])} className="inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-bold text-white"><Plus size={16} /> Add size</button>
+          )}
         </div>
+        {typeSizes.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {typeSizes.map((size) => {
+              const on = variants.some((variant) => variant.size === size);
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => toggleSize(size)}
+                  aria-pressed={on}
+                  className={`min-w-14 rounded border px-3 py-2 text-sm font-black transition ${on ? 'border-ink bg-ink text-white' : 'border-black/15 bg-white text-black/60 hover:border-black/40'}`}
+                >
+                  {on ? '✓ ' : ''}{size}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="mt-5 grid gap-3">
-          {variants.map((variant, index) => (
+          {orderedVariants.map(({ variant, index }) => (
             <div key={index} className="grid gap-3 rounded border border-black/10 p-3 md:grid-cols-4">
-              <Field label="Variant SKU" value={variant.sku} onChange={(value) => updateVariant(index, { sku: value })} />
-              <Field label="Size" value={variant.size} onChange={(value) => updateVariant(index, { size: value })} />
+              <div className="grid gap-2 text-sm font-bold">
+                Size
+                {typeSizes.length && typeSizes.includes(variant.size) ? (
+                  <span className="rounded border border-black/10 bg-black/[0.03] px-3 py-2 font-black">{variant.size}</span>
+                ) : (
+                  <input
+                    value={variant.size}
+                    onChange={(event) => updateVariant(index, { size: event.target.value })}
+                    className="rounded border border-amber-300 px-3 py-2"
+                    title="Not in this type's size list"
+                  />
+                )}
+              </div>
+              <Field label="Size SKU" value={variant.sku} onChange={(value) => updateVariant(index, { sku: value })} placeholder={form.sku ? `${form.sku}-${variant.size}` : 'auto'} />
               <NumberField label="Stock" value={variant.stock} onChange={(value) => updateVariant(index, { stock: value })} />
               <NumberField label="Offer Price Override" value={variant.price || 0} onChange={(value) => updateVariant(index, { price: value || '' })} />
               <NumberField label="Low Stock Alert" value={variant.lowStockAlert} onChange={(value) => updateVariant(index, { lowStockAlert: value })} />

@@ -14,7 +14,7 @@ import { CannyBird, type CannyOutfitStyle } from './CannyBird';
  */
 
 const ROUND_SECONDS = 20;
-const TEE_COLORS = ['#2563eb', '#ff4a4e', '#ffb703', '#22c55e', '#111827', '#a855f7'];
+const TEE_COLORS = ['#121212', '#FF4D1A', '#E11D48', '#22c55e', '#111827', '#a855f7'];
 /** The basket is wider than Canny on purpose: catching should feel easy. */
 const BASKET_WIDTH = 150;
 const BIRD_SIZE = 84;

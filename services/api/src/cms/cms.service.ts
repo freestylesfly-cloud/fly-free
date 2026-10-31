@@ -54,7 +54,11 @@ export class CmsService {
   async getFooter() {
     const [settings, categories, pages] = await Promise.all([
       this.safeQuery("footer settings", () => this.prisma.appSetting.findUnique({ where: { key: "admin_settings" } }), null),
-      this.safeQuery("footer categories", () => this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] }), []),
+      this.safeQuery("footer categories", () => this.prisma.category.findMany({
+        // Only styles with something to buy, so new empty styles never link to an empty page.
+        where: { products: { some: { isVisible: true } } },
+        orderBy: [{ priority: "asc" }, { name: "asc" }],
+      }), []),
       this.safeQuery("footer pages", () => this.prisma.page.findMany({
         where: { isPublished: true },
         select: { id: true, slug: true, title: true, updatedAt: true },

@@ -21,11 +21,21 @@ const staticRoutes: SitemapItem[] = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, themes, footer] = await Promise.all([
+  const [products, themes, footer, filters] = await Promise.all([
     getJson<any[]>('/catalog/products').catch(() => []),
     getJson<any[]>('/cms/themes').catch(() => []),
     getJson<any>('/cms/footer').catch(() => null),
+    getJson<any>('/catalog/filters').catch(() => null),
   ]);
+
+  // One page per product type (T-Shirts, Hoodies…) that has something to buy.
+  const typeRoutes: SitemapItem[] = toArray(filters?.productTypes)
+    .filter((type: any) => type?.slug)
+    .map((type: any) => ({
+      url: `/products?type=${encodeURIComponent(type.slug)}`,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    }));
 
   const categoryRoutes: SitemapItem[] = (footer?.categories || [])
     .filter((category: any) => category?.slug)
@@ -53,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: product.isFeatured || product.isTrending ? 0.9 : 0.75,
     }));
 
-  const routes = uniqueByUrl([...staticRoutes, ...categoryRoutes, ...themeRoutes, ...productRoutes]);
+  const routes = uniqueByUrl([...staticRoutes, ...typeRoutes, ...categoryRoutes, ...themeRoutes, ...productRoutes]);
 
   return routes.map((item) => ({
     url: absoluteUrl(item.url),

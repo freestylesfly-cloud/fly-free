@@ -10,7 +10,11 @@ import { Toaster } from "sonner";
 import { BRAND, designTokensCss } from "./lib/design";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "./lib/site";
 import "./globals.css";
+import { Archivo } from "next/font/google";
 import { FlyFreeCanny } from "./components/canny/FlyFreeCanny";
+
+// One family, two widths: condensed for headlines, normal for reading.
+const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-archivo", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -65,12 +69,12 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#201e1d",
+  themeColor: "#121212",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={archivo.variable} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         {/* Brand tokens come from app/lib/design.ts — edit that file, not the DB. */}

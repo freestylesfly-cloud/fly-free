@@ -16,6 +16,16 @@ import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
 const logger = new Logger("MediaStorage");
 
+/**
+ * A few files never made it off Supabase (lost when it returned 402s). Their
+ * rows still hold the old URL until an admin re-uploads; storefront reads treat
+ * such a URL as "no file" so shoppers never see a broken image or video.
+ */
+export function liveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return /\.supabase\.co\/storage\//i.test(url) ? null : url;
+}
+
 /** Every asset sits under this root, mirroring the old Supabase bucket name. */
 const ROOT_FOLDER = "product-images";
 

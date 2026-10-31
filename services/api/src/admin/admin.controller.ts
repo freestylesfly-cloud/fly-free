@@ -24,6 +24,26 @@ export class AdminController {
 
   // ==================== PRODUCTS ====================
   @ApiTags("👨‍💼 Admin Products")
+  @Get("product-types")
+  listProductTypes() {
+    return this.adminService.listProductTypes();
+  }
+
+  @Post("product-types")
+  createProductType(@Body() data: any) {
+    return this.adminService.createProductType(data);
+  }
+
+  @Put("product-types/:id")
+  updateProductType(@Param("id") id: string, @Body() data: any) {
+    return this.adminService.updateProductType(id, data);
+  }
+
+  @Delete("product-types/:id")
+  deleteProductType(@Param("id") id: string) {
+    return this.adminService.deleteProductType(id);
+  }
+
   @Get("categories")
   listCategories() {
     return this.adminService.listCategories();
@@ -49,8 +69,20 @@ export class AdminController {
 
   @ApiTags("👨‍💼 Admin Products")
   @Get("products")
-  listProducts(@Query("page") page?: string, @Query("limit") limit?: string, @Query("search") search?: string) {
-    return this.adminService.listProducts(page ? parseInt(page) : 1, limit ? parseInt(limit) : 10, search);
+  listProducts(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("type") type?: string,
+    @Query("category") category?: string,
+    @Query("theme") theme?: string,
+    @Query("status") status?: string,
+    @Query("stock") stock?: string,
+    @Query("flag") flag?: string,
+    @Query("sort") sort?: string
+  ) {
+    const size = Math.min(Math.max(limit ? parseInt(limit) : 10, 1), 100);
+    return this.adminService.listProducts(page ? parseInt(page) : 1, size, search, { type, category, theme, status, stock, flag, sort });
   }
 
   @Get("products/:id")

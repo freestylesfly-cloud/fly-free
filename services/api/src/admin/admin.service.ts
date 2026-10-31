@@ -8,8 +8,11 @@ type PdfOp =
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../email/email.service";
 import { deleteMediaByUrl, mediaStorageStatus, signedDirectUpload, uploadMediaBuffer } from "../storage/media-storage";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+
+/** Admin product list filters; ids for type/category/theme, "none" theme = no campaign. */
+type AdminProductFilters = Partial<Record<"type" | "category" | "theme" | "status" | "stock" | "flag" | "sort", string>>;
 
 /** Every admin-uploaded image lands here. The bucket must be public. */
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -38,8 +41,81 @@ export class AdminService {
   ) {}
 
   // ==================== PRODUCTS ====================
+  // ==================== PRODUCT TYPES ====================
+  // T-Shirts / Hoodies / Socks / Caps. Each type owns its styles (categories)
+  // and its size list; products reach their type through their style.
+
+  async listProductTypes() {
+    const [types, counts] = await Promise.all([
+      this.prisma.productType.findMany({
+        orderBy: [{ priority: "asc" }, { name: "asc" }],
+        include: { categories: { orderBy: [{ priority: "asc" }, { name: "asc" }] } }
+      }),
+      this.prisma.product.groupBy({ by: ["categoryId"], _count: { _all: true } })
+    ]);
+    const perStyle = new Map(counts.map((row) => [row.categoryId, row._count._all]));
+    return types.map((type) => ({
+      ...type,
+      categories: type.categories.map((style) => ({ ...style, productCount: perStyle.get(style.id) || 0 })),
+      productCount: type.categories.reduce((sum, style) => sum + (perStyle.get(style.id) || 0), 0)
+    }));
+  }
+
+  private productTypeData(data: any, partial = false) {
+    const out: any = {};
+    const set = (key: string, value: any) => {
+      if (!partial || value !== undefined) out[key] = value;
+    };
+    const text = (value: any) => (value === undefined ? undefined : String(value || "").trim() || null);
+    set("name", data.name === undefined ? undefined : String(data.name).trim());
+    set("slug", data.slug === undefined ? undefined : this.slugify(data.slug));
+    set("description", text(data.description));
+    set("imageUrl", text(data.imageUrl));
+    set("seoTitle", text(data.seoTitle));
+    set("seoDescription", text(data.seoDescription));
+    set("priority", data.priority === undefined ? undefined : Number(data.priority) || 0);
+    set("isActive", data.isActive === undefined ? undefined : data.isActive !== false);
+    // Sizes keep the admin's order; blanks and repeats dropped.
+    set(
+      "sizes",
+      data.sizes === undefined
+        ? undefined
+        : [...new Set((Array.isArray(data.sizes) ? data.sizes : String(data.sizes).split(","))
+            .map((size: any) => String(size || "").trim())
+            .filter(Boolean))]
+    );
+    return out;
+  }
+
+  async createProductType(data: any) {
+    const name = String(data?.name || "").trim();
+    if (!name) throw new BadRequestException("Product type name is required");
+    return this.prisma.productType.create({
+      data: { ...this.productTypeData(data), name, slug: this.slugify(data.slug || name) }
+    });
+  }
+
+  async updateProductType(id: string, data: any) {
+    return this.prisma.productType.update({ where: { id }, data: this.productTypeData(data, true) });
+  }
+
+  async deleteProductType(id: string) {
+    const products = await this.prisma.product.count({ where: { category: { productTypeId: id } } });
+    if (products > 0) {
+      throw new BadRequestException(
+        `${products} product(s) use this type. Move them to another type, or hide the type instead of deleting it.`
+      );
+    }
+    // Its now-empty styles go with it.
+    await this.prisma.category.deleteMany({ where: { productTypeId: id } });
+    return this.prisma.productType.delete({ where: { id } });
+  }
+
   async listCategories() {
-    return this.prisma.category.findMany({ orderBy: [{ priority: "asc" }, { name: "asc" }] });
+    return this.prisma.category.findMany({
+      orderBy: [{ priority: "asc" }, { name: "asc" }],
+      include: { productType: { select: { id: true, name: true, slug: true, sizes: true } } }
+    });
   }
 
   async createCategory(data: any) {
@@ -48,7 +124,8 @@ export class AdminService {
         name: data.name,
         slug: data.slug || this.slugify(data.name),
         imageUrl: data.imageUrl || undefined,
-        priority: data.priority === undefined ? 0 : Number(data.priority)
+        priority: data.priority === undefined ? 0 : Number(data.priority),
+        productTypeId: data.productTypeId || undefined
       }
     });
   }
@@ -60,7 +137,8 @@ export class AdminService {
         name: data.name,
         slug: data.slug,
         imageUrl: data.imageUrl,
-        priority: data.priority === undefined ? undefined : Number(data.priority)
+        priority: data.priority === undefined ? undefined : Number(data.priority),
+        productTypeId: data.productTypeId === undefined ? undefined : data.productTypeId || null
       }
     });
   }
@@ -74,32 +152,58 @@ export class AdminService {
     return this.prisma.category.delete({ where: { id } });
   }
 
-  async listProducts(page: number = 1, limit: number = 10, search?: string) {
+  async listProducts(page: number = 1, limit: number = 10, search?: string, filters: AdminProductFilters = {}) {
     const skip = (page - 1) * limit;
-    const where = search?.trim()
-      ? {
-          OR: [
-            { name: { contains: search.trim(), mode: "insensitive" as const } },
-            { sku: { contains: search.trim(), mode: "insensitive" as const } }
-          ]
-        }
-      : {};
+    const term = search?.trim();
+    const inStock = { inventory: { stock: { gt: 0 } } };
+    const where: Prisma.ProductWhereInput = {
+      AND: [
+        term
+          ? {
+              OR: [
+                { name: { contains: term, mode: "insensitive" } },
+                { sku: { contains: term, mode: "insensitive" } },
+                { category: { name: { contains: term, mode: "insensitive" } } },
+                { theme: { name: { contains: term, mode: "insensitive" } } }
+              ]
+            }
+          : {},
+        filters.type ? { category: { productTypeId: filters.type } } : {},
+        filters.category ? { categoryId: filters.category } : {},
+        filters.theme === "none" ? { themeId: null } : filters.theme ? { themeId: filters.theme } : {},
+        filters.status === "active" ? { isVisible: true } : filters.status === "inactive" ? { isVisible: false } : {},
+        filters.stock === "in" ? { variants: { some: inStock } } : filters.stock === "out" ? { variants: { none: inStock } } : {},
+        filters.flag === "featured" ? { isFeatured: true } : {},
+        filters.flag === "trending" ? { isTrending: true } : {},
+        filters.flag === "new" ? { isNewArrival: true } : {},
+        filters.flag === "sold" ? { orderItems: { some: {} } } : {}
+      ]
+    };
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] =
+      filters.sort === "oldest" ? [{ createdAt: "asc" }]
+      : filters.sort === "name" ? [{ name: "asc" }]
+      : filters.sort === "name-desc" ? [{ name: "desc" }]
+      : filters.sort === "price" ? [{ price: "asc" }, { name: "asc" }]
+      : filters.sort === "price-desc" ? [{ price: "desc" }, { name: "asc" }]
+      : filters.sort === "best-selling" ? [{ orderItems: { _count: "desc" } }, { createdAt: "desc" }]
+      : filters.sort === "updated" ? [{ updatedAt: "desc" }]
+      : [{ createdAt: "desc" }];
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip,
         take: limit,
         include: {
-          category: true,
+          category: { include: { productType: { select: { id: true, name: true } } } },
           theme: true,
           collection: true,
           variants: { include: { inventory: true } },
-          images: true,
+          images: { orderBy: { priority: "asc" } },
           // Lets the list warn before a delete instead of after it fails: a
           // product with order lines can only be deactivated.
           _count: { select: { orderItems: true, wishlistItems: true, reviews: true } }
         },
-        orderBy: { createdAt: "desc" }
+        orderBy
       }),
       this.prisma.product.count({ where })
     ]);
@@ -2074,11 +2178,13 @@ export class AdminService {
     });
   }
 
+  /**
+   * A size guide belongs to a style and is keyed by that style's slug
+   * ("regular", "oversized", "pullover-hoodie", "ankle-socks"...). The three
+   * original T-shirt guides already use their style slugs, so they carry on.
+   */
   private normalizeFitType(value: any) {
-    const normalized = String(value || "").toLowerCase();
-    if (normalized.includes("polo")) return "polo";
-    if (normalized.includes("oversized") || normalized.includes("over-size")) return "oversized";
-    return "regular";
+    return this.slugify(String(value || "")) || "regular";
   }
 
   // ==================== HAMPERS ====================

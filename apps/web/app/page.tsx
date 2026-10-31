@@ -14,6 +14,8 @@ import { Reveal } from './components/Reveal';
 import { getApiBaseUrl } from './lib/api';
 import { HERO_FALLBACK, MEDIA } from './lib/design';
 import { IMAGE_WIDTH, storageImage } from './lib/image';
+import { ShopByProduct } from './components/ShopByProduct';
+import { formatCurrency } from './lib/utils';
 
 const API_BASE = getApiBaseUrl();
 
@@ -151,17 +153,18 @@ async function getJson(path: string) {
 }
 
 async function getHomeData() {
-  const [themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, home, sponsorships] = await Promise.all([
+  const [themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, home, sponsorships, filters] = await Promise.all([
     getJson('/cms/themes'),
     getJson('/catalog/products'),
     getJson('/reviews/latest?limit=12'),
     getJson('/cms/hampers'),
-    getJson('/instagram-posts'),
+    getJson('/instagram-posts?media=live'),
     getJson('/influencers'),
     getJson('/influencers/featured'),
     getJson('/cms/settings/social'),
     getJson('/cms/home'),
     getJson('/cms/sponsorships'),
+    getJson('/catalog/filters'),
   ]);
 
   return {
@@ -175,6 +178,7 @@ async function getHomeData() {
     social: (social || {}) as SocialLinks,
     settings: ((home as any)?.settings || {}) as HomeUiSettings,
     sponsorships: unwrap<Sponsorship>(sponsorships),
+    productTypes: Array.isArray((filters as any)?.productTypes) ? (filters as any).productTypes : [],
   };
 }
 
@@ -197,7 +201,7 @@ const PRODUCT_CARD = 'mo-slide w-[45vw] flex-shrink-0 sm:w-[230px]';
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings, sponsorships } = await getHomeData();
+  const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings, sponsorships, productTypes } = await getHomeData();
 
   // The hero is simply the active product themes — each theme's banner is one
   // slide. There is no separate site-wide hero to configure.
@@ -238,6 +242,8 @@ export default async function HomePage() {
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)' }}>
       <HeroCarousel slides={heroSlides} />
+
+      <Reveal><ShopByProduct productTypes={productTypes} /></Reveal>
 
       {newDrops.length > 0 && (
         <Reveal><Rail title="New drops" viewAllHref="/products">
@@ -374,7 +380,7 @@ export default async function HomePage() {
                 />
                 <div className="absolute inset-x-0 bottom-0 p-3">
                   <h3 className="text-sm font-black uppercase leading-tight text-white sm:text-base">{hamper.name}</h3>
-                  <p className="mt-0.5 text-xs font-bold text-white/85">+Rs {rupees(hamper.price)}</p>
+                  <p className="mt-0.5 text-xs font-bold text-white/85">+{formatCurrency(rupees(hamper.price))}</p>
                 </div>
               </Link>
             );
@@ -441,7 +447,7 @@ function ThemeFeatureSections({ themes }: { themes: Theme[] }) {
                       </div>
                       <div className="p-2.5 sm:p-3">
                         <p className="line-clamp-2 text-[11px] font-black uppercase leading-tight sm:text-xs">{product.name}</p>
-                        <p className="mt-1 text-xs font-bold text-black/60">Rs {rupees(product.price)}</p>
+                        <p className="mt-1 text-xs font-bold text-black/60">{formatCurrency(rupees(product.price))}</p>
                       </div>
                     </Link>
                   ))}
@@ -502,7 +508,7 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
   if (!settings.homeAboutImageUrl && !settings.homeAboutTitle && !settings.homeAboutText) return null;
 
   return (
-    <section className="overflow-hidden border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--text-primary)' }}>
+    <section className="overflow-hidden border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--color-tertiary)' }}>
       <div className="grid lg:min-h-[620px] lg:grid-cols-[1.1fr_0.9fr]">
       {settings.homeAboutImageUrl && (
         <div className="relative aspect-[4/3] min-h-[280px] bg-black/20 sm:aspect-[16/9] lg:aspect-auto lg:min-h-[620px]">
@@ -510,7 +516,7 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
         </div>
       )}
       <div className="flex flex-col justify-center px-5 py-12 text-white sm:px-10 sm:py-16 lg:px-14 lg:py-20">
-        <p className="text-sm font-black uppercase tracking-wide text-white/70">The Fly Free story</p>
+        <p className="text-sm font-bold" style={{ color: 'var(--color-accent)' }}>The Fly Free story</p>
         {settings.homeAboutTitle && (
           <h2 className="mt-4 max-w-2xl text-4xl font-black uppercase leading-[0.94] sm:text-6xl lg:text-7xl">
             {settings.homeAboutTitle}
@@ -522,7 +528,7 @@ function AboutStorySection({ settings }: { settings: HomeUiSettings }) {
             {settings.homeAboutText}
           </p>
         )}
-        <Link href={settings.homeCommunityCtaHref || '/about'} className="mt-8 inline-flex w-fit rounded-lg bg-white px-8 py-4 text-sm font-black uppercase tracking-wide text-black transition hover:shadow-xl">
+        <Link href={settings.homeCommunityCtaHref || '/about'} className="mt-8 inline-flex w-fit rounded-lg px-8 py-4 text-sm font-black uppercase tracking-wide transition hover:brightness-105 hover:shadow-xl" style={{ backgroundColor: 'var(--color-accent)', color: 'var(--text-primary)' }}>
           {settings.homeCommunityCtaLabel || 'Know more'}
         </Link>
       </div>

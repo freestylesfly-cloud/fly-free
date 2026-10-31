@@ -7,9 +7,9 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 /**
  * Every horizontal row on the homepage — products, themes, hampers, reviews,
- * creators, Instagram — is this component. One header line (title + View all),
- * one auto-scrolling track that pauses on hover, and one pair of arrows
- * centred under the track.
+ * creators, Instagram — is this component. One header line (title, arrows,
+ * View all) and one auto-scrolling track. Auto-advance pauses on hover, while
+ * the row is off screen, and entirely for people who ask for reduced motion.
  *
  * Children must each carry `data-rail-item` so the auto-advance can measure a
  * single step.
@@ -34,6 +34,24 @@ export function Rail({
   const trackRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
   const [canScroll, setCanScroll] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
+  const [calm, setCalm] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setCalm(query.matches);
+    const update = () => setCalm(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { threshold: 0.4 });
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -47,7 +65,7 @@ export function Rail({
 
   useEffect(() => {
     const track = trackRef.current;
-    if (!track || paused || !canScroll) return;
+    if (!track || paused || !canScroll || !onScreen || calm) return;
 
     const timer = setInterval(() => {
       const step = stepWidth(track);
@@ -57,7 +75,7 @@ export function Rail({
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [paused, canScroll, intervalMs]);
+  }, [paused, canScroll, onScreen, calm, intervalMs]);
 
   const nudge = (direction: -1 | 1) => {
     const track = trackRef.current;
@@ -68,13 +86,24 @@ export function Rail({
   return (
     <section className={embedded ? '' : 'border-b'} style={{ borderColor: 'var(--border-color)' }}>
       <div className={embedded ? '' : 'px-4 py-10 sm:px-6 md:py-14'}>
-        <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="mb-5 flex items-end justify-between gap-4">
           <h2
             className="text-xl font-black uppercase tracking-tight sm:text-3xl"
             style={{ color: 'var(--text-primary)' }}
           >
             {title}
           </h2>
+          <div className="flex shrink-0 items-center gap-2">
+          {canScroll && (
+            <div className="hidden gap-2 sm:flex">
+              <button type="button" className="mo-arrow" onClick={() => nudge(-1)} aria-label={`Scroll ${title} left`}>
+                <ArrowLeft size={18} />
+              </button>
+              <button type="button" className="mo-arrow" onClick={() => nudge(1)} aria-label={`Scroll ${title} right`}>
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          )}
           {viewAllHref &&
             (external ? (
               <a
@@ -95,23 +124,13 @@ export function Rail({
                 {viewAllLabel} <ArrowRight size={14} />
               </Link>
             ))}
+          </div>
         </div>
 
         <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           <div ref={trackRef} className="mo-slider flex gap-3 overflow-x-auto px-0.5 py-2 sm:gap-5">
             {children}
           </div>
-
-          {canScroll && (
-            <div className="mt-5 hidden justify-center gap-3 sm:flex">
-              <button type="button" className="mo-arrow" onClick={() => nudge(-1)} aria-label={`Scroll ${title} left`}>
-                <ArrowLeft size={18} />
-              </button>
-              <button type="button" className="mo-arrow" onClick={() => nudge(1)} aria-label={`Scroll ${title} right`}>
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </section>

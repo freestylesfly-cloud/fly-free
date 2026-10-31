@@ -69,7 +69,7 @@ async function getJson(path: string) {
 
 async function getCommunityData() {
   const [instagram, influencers, social, home] = await Promise.all([
-    getJson('/instagram-posts'),
+    getJson('/instagram-posts?media=live'),
     getJson('/influencers'),
     getJson('/cms/settings/social'),
     getJson('/cms/home'),

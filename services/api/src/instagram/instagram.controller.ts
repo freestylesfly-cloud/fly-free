@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { InstagramService } from './instagram.service';
+import { liveMediaUrl } from '../storage/media-storage';
 import { AdminGuard } from '../auth/admin.guard';
 import { PublicCacheReadInterceptor } from '../cache/public-cache-read.interceptor';
 
@@ -12,8 +13,16 @@ export class InstagramController {
   // Public: Get all Instagram posts
   @UseInterceptors(PublicCacheReadInterceptor)
   @Get()
-  async getAll(@Query('limit') limit?: string) {
+  async getAll(@Query('limit') limit?: string, @Query('media') media?: string) {
     const posts = await this.instagramService.getAll();
+    // The storefront asks for media=live: drop dead file URLs, and posts left
+    // with nothing to show. Admin omits it so it can still see and fix them.
+    if (media === 'live') {
+      posts.data = posts.data
+        .map((post) => ({ ...post, imageUrl: liveMediaUrl(post.imageUrl), videoUrl: liveMediaUrl(post.videoUrl) }))
+        .filter((post) => post.imageUrl || post.videoUrl);
+      posts.total = posts.data.length;
+    }
     if (limit) {
       return {
         data: posts.data.slice(0, parseInt(limit)),

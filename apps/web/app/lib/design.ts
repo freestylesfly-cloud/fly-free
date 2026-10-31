@@ -14,32 +14,35 @@
 
 export const BRAND = {
   colors: {
+    // "Ink + signal": black does the work (buttons, active states) so the
+    // printed tees carry the colour; one signal orange marks what matters most
+    // (main call to action, highlights, stars). Cool concrete background.
     /** Buttons, links, active states. */
-    primary: '#2563EB',
-    /** Supporting brand colour. */
-    secondary: '#10B981',
-    /** Highlights, badges, stars. */
-    accent: '#FFB703',
-    /** Deep tone for contrast blocks. */
-    tertiary: '#1D3557',
+    primary: '#121212',
+    /** Sale and urgency only. */
+    secondary: '#E11D48',
+    /** Signal orange: the one loud colour. Pair with ink text for small type. */
+    accent: '#FF4D1A',
+    /** Dark contrast blocks (announcement bar, story). */
+    tertiary: '#121212',
 
-    /** Page background. */
-    bgPrimary: '#f8f7f6',
+    /** Page background — cool concrete. */
+    bgPrimary: '#F3F3F1',
     /** Cards and raised surfaces. */
     bgSecondary: '#ffffff',
     /** Wells, skeletons, image placeholders. */
-    bgTertiary: '#efefef',
+    bgTertiary: '#E8E8E5',
 
-    textPrimary: '#1a1a1a',
-    textSecondary: '#666666',
-    textTertiary: '#999999'
+    textPrimary: '#121212',
+    textSecondary: '#52525B',
+    textTertiary: '#71717A'
   },
 
   fonts: {
     /** Body copy. */
-    body: 'calibreFont, "calibreFont Fallback", Arial, sans-serif',
+    body: 'var(--font-archivo), Arial, sans-serif',
     /** Headings and display type. */
-    heading: 'calibreFont, "calibreFont Fallback", Arial, sans-serif'
+    heading: 'var(--font-archivo), Arial, sans-serif'
   },
 
   /** Section reveal style: 'fade' | 'rise' | 'none'. */

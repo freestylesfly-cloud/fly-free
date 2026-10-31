@@ -5,6 +5,8 @@ import { X } from 'lucide-react';
 import { getApiBaseUrl } from '../lib/api';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
 
+type StyleTab = { slug: string; name: string };
+
 interface SizeRow {
   id: string;
   fitType?: string;
@@ -15,15 +17,19 @@ interface SizeRow {
 export default function SizeGuideDrawer({
   open,
   onClose,
-  defaultFit = 'regular',
+  defaultFit = '',
+  styles = [],
 }: {
   open: boolean;
   onClose: () => void;
+  /** Slug of the product's style; charts are stored against it. */
   defaultFit?: string;
+  /** Every style of the product's type (Regular / Oversized / Polo for tees). */
+  styles?: StyleTab[];
 }) {
   const [rows, setRows] = useState<SizeRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeFit, setActiveFit] = useState(normalizeFit(defaultFit));
+  const [activeFit, setActiveFit] = useState(defaultFit);
 
   // Chart images live in the SizeGuide table so admin edits show up here.
   useEffect(() => {
@@ -38,7 +44,7 @@ export default function SizeGuideDrawer({
         if (cancelled) return;
         const loaded = Array.isArray(data) ? data : data?.data ?? [];
         setRows(loaded);
-        setActiveFit(normalizeFit(defaultFit));
+        setActiveFit(defaultFit);
       })
       .catch(() => {
         if (!cancelled) setRows([]);
@@ -53,13 +59,15 @@ export default function SizeGuideDrawer({
   }, [open, rows.length, defaultFit]);
 
   useEffect(() => {
-    if (open) setActiveFit(normalizeFit(defaultFit));
+    if (open) setActiveFit(defaultFit);
   }, [defaultFit, open]);
 
   if (!open) return null;
 
-  const fits = fitGroups();
-  const activeGuide = rows.find((row) => normalizeFit(row.fitType || 'regular') === activeFit);
+  // Tabs only for styles of this type; with a single style there is nothing to switch.
+  const fits = styles.length ? styles : defaultFit ? [{ slug: defaultFit, name: fitLabel(defaultFit) }] : [];
+  const activeName = fits.find((fit) => fit.slug === activeFit)?.name || fitLabel(activeFit);
+  const activeGuide = rows.find((row) => row.fitType === activeFit);
   const chartImage = activeGuide?.chartImageUrl;
   const note = activeGuide?.note;
 
@@ -93,37 +101,39 @@ export default function SizeGuideDrawer({
             </p>
           ) : (
             <>
-            <div className="grid grid-cols-3 gap-2">
+            {fits.length > 1 && (
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(fits.length, 4)}, minmax(0, 1fr))` }}>
               {fits.map((fit) => (
                 <button
-                  key={fit.key}
+                  key={fit.slug}
                   type="button"
-                  onClick={() => setActiveFit(fit.key)}
+                  onClick={() => setActiveFit(fit.slug)}
                   className="border px-3 py-2 text-xs font-black uppercase"
                   style={{
-                    borderColor: activeFit === fit.key ? 'var(--color-primary)' : 'var(--border-color)',
-                    backgroundColor: activeFit === fit.key ? 'var(--color-primary)' : 'var(--bg-secondary)',
-                    color: activeFit === fit.key ? '#fff' : 'var(--text-primary)'
+                    borderColor: activeFit === fit.slug ? 'var(--color-primary)' : 'var(--border-color)',
+                    backgroundColor: activeFit === fit.slug ? 'var(--color-primary)' : 'var(--bg-secondary)',
+                    color: activeFit === fit.slug ? '#fff' : 'var(--text-primary)'
                   }}
                 >
-                  {fit.label}
+                  {fit.name}
                 </button>
               ))}
             </div>
+            )}
 
             {chartImage && (
               <div className="overflow-hidden border bg-white" style={{ borderColor: 'var(--border-color)' }}>
-                <img src={storageImage(chartImage, IMAGE_WIDTH.card)} alt={`${fitLabel(activeFit)} size chart`} loading="lazy" decoding="async" className="w-full object-contain" />
+                <img src={storageImage(chartImage, IMAGE_WIDTH.card)} alt={`${activeName} size chart`} loading="lazy" decoding="async" className="w-full object-contain" />
               </div>
             )}
 
             {!chartImage && (
               <div className="border bg-white p-5" style={{ borderColor: 'var(--border-color)' }}>
                 <p className="font-black" style={{ color: 'var(--text-primary)' }}>
-                  {fitLabel(activeFit)} size chart is coming soon.
+                  {activeName} size chart is coming soon.
                 </p>
                 <p className="mt-1 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
-                  Try another fit tab, or contact us before ordering if you need exact measurements.
+                  {fits.length > 1 ? 'Try another style tab, or contact' : 'Contact'} us before ordering if you need exact measurements.
                 </p>
               </div>
             )}
@@ -133,7 +143,7 @@ export default function SizeGuideDrawer({
                 Focus on size measurements.
               </p>
               <p className="mt-1 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
-                The garment drawing only shows where to measure. Choose the fit tab first, then compare chest, shoulder, length and sleeve values in the image.
+                The drawing only shows where to measure. Compare the measurements in the chart with a piece you already own that fits you well.
               </p>
               {note && (
                 <p className="mt-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
@@ -150,20 +160,7 @@ export default function SizeGuideDrawer({
   );
 }
 
-function fitGroups() {
-  return ['regular', 'oversized', 'polo'].map((key) => ({ key, label: fitLabel(key) }));
-}
-
-function fitLabel(key: string) {
-  if (key === 'polo') return 'Polo';
-  if (key === 'regular') return 'Regular';
-  if (key === 'oversized') return 'Oversized';
-  return key.replace(/-/g, ' ');
-}
-
-function normalizeFit(value: string) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized.includes('polo')) return 'polo';
-  if (normalized.includes('oversized') || normalized.includes('over-size')) return 'oversized';
-  return 'regular';
+function fitLabel(slug: string) {
+  const words = String(slug || '').replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }

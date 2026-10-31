@@ -10,6 +10,7 @@ import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { trackEvent } from '../lib/analytics';
 import { IMAGE_WIDTH, storageImage } from '../lib/image';
+import { formatCurrency } from '../lib/utils';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -206,8 +207,8 @@ export default function CheckoutPage() {
     setCouponValid(true);
     setCouponMessage(
       data.usesLeft === 1
-        ? `✓ Prize voucher applied. Rs ${Number(data.balance).toLocaleString('en-IN')} available. This is your last use.`
-        : `✓ Prize voucher applied. Rs ${Number(data.balance).toLocaleString('en-IN')} available, ${data.usesLeft} uses left.`
+        ? `✓ Prize voucher applied. ${formatCurrency(Number(data.balance))} available. This is your last use.`
+        : `✓ Prize voucher applied. ${formatCurrency(Number(data.balance))} available, ${data.usesLeft} uses left.`
     );
     return true;
   }
@@ -320,7 +321,7 @@ export default function CheckoutPage() {
   const voucherLastUse = Boolean(appliedVoucher) && Number(appliedVoucher?.usesLeft || 0) <= 1;
   const voucherForfeits = voucherLastUse && voucherRemaining > 0;
   const couponFeedbackText = couponValid && appliedVoucher
-    ? `Prize voucher applied. Rs ${voucherApplied.toLocaleString('en-IN')} used on this order, Rs ${voucherRemaining.toLocaleString('en-IN')} left.`
+    ? `Prize voucher applied. ${formatCurrency(voucherApplied)} used on this order, ${formatCurrency(voucherRemaining)} left.`
     : couponValid && appliedCoupon
     ? appliedCoupon.type === 'INFLUENCER'
       ? `${appliedCoupon.influencer?.name || 'Influencer'} code applied. Discount added to eligible products.`
@@ -848,7 +849,7 @@ export default function CheckoutPage() {
                 </motion.div>
               )}
               {appliedCoupon?.type === 'INFLUENCER' && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-900">
                   Influencer discount applied only to eligible products from {appliedCoupon.influencer.name}.
                 </div>
               )}

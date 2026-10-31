@@ -128,10 +128,10 @@ export function Footer() {
   return (
     <footer style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)' }} className="mt-14 pb-20 md:pb-0">
       <div className="grid gap-7 px-5 py-10 text-center sm:grid-cols-2 lg:grid-cols-4 lg:px-10 lg:py-14" style={{ borderBottom: '1px solid var(--border-color)' }}>
-        <TrustFeature icon={<Truck size={28} />} title="Delivery Support" text="Shipping offers are applied when eligible, with order updates shared after dispatch." />
-        <TrustFeature icon={<Paintbrush size={28} />} title="Custom Prints" text="Share your idea or reference and we will help turn it into a wearable design." />
-        <TrustFeature icon={<Sparkles size={28} />} title="Made With Care" text="Every print is checked for clean artwork, comfortable fabric, and lasting finish." />
-        <TrustFeature icon={<ShieldCheck size={28} />} title="Secure Payments" text="Online payments are processed through trusted, encrypted payment gateways." />
+        <TrustFeature icon={<Truck size={26} />} title="India Post Delivery" text="Shipped by Speed Post or Registered Parcel to pin codes across India, with tracking after dispatch." />
+        <TrustFeature icon={<Paintbrush size={26} />} title="Custom Prints" text="Share your idea or reference and we will help turn it into a wearable design." />
+        <TrustFeature icon={<Sparkles size={26} />} title="Made With Care" text="Every print is checked for clean artwork, comfortable fabric, and lasting finish." />
+        <TrustFeature icon={<ShieldCheck size={26} />} title="Secure Payments" text="Online payments are processed through trusted, encrypted payment gateways." />
       </div>
 
       <div className="grid w-full gap-10 px-5 py-12 md:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_0.9fr_0.9fr_1.1fr] lg:gap-8 lg:px-10 lg:py-14 xl:px-16">
@@ -221,10 +221,10 @@ export function Footer() {
 function TrustFeature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
     <div className="mx-auto flex h-full max-w-[270px] flex-col items-center">
-      <div className="flex h-12 w-12 items-center justify-center" style={{ color: 'var(--text-primary)' }}>
+      <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ color: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 9%, white)' }}>
         {icon}
       </div>
-      <h3 className="mt-4 min-h-7 text-lg font-black uppercase leading-tight sm:text-xl" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+      <h3 className="mt-4 min-h-7 text-lg font-black leading-tight" style={{ color: 'var(--text-primary)' }}>{title}</h3>
       <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{text}</p>
     </div>
   );

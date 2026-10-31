@@ -85,14 +85,44 @@ model Permission {
   role   Role   @relation(fields: [roleId], references: [id])
 }
 
+/// What kind of product it is: T-Shirts, Hoodies, Socks, Caps. Each type has
+/// its own styles (the Category rows under it) and its own size list. The
+/// storefront hides a type until it has visible products.
+model ProductType {
+  id             String     @id @default(cuid())
+  name           String
+  slug           String     @unique
+  description    String?
+  imageUrl       String?
+  /// Sizes this type is sold in, in display order, e.g. S..XXL or "Free size".
+  sizes          String[]   @default([])
+  priority       Int        @default(0)
+  isActive       Boolean    @default(true)
+  seoTitle       String?
+  seoDescription String?
+  categories     Category[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([isActive, priority])
+}
+
+/// A style within a product type: Regular / Oversized / Polo for T-Shirts,
+/// Pullover / Zip-up for Hoodies, and so on. Products point here; the type is
+/// reached through it, so there is one source of truth.
 model Category {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  imageUrl  String?
-  priority  Int       @default(0)
-  products  Product[]
-  createdAt DateTime  @default(now())
+  id            String       @id @default(cuid())
+  name          String
+  slug          String       @unique
+  imageUrl      String?
+  priority      Int          @default(0)
+  /// Nullable only so the migration is additive; every style is assigned one.
+  productTypeId String?
+  productType   ProductType? @relation(fields: [productTypeId], references: [id], onDelete: SetNull)
+  products      Product[]
+  createdAt     DateTime     @default(now())
+
+  @@index([productTypeId])
 }
 
 model Theme {
