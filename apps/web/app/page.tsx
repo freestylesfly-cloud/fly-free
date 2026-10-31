@@ -200,6 +200,8 @@ const PRODUCT_CARD = 'mo-slide w-[45vw] flex-shrink-0 sm:w-[230px]';
  */
 export const revalidate = 60;
 
+export const metadata = { alternates: { canonical: "/" } };
+
 export default async function HomePage() {
   const { themes, products, reviews, hampers, instagram, influencers, featuredInfluencers, social, settings, sponsorships, productTypes } = await getHomeData();
 

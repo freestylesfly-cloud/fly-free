@@ -12,8 +12,9 @@ type FaqItem = {
 const API_BASE = getApiBaseUrl();
 
 export const metadata = {
-  title: 'Help & FAQs | Fly Free',
-  description: 'Get help with Fly Free orders, delivery, exchanges, payments, offers, and support.',
+  title: 'Help & FAQs',
+  description: 'Delivery times, India Post tracking, prepaid payments, damaged-item help, sizing and creator codes: answers for Fly Free orders.',
+  alternates: { canonical: '/help-faq' },
 };
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +44,23 @@ export default async function HelpFaqPage() {
 
   return (
     <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      {rows.length > 0 && (
+        // FAQPage data lets search results show these answers directly.
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: rows.map((item) => ({
+                '@type': 'Question',
+                name: item.question,
+                acceptedAnswer: { '@type': 'Answer', text: item.answer },
+              })),
+            }).replace(/</g, '\\u003c'),
+          }}
+        />
+      )}
       <section className="border-b px-5 py-12 md:py-16" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
         <div className="mx-auto max-w-6xl">
           <p className="text-sm font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>Support</p>

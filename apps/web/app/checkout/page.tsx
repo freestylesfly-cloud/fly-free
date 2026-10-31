@@ -965,7 +965,7 @@ export default function CheckoutPage() {
             <div className="mb-5 grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4" style={{ color: 'var(--text-secondary)' }}>
               <div className="flex items-center gap-1"><ShieldCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Secure</div>
               <div className="flex items-center gap-1"><Truck size={15} style={{ color: 'var(--color-secondary)' }} /> Free delivery</div>
-              <div className="flex items-center gap-1"><RotateCcw size={15} style={{ color: 'var(--color-secondary)' }} /> 7-day exchange</div>
+              <div className="flex items-center gap-1"><RotateCcw size={15} style={{ color: 'var(--color-secondary)' }} /> Damaged-item help</div>
               <div className="flex items-center gap-1"><PackageCheck size={15} style={{ color: 'var(--color-secondary)' }} /> Quality checked</div>
             </div>
 

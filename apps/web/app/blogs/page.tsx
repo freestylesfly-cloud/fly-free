@@ -1,4 +1,4 @@
-export const metadata = { title: 'Blogs | Fly Free' };
+export const metadata = { title: 'Blogs' };
 
 export default function BlogsPage() {
   return <ComingSoon title="Blogs" />;

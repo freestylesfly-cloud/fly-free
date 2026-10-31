@@ -69,7 +69,7 @@ async function getCopy(): Promise<Record<string, string>> {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const sponsorship = await getSponsorship(id);
-  if (!sponsorship) return { title: 'Sponsorship | Fly Free' };
+  if (!sponsorship) return { title: 'Sponsorship' };
 
   return {
     title: `${sponsorship.partnerName} × Fly Free | ${sponsorship.eventName}`,

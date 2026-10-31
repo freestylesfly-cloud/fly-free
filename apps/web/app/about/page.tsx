@@ -1,7 +1,7 @@
 import { CmsTextPage } from "../components/CmsTextPage";
 
 export const metadata = {
-  title: "About Fly Free",
+  title: "About Us",
   description: "Fly Free brand story, founder, mission, and team.",
 };
 

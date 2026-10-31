@@ -1,7 +1,7 @@
 import { CmsTextPage } from "../components/CmsTextPage";
 
 export const metadata = {
-  title: "Privacy Policy | Fly Free",
+  title: "Privacy Policy",
   description: "How Fly Free collects and uses customer information for orders, support, and account services.",
 };
 

@@ -711,7 +711,7 @@ export default function ProductDetailPage({ params }: ProductDetailProps) {
 
           <div className="grid grid-cols-2 gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
             <TrustPill icon={<Truck size={15} />} text="Ships by India Post · tracked" />
-            <TrustPill icon={<PackageCheck size={15} />} text="7-day exchange" />
+            <TrustPill icon={<PackageCheck size={15} />} text="Help if it arrives damaged" />
             <TrustPill icon={<Heart size={15} />} text="Wishlist after login" />
             <TrustPill icon={<Share2 size={15} />} text="Shareable product link" />
           </div>

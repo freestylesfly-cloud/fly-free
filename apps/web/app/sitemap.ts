@@ -15,7 +15,6 @@ const staticRoutes: SitemapItem[] = [
   { url: '/about', changeFrequency: 'monthly', priority: 0.7 },
   { url: '/contact', changeFrequency: 'monthly', priority: 0.65 },
   { url: '/shipping', changeFrequency: 'monthly', priority: 0.5 },
-  { url: '/returns', changeFrequency: 'monthly', priority: 0.5 },
   { url: '/terms', changeFrequency: 'yearly', priority: 0.35 },
   { url: '/privacy', changeFrequency: 'yearly', priority: 0.35 },
 ];

@@ -1,7 +1,7 @@
 /**
  * Copies every row from the current database into a new, empty one.
  *
- * Built for moving Neon -> Railway Postgres, but works between any two Postgres
+ * Works between any two Postgres
  * databases that share this Prisma schema.
  *
  * SAFETY - the source is only ever read:

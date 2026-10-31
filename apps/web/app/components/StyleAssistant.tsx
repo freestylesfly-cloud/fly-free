@@ -10,6 +10,15 @@ import { speakText, stopSpeaking } from './canny/voice';
 import { hasVoice, loadVoices, playVoice, sayAloud } from './canny/sound';
 import { CHAT_LINES } from './canny/voiceLines';
 
+/** Words that say nothing about which product to show. */
+const STOP_WORDS = new Set([
+  'show', 'find', 'want', 'with', 'for', 'the', 'are', 'and', 'some', 'any', 'me', 'please', 'need', 'looking',
+  'tee', 'tees', 'tshirt', 'tshirts', 't-shirt', 't-shirts', 'shirt', 'shirts', 'style', 'styles', 'one', 'ones', 'like', 'more', 'this',
+  // Question and help words: they pick an answer, not a product.
+  'what', 'which', 'how', 'should', 'can', 'does', 'choose', 'pick', 'size', 'sizes', 'sizing', 'chart', 'measurement', 'measurements',
+  'help', 'support', 'order', 'orders', 'delivery', 'deliver', 'return', 'returns', 'track', 'tracking', 'refund', 'goes', 'well',
+]);
+
 type Product = {
   id: string;
   name: string;
@@ -19,7 +28,7 @@ type Product = {
   isTrending?: boolean;
   isFeatured?: boolean;
   isNewArrival?: boolean;
-  category?: { name?: string | null };
+  category?: { name?: string | null; productType?: { name?: string | null } | null };
   theme?: { name?: string | null };
   images?: Array<{ url?: string | null }>;
 };
@@ -53,6 +62,8 @@ export function StyleAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [listening, setListening] = useState(false);
   const [answerProducts, setAnswerProducts] = useState<Product[]>([]);
+  // A question asked before the catalogue has loaded waits here, then is answered.
+  const [pendingQuestion, setPendingQuestion] = useState('');
   const [followUps, setFollowUps] = useState<string[]>([]);
   const [speaking, setSpeaking] = useState(false);
   const [thinking, setThinking] = useState(false);
@@ -93,7 +104,7 @@ export function StyleAssistant() {
       if (!response?.ok || cancelled) return;
       const payload = await response.json().catch(() => null);
       const items = Array.isArray(payload) ? payload : payload?.data || [];
-      if (!cancelled) setProducts(items.filter((item: Product) => item?.slug).slice(0, 18));
+      if (!cancelled) setProducts(items.filter((item: Product) => item?.slug));
     }
 
     void loadProducts();
@@ -119,14 +130,43 @@ export function StyleAssistant() {
       .slice(0, 4);
   }, [products, recent]);
 
+  useEffect(() => {
+    if (!pendingQuestion || products.length === 0) return;
+    const question = pendingQuestion;
+    setPendingQuestion('');
+    answerQuestion(question);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, pendingQuestion]);
+
   function answerQuestion(question: string) {
     const query = question.trim().toLowerCase();
     if (!query) return;
-    const searchable = (product: Product) => `${product.name} ${product.category?.name || ''} ${product.theme?.name || ''}`.toLowerCase();
-    const terms = query.split(/\s+/).filter((term) => term.length > 2 && !['show', 'find', 'want', 'with', 'for', 'the', 'are'].includes(term));
-    const matches = products
-      .filter((product) => terms.some((term) => searchable(product).includes(term)))
-      .slice(0, 4);
+    if (products.length === 0) {
+      setThinking(true);
+      setPendingQuestion(question);
+      return;
+    }
+    const searchable = (product: Product) =>
+      `${product.name} ${product.category?.name || ''} ${product.category?.productType?.name || ''} ${product.theme?.name || ''}`.toLowerCase();
+    // "under 800", "below ₹1000", "above 700": a price window in rupees.
+    const maxPrice = Number(query.match(/(?:under|below|less than|upto|up to|within|max)\s*(?:rs\.?|₹)?\s*(\d{2,5})/)?.[1] || 0);
+    const minPrice = Number(query.match(/(?:above|over|more than|min)\s*(?:rs\.?|₹)?\s*(\d{2,5})/)?.[1] || 0);
+    const inBudget = (product: Product) => {
+      const rupees = Math.round(Number(product.price || 0) / 100);
+      return (!maxPrice || rupees <= maxPrice) && (!minPrice || rupees >= minPrice);
+    };
+    const terms = query
+      .replace(/(?:under|below|less than|upto|up to|within|max|above|over|more than|min)\s*(?:rs\.?|₹)?\s*\d+/g, ' ')
+      .split(/[^a-z0-9-]+/)
+      .filter((term) => term.length > 2 && !STOP_WORDS.has(term));
+    // Rank by how many of the words match, so "oversized black" beats "black".
+    const scored = products
+      .filter(inBudget)
+      .map((product) => ({ product, score: terms.filter((term) => searchable(product).includes(term)).length }))
+      .filter((row) => (terms.length ? row.score > 0 : maxPrice || minPrice))
+      .sort((a, b) => b.score - a.score || Number(Boolean(b.product.isTrending)) - Number(Boolean(a.product.isTrending)));
+    const best = scored[0]?.score || 0;
+    const matches = scored.filter((row) => row.score === best).slice(0, 4).map((row) => row.product);
     const picks = matches.length ? matches : recommended.slice(0, 4);
     let text = '';
     let nextQuestions: string[] = [];
@@ -137,11 +177,11 @@ export function StyleAssistant() {
       text = newProducts.length ? CHAT_LINES.newPicks : CHAT_LINES.newFallback;
       nextQuestions = ['Show me oversized styles', 'What goes well with this?', 'Help me choose a colour'];
     }
-    if (!text && (query.includes('size') || query.includes('fit'))) {
+    if (!text && !matches.length && /\b(size|sizes|sizing|measurements?|size chart|which fit)\b/.test(query)) {
       setAnswerProducts([]);
       text = CHAT_LINES.sizeHelp;
       nextQuestions = ['Show oversized styles', 'Help me choose a colour'];
-    } else if (!text && (query.includes('support') || query.includes('help') || query.includes('order') || query.includes('delivery') || query.includes('return'))) {
+    } else if (!text && !matches.length && /\b(support|help|order|orders|delivery|deliver|return|returns|track|tracking|refund)\b/.test(query)) {
       setAnswerProducts([]);
       text = CHAT_LINES.supportHelp;
       nextQuestions = ['Show me products', 'Open support'];

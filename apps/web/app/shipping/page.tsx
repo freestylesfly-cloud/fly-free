@@ -1,7 +1,7 @@
 import { CmsTextPage } from "../components/CmsTextPage";
 
 export const metadata = {
-  title: "Shipping Policy | Fly Free",
+  title: "Shipping Policy",
   description: "Dispatch times, delivery estimates, charges, and tracking for Fly Free orders.",
 };
 

@@ -1,7 +1,7 @@
 import { CmsTextPage } from "../components/CmsTextPage";
 
 export const metadata = {
-  title: "Terms of Service | Fly Free",
+  title: "Terms of Service",
   description: "Terms for shopping, custom orders, payments, delivery, and use of Fly Free.",
 };
 

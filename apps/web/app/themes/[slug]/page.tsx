@@ -6,8 +6,29 @@ import { MEDIA } from "../../lib/design";
 import { ThemeProductGrid } from "./ThemeProductGrid";
 import { CannyOutfit } from "../../components/canny/CannyOutfit";
 import { IMAGE_WIDTH, storageImage } from '../../lib/image';
+import { SITE_URL } from "../../lib/site";
+import type { Metadata } from "next";
 
 const API_BASE = getApiBaseUrl();
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const theme = await fetch(`${API_BASE}/cms/themes/${slug}`, { next: { revalidate: 300 } })
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  if (!theme?.id) return { title: "Theme not found", robots: { index: false } };
+
+  const path = `/themes/${theme.slug}`;
+  const description = String(theme.description || `${theme.name} t-shirts and drops from Fly Free, Northeast India.`).replace(/\s+/g, " ").slice(0, 160);
+  const image = theme.bannerImageUrl || theme.imageUrl;
+  const ogImage = image ? `${SITE_URL}${storageImage(image, IMAGE_WIDTH.detail)}` : `${SITE_URL}/brand/logo.png`;
+  return {
+    title: `${theme.name} T-Shirts`,
+    description,
+    alternates: { canonical: path },
+    openGraph: { url: `${SITE_URL}${path}`, title: `${theme.name} | Fly Free`, description, images: [{ url: ogImage, alt: theme.name }] },
+  };
+}
 
 export default async function ThemePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

@@ -35,9 +35,7 @@ export const metadata: Metadata = {
     "polo t-shirts India",
     "jersey t-shirts India"
   ],
-  alternates: {
-    canonical: "/",
-  },
+  // No site-wide canonical: children inherit it, which would point every page at "/".
   openGraph: {
     type: "website",
     url: SITE_URL,
@@ -66,6 +64,32 @@ export const metadata: Metadata = {
   },
 };
 
+const SITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/brand/logo.png`,
+      description: SITE_DESCRIPTION,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${SITE_URL}/products?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
+
 export const viewport = {
   width: "device-width",
   initialScale: 1,
@@ -85,6 +109,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: BRAND.fonts.body }}
         className="min-h-screen flex flex-col"
       >
+        {/* Brand and site-search data for search engines. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SITE_JSON_LD) }} />
         <Providers>
           <ContentProtection />
           <Header />

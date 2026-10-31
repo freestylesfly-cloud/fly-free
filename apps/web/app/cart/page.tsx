@@ -230,7 +230,7 @@ export default function CartPage() {
             <div className="grid gap-3 pt-2 text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
               <TrustRow icon={<Truck size={17} />} text={`Free delivery over ${formatCurrency(freeDeliveryAbove)}`} />
               <TrustRow icon={<ShieldCheck size={17} />} text="Secure Razorpay checkout" />
-              <TrustRow icon={<BadgeCheck size={17} />} text="7-day exchange on eligible items" />
+              <TrustRow icon={<BadgeCheck size={17} />} text="Damaged or wrong item? We make it right" />
             </div>
           </div>
         </aside>

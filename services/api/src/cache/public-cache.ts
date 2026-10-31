@@ -3,7 +3,7 @@
  *
  * The web app fetched these with `cache: "no-store"` and the browser talks straight
  * to this API, so without this every page view by every visitor became a fresh set
- * of Neon queries. One homepage view alone pulled roughly 920 KB across nine
+ * of database queries. One homepage view alone pulled roughly 920 KB across nine
  * endpoints. None of it is per-user and it only changes when an admin edits it, so
  * holding results in memory for a short window removes nearly all of that database
  * traffic — which is what the hosting network-transfer quota is spent on.

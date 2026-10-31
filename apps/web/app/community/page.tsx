@@ -44,7 +44,7 @@ type HomeSettings = {
 };
 
 export const metadata = {
-  title: 'Community | Fly Free',
+  title: 'Community',
   description: 'Fly Free creator codes, community posts, Instagram videos, and customer style moments.',
 };
 
